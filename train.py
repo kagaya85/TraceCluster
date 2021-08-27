@@ -4,6 +4,8 @@ import torch.nn.functional as F
 from torch_geometric.data import DataLoader
 from torch_scatter import scatter_mean
 
+from dataset import TraceDataset
+from model import Net
 
 dataset = TraceDataset(root='/tmp/tracedata',
                        name='trace', use_node_attr=True)

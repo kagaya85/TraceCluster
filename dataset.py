@@ -37,15 +37,15 @@ class TraceDataset(InMemoryDataset):
         raw_data = pd.read_csv(self.raw_paths[0])
         for idx, trace in tqdm(raw_data.iterrows()):
             node_feats = self._get_node_features(trace)
+            node_label = self._get_node_labels(trace)
             edge_feats = self._get_edge_features(trace)
             edge_index = self._get_adjacency_info(trace)
-            label = self._get_labels(trace)
 
             data = Data(
                 x=node_feats,
+                y=node_label,
                 edge_index=edge_index,
                 edge_attr=edge_feats,
-                y=label,
             )
             data_list.append(data)
 
@@ -54,6 +54,7 @@ class TraceDataset(InMemoryDataset):
 
     def _get_node_features(trace):
         """ 
+        node features matrix
         This will return a matrix / 2d array of the shape
         [Number of Nodes, Node Feature size]
         """
@@ -61,13 +62,20 @@ class TraceDataset(InMemoryDataset):
 
     def _get_edge_features(trace):
         """ 
+        edge features matrix
         This will return a matrix / 2d array of the shape
         [Number of edges, Edge Feature size]
         """
         pass
 
     def _get_adjacency_info(trace):
+        """
+        adjacency list
+        """
         pass
 
-    def _get_labels(trace):
+    def _get_node_labels(trace):
+        """
+        node label
+        """
         pass

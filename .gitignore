@@ -6,3 +6,4 @@ DataProcess
 __pycache__
 *.csv
 *.jsons
+*.swp
