@@ -132,7 +132,6 @@ def save_data(graphs: dict, filename: str):
                             'processed', time_now_str, filename)
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, 'a+', encoding='utf-8') as fd:
-        # TODO: save graph data
         data_json = json.dumps(graphs, ensure_ascii=False, indent=4)
         fd.write(data_json)
         fd.write('\n')

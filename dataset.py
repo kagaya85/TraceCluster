@@ -3,6 +3,7 @@ import torch
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.data.data import Data
 import pandas as pd
+import numpy as np
 import tqdm as tqdm
 
 
@@ -15,7 +16,6 @@ class TraceDataset(InMemoryDataset):
 
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
-        # TODO
         return ['trace.csv']
 
     @property
@@ -37,13 +37,13 @@ class TraceDataset(InMemoryDataset):
         raw_data = pd.read_csv(self.raw_paths[0])
         for idx, trace in tqdm(raw_data.iterrows()):
             node_feats = self._get_node_features(trace)
-            node_label = self._get_node_labels(trace)
+            # node_label = self._get_node_labels(trace)
             edge_feats = self._get_edge_features(trace)
             edge_index = self._get_adjacency_info(trace)
 
             data = Data(
                 x=node_feats,
-                y=node_label,
+                # y=node_label,
                 edge_index=edge_index,
                 edge_attr=edge_feats,
             )
@@ -58,7 +58,11 @@ class TraceDataset(InMemoryDataset):
         This will return a matrix / 2d array of the shape
         [Number of Nodes, Node Feature size]
         """
-        pass
+        node_feats = []
+        # TODO
+
+        node_feats = np.asarray(node_feats)
+        return torch.tensor(node_feats, dtype=torch.float)
 
     def _get_edge_features(trace):
         """ 
@@ -66,13 +70,20 @@ class TraceDataset(InMemoryDataset):
         This will return a matrix / 2d array of the shape
         [Number of edges, Edge Feature size]
         """
-        pass
+        edge_feats = []
+        # TODO
+
+        edge_feats = np.asarray(edge_feats)
+        return torch.tensor(edge_feats, dtype=torch.float)
 
     def _get_adjacency_info(trace):
         """
         adjacency list
         """
-        pass
+        adj_list = []
+        # TODO
+
+        return adj_list
 
     def _get_node_labels(trace):
         """
