@@ -1,8 +1,6 @@
 import torch
 from torch_geometric.nn import MessagePassing, GCNConv
 from torch_geometric.utils import remove_self_loops, add_self_loops, degree
-from torch_geometric.datasets import TUDataset
-from torch_geometric.data import DataLoader
 from torch_scatter import scatter_mean
 import torch.nn.functional as F
 
@@ -11,8 +9,8 @@ class Net(torch.nn.Module):
     def __init__(self, feature_size, model_params):
         super(Net, self).__init__()
 
-        # self.conv1 = GCNConv(dataset.num_node_features, 16)
-        # self.conv2 = GCNConv(16, dataset.num_classes)
+        self.conv1 = GCNConv(feature_size, 16)
+        self.conv2 = GCNConv(16, 1)
 
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
