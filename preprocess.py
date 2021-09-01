@@ -3,11 +3,12 @@ import json
 import os
 import time
 import pandas as pd
+import numpy as np
 from torch.nn import factory_kwargs
 from torch_geometric.nn import glob
 from tqdm import tqdm
 from utils import boolStr2Bool, boolStr2Int
-from typing import List
+from typing import List, Callable
 
 data_path_list = [
     'data/raw/F01-02/ERROR_F012_SpanData2021-08-14_01-52-43.csv'
@@ -24,6 +25,7 @@ class Item:
         self.START_TIME = 'StartTime'
         self.END_TIME = 'EndTime'
         self.OPERATION = 'URL'
+        self.DURATION = 'Duration'
         self.SPAN_TYPE = 'SpanType'
         self.SERVICE = 'Service'
         self.IS_ERROR = 'IsError'
@@ -54,7 +56,7 @@ class Span:
             self.parentSpanId = raw_span[ITEM.PARENT_SPAN_ID]
             self.traceId = raw_span[ITEM.TRACE_ID]
             self.startTime = raw_span[ITEM.START_TIME]
-            self.duration = raw_span[ITEM.END_TIME] - raw_span[ITEM.START_TIME]
+            self.duration = raw_span[ITEM.DURATION]
             self.service = raw_span[ITEM.SERVICE]
             self.peer = raw_span[ITEM.PEER]
             self.operation = raw_span[ITEM.OPERATION]
@@ -70,15 +72,19 @@ def load_span(pathList: list):
 
     for filepath in pathList:
         print(f"load span data from {filepath}")
-        spans = pd.read_csv(filepath).drop_duplicates().dropna()
+        data_type = {ITEM.START_TIME: np.uint64, ITEM.END_TIME: np.uint64}
+        spans = pd.read_csv(
+            filepath, dtype=data_type
+        ).drop_duplicates().dropna()
         spansList.append(spans)
 
     spanData = pd.concat(spansList, axis=0, ignore_index=True)
-
+    spanData[ITEM.DURATION] = spanData[ITEM.END_TIME] - \
+        spanData[ITEM.START_TIME]
     return spanData
 
 
-def build_graph(trace: List[Span]):
+def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     """
     build trace graph from span list
     """
@@ -104,13 +110,13 @@ def build_graph(trace: List[Span]):
         edges[span.parentSpanId].append({
             'spanId': span.spanId,
             'startTime': span.startTime,
-            'duration': span.duration,
+            'duration': time_normolize(span.duration),
             'isError': span.isError,
         })
 
         # span id should be unique
         if span.spanId not in vertexs.keys():
-            vertexs[span.spanId] = ':'.join(
+            vertexs[span.spanId] = '/'.join(
                 [span.service, span.operation, span.code])
 
     if rootSpan == None:
@@ -138,13 +144,25 @@ def save_data(graphs: dict, filename: str):
     print(f"data saved in {filename}")
 
 
+def z_score(x, mean, std) -> float:
+    """
+    z_score normalize funciton 
+    """
+    return (x - mean) / std
+
+
 def main():
     span_data = load_span(data_path_list)
+    duration_mean = span_data[ITEM.DURATION].mean()
+    duration_std = span_data[ITEM.DURATION].std()
+
     graph_map = {}
     print("processing...")
+
     for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID])):
         trace = [Span(raw_span) for idx, raw_span in trace_data.iterrows()]
-        graph = build_graph(trace)
+        graph = build_graph(trace,
+                            lambda x: z_score(x, duration_mean, duration_std))
         if graph == None:
             continue
         graph_map[trace_id] = graph

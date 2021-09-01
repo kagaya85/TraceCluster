@@ -6,9 +6,16 @@
 
 #### Task
 
-- [ ] 节点特征的预处理，提取特征
-- [ ] 替换 InMemoryDataset -> Dataset
-- [ ] 阅读 GraphCL Dataset 部分代码
+预处理：
+- [ ] word embedding
+	- [ ] 转小写
+	- [ ] 分隔符
+	- [ ] url参数替换
+- [ ] 响应时间归一化：Z-score
+
+Dataset：
+<!-- - [ ] 替换 InMemoryDataset -> Dataset -->
+- [ ] GraphCL Dataset
 
 #### Other
 

@@ -8,7 +8,6 @@ import tqdm as tqdm
 import json
 
 
-# TODO
 class TraceDataset(InMemoryDataset):
     def __init__(self, root: Optional[str], transform: Optional[Callable], pre_transform: Optional[Callable], pre_filter: Optional[Callable]):
         super().__init__(root=root, transform=transform,
