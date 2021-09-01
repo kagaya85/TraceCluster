@@ -7,10 +7,11 @@
 #### Task
 
 预处理：
+- [x] span id 映射
 - [ ] word embedding
-	- [ ] 转小写
+	- [x] 转小写
 	- [x] 分隔符
-	- [ ] url参数替换
+	- [x] url参数替换
 - [x] 响应时间归一化：Z-score
 
 Dataset：

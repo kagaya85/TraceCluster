@@ -7,7 +7,7 @@ import numpy as np
 from torch.nn import factory_kwargs
 from torch_geometric.nn import glob
 from tqdm import tqdm
-from utils import boolStr2Bool, boolStr2Int
+import utils
 from typing import List, Callable, Dict
 
 data_path_list = [
@@ -30,6 +30,7 @@ class Item:
         self.SERVICE = 'Service'
         self.IS_ERROR = 'IsError'
         self.PEER = 'Peer'
+        self.TYPE = 'SpanType'
 
 
 ITEM = Item()
@@ -44,6 +45,7 @@ class Span:
             self.spanId = ''
             self.parentSpanId = ''
             self.traceId = ''
+            self.spanType = ''
             self.startTime = 0
             self.duration = 0
             self.service = ''
@@ -55,13 +57,14 @@ class Span:
             self.spanId = raw_span[ITEM.SPAN_ID]
             self.parentSpanId = raw_span[ITEM.PARENT_SPAN_ID]
             self.traceId = raw_span[ITEM.TRACE_ID]
+            self.spanType = raw_span[ITEM.SPAN_TYPE]
             self.startTime = raw_span[ITEM.START_TIME]
             self.duration = raw_span[ITEM.DURATION]
             self.service = raw_span[ITEM.SERVICE]
             self.peer = raw_span[ITEM.PEER]
             self.operation = raw_span[ITEM.OPERATION]
-            self.code = str(boolStr2Int(raw_span[ITEM.IS_ERROR]))
-            self.isError = boolStr2Bool(raw_span[ITEM.IS_ERROR])
+            self.code = str(utils.boolStr2Int(raw_span[ITEM.IS_ERROR]))
+            self.isError = utils.boolStr2Bool(raw_span[ITEM.IS_ERROR])
 
 
 def load_span(pathList: list):
@@ -81,6 +84,7 @@ def load_span(pathList: list):
     spanData = pd.concat(spansList, axis=0, ignore_index=True)
     spanData[ITEM.DURATION] = spanData[ITEM.END_TIME] - \
         spanData[ITEM.START_TIME]
+
     return spanData
 
 
@@ -89,11 +93,13 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     build trace graph from span list
     """
 
-    rootSpan = None
     vertexs = {-1: 'start'}
     edges = {}
+
     spanIdMap = {'-1': -1}
     spanIdCounter = 0
+    rootSpan = None
+
     trace.sort(key=lambda s: s.startTime)
 
     for span in trace:
@@ -155,11 +161,50 @@ def save_data(graphs: Dict, filename: str):
     print(f"data saved in {filename}")
 
 
+def str_process(s: str) -> str:
+    words = ['ticket', 'service']
+    word_list = []
+    s = s.strip('/')
+
+    for w in s.split('/'):
+        for sub in utils.wordSplit(w, words):
+            word_list.append(utils.hump2snake(sub))
+
+    s = '/'.join(word_list)
+    s = s.replace('-', '/')
+    s = s.replace('_', '/')
+    s = s.replace('{', '')
+    s = s.replace('}', '')
+    s = s.lower()
+    return s
+
+
+def trace_process(trace: List[Span]) -> List[Span]:
+    operationMap = {}
+    for span in trace:
+        span.service = str_process(span.service)
+        span.operation = str_process(span.operation)
+        if span.spanType == "Entry":
+            operationMap[span.parentSpanId] = span.operation
+
+    for span in trace:
+        # 替换Exit span的URL
+        if span.spanType == "Exit" and span.spanId in operationMap.keys():
+            span.operation = operationMap[span.spanId]
+
+    return trace
+
+
 def z_score(x: float, mean: float, std: float) -> float:
     """
     z_score normalize funciton 
     """
     return (x - mean) / std
+
+
+def embedding(s: str):
+    # TODO word embedding
+    pass
 
 
 def main():
@@ -172,7 +217,7 @@ def main():
 
     for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID])):
         trace = [Span(raw_span) for idx, raw_span in trace_data.iterrows()]
-        graph = build_graph(trace,
+        graph = build_graph(trace_process(trace),
                             lambda x: z_score(x, duration_mean, duration_std))
         if graph == None:
             continue
