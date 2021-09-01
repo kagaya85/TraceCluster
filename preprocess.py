@@ -8,7 +8,7 @@ from torch.nn import factory_kwargs
 from torch_geometric.nn import glob
 from tqdm import tqdm
 from utils import boolStr2Bool, boolStr2Int
-from typing import List, Callable
+from typing import List, Callable, Dict
 
 data_path_list = [
     'data/raw/F01-02/ERROR_F012_SpanData2021-08-14_01-52-43.csv'
@@ -90,9 +90,10 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     """
 
     rootSpan = None
-    vertexs = {}
+    vertexs = {-1: 'start'}
     edges = {}
-
+    spanIdMap = {'-1': -1}
+    spanIdCounter = 0
     trace.sort(key=lambda s: s.startTime)
 
     for span in trace:
@@ -104,20 +105,30 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
         if span.parentSpanId == '-1':
             rootSpan = span
 
-        if span.parentSpanId not in edges.keys():
-            edges[span.parentSpanId] = []
+        if span.parentSpanId not in spanIdMap.keys():
+            spanIdMap[span.parentSpanId] = spanIdCounter
+            spanIdCounter += 1
 
-        edges[span.parentSpanId].append({
+        spanIdMap[span.spanId] = spanIdCounter
+        spanIdCounter += 1
+
+        spanId, parentSpanId = spanIdMap[span.spanId], spanIdMap[span.parentSpanId]
+
+        # span id should be unique
+        if spanId not in vertexs.keys():
+            vertexs[spanId] = '/'.join(
+                [span.service, span.operation, span.code])
+
+        if parentSpanId not in edges.keys():
+            edges[parentSpanId] = []
+
+        edges[parentSpanId].append({
+            'vertexId': spanId,
             'spanId': span.spanId,
             'startTime': span.startTime,
             'duration': time_normolize(span.duration),
             'isError': span.isError,
         })
-
-        # span id should be unique
-        if span.spanId not in vertexs.keys():
-            vertexs[span.spanId] = '/'.join(
-                [span.service, span.operation, span.code])
 
     if rootSpan == None:
         return None
@@ -130,7 +141,7 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     return graph
 
 
-def save_data(graphs: dict, filename: str):
+def save_data(graphs: Dict, filename: str):
     """
     save graph data to json file
     """
@@ -144,7 +155,7 @@ def save_data(graphs: dict, filename: str):
     print(f"data saved in {filename}")
 
 
-def z_score(x, mean, std) -> float:
+def z_score(x: float, mean: float, std: float) -> float:
     """
     z_score normalize funciton 
     """
