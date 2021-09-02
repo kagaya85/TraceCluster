@@ -128,9 +128,8 @@ class TraceClusterDataset(InMemoryDataset):
             item, slices = self.data[key], self.slices[key]
             if torch.is_tensor(item):
                 s = list(repeat(slice(None), item.dim()))
-                s[self.data.__cat_dim__(key,
-                                        item)] = slice(slices[0],
-                                                       slices[0 + 1])
+                s[self.data.__cat_dim__(key, item)] = slice(
+                    slices[0], slices[0 + 1])
             else:
                 s = slice(slices[idx], slices[idx + 1])
 

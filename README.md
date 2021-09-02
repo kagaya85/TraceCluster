@@ -1,5 +1,7 @@
 # Trace Cluster
 
+A Trace cluster tool based on Graph Neural Network
+
 ## Disscussion Records
 
 ### 8.31
@@ -8,7 +10,7 @@
 
 预处理：
 - [x] span id 映射
-- [ ] word embedding
+- [x] word embedding
 	- [x] 转小写
 	- [x] 分隔符
 	- [x] url参数替换
@@ -16,7 +18,7 @@
 
 Dataset：
 <!-- - [ ] 替换 InMemoryDataset -> Dataset -->
-- [ ] GraphCL Dataset
+- [x] GraphCL Dataset graph enhanced
 
 #### Other
 
