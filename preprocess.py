@@ -162,21 +162,23 @@ def save_data(graphs: Dict, filename: str):
 
 
 def str_process(s: str) -> str:
-    words = ['ticket', 'service']
+    words = ['ticket', 'order', 'name',
+             'operation', 'spring', 'service', 'trip',
+             'date', 'route', 'type', 'account']
     word_list = []
-    s = s.strip('/')
-
-    for w in s.split('/'):
-        for sub in utils.wordSplit(w, words):
-            word_list.append(utils.hump2snake(sub))
-
-    s = '/'.join(word_list)
     s = s.replace('-', '/')
     s = s.replace('_', '/')
     s = s.replace('{', '')
     s = s.replace('}', '')
     s = s.lower()
-    return s
+    s = s.strip('/')
+
+    for w in s.split('/'):
+        for sub in utils.wordSplit(w, words):
+            snake = utils.hump2snake(sub)
+            word_list.append(snake)
+
+    return '/'.join(word_list)
 
 
 def trace_process(trace: List[Span]) -> List[Span]:
