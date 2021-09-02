@@ -1,4 +1,4 @@
-from preprocess import str_process
+from preprocess import embedding, str_process
 import unittest
 from utils import hump2snake, wordSplit
 
@@ -44,6 +44,11 @@ class TestUtils(unittest.TestCase):
             'ts/contacts/service/get/api/v1/contact/service/contacts/id/0'
         )
         return
+
+    def test_embedding(self):
+        print(embedding('start'))
+        print(embedding('end'))
+        print(embedding('start/end'))
 
 
 if __name__ == '__main__':

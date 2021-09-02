@@ -16,6 +16,9 @@ data_path_list = [
 
 time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
 
+embedding_word_list = np.load('./data/glove/wordsList.npy').tolist()
+embedding_word_vector = np.load('./data/glove/wordVectors.npy')
+
 
 class Item:
     def __init__(self) -> None:
@@ -93,7 +96,7 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     build trace graph from span list
     """
 
-    vertexs = {-1: 'start'}
+    vertexs = {-1: embedding('start')}
     edges = {}
 
     spanIdMap = {'-1': -1}
@@ -122,8 +125,8 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
 
         # span id should be unique
         if spanId not in vertexs.keys():
-            vertexs[spanId] = '/'.join(
-                [span.service, span.operation, span.code])
+            vertexs[spanId] = embedding('/'.join(
+                [span.service, span.operation, span.code]))
 
         if parentSpanId not in edges.keys():
             edges[parentSpanId] = []
@@ -197,16 +200,23 @@ def trace_process(trace: List[Span]) -> List[Span]:
     return trace
 
 
+def embedding(input: str) -> List[float]:
+    words = input.split('/')
+    vec_sum = []
+    for w in words:
+        if w in embedding_word_list:
+            idx = embedding_word_list.index(w)
+            vec = embedding_word_vector[idx]
+            vec_sum.append(vec)
+
+    return np.mean(np.array(vec_sum), axis=0).tolist()
+
+
 def z_score(x: float, mean: float, std: float) -> float:
     """
     z_score normalize funciton 
     """
     return (x - mean) / std
-
-
-def embedding(s: str):
-    # TODO word embedding
-    pass
 
 
 def main():
