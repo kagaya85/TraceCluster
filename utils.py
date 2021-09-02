@@ -30,20 +30,21 @@ def wordSplit(s: str, words: List[str]) -> List[str]:
     if len(s) == 0 or len(words) == 0:
         return []
 
-    ans = []
-    tmp = [s]
+    ans = [s]
     for w in words:
-        ans = tmp
-        for substr in ans:
+        tmp = ans
+        ans = []
+        for substr in tmp:
             idx = substr.find(w)
 
-            while idx != -1 and len(substr) > 0:
+            while idx != -1:
                 if idx > 0:
-                    tmp.append(substr[:idx])
-                tmp.append(w)
+                    ans.append(substr[:idx])
+                ans.append(w)
                 substr = substr[idx+len(w):]
-                idx = substr.find()
+                idx = substr.find(w)
 
-            tmp.append(substr)
+            if len(substr) > 0:
+                ans.append(substr)
 
     return ans
