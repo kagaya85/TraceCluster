@@ -164,7 +164,7 @@ def save_data(graphs: Dict, filename: str):
 def str_process(s: str) -> str:
     words = ['ticket', 'order', 'name',
              'operation', 'spring', 'service', 'trip',
-             'date', 'route', 'type', 'account']
+             'date', 'route', 'type', 'id', 'account', 'number']
     word_list = []
     s = s.replace('-', '/')
     s = s.replace('_', '/')

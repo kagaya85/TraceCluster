@@ -44,7 +44,7 @@ def wordSplit(s: str, words: List[str]) -> List[str]:
                 substr = substr[idx+len(w):]
                 idx = substr.find(w)
 
-            if len(substr) > 0:
+            if len(substr) > 0 and substr != 's':
                 ans.append(substr)
 
     return ans
