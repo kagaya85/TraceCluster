@@ -96,11 +96,11 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     build trace graph from span list
     """
 
-    vertexs = {-1: embedding('start')}
+    vertexs = {0: embedding('start')}
     edges = {}
 
-    spanIdMap = {'-1': -1}
-    spanIdCounter = 0
+    spanIdMap = {'-1': 0}
+    spanIdCounter = 1
     rootSpan = None
 
     trace.sort(key=lambda s: s.startTime)

@@ -73,7 +73,7 @@ class TraceClusterDataset(InMemoryDataset):
         [Number of Nodes, Node Feature size]
         """
         node_feats = []
-        for span_id, attr in trace["vertexs"].items():
+        for span_id, attr in sorted(trace["vertexs"]):
             feat = []
             feat.append(attr)
             node_feats.append(feat)
@@ -89,11 +89,11 @@ class TraceClusterDataset(InMemoryDataset):
         """
         edge_feats = []
         for from_id, to_list in trace["edges"]:
-            feat = []
             for to in to_list:
+                feat = []
                 # feat.append[to["startTime"]]
                 feat.append(to["duration"])    # 归一化
-            edge_feats.append(feat)
+                edge_feats.append(feat)
 
         edge_feats = np.asarray(edge_feats)
         return torch.tensor(edge_feats, dtype=torch.float)
