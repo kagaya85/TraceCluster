@@ -28,7 +28,15 @@ class TraceClusterDataset(InMemoryDataset):
 
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
-        return ['trace.json']
+        database = 'data/processed'
+        filename = 'processed.json'
+        dir_list = ['2021-09-02_13-06-3']
+
+        path_list = []
+        for dir in dir_list:
+            path_list.append(os.path.join(database, dir, filename))
+
+        return path_list
 
     @property
     def processed_file_names(self) -> Union[str, List[str], Tuple]:
