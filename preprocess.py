@@ -165,7 +165,7 @@ def save_data(graphs: Dict, filename: str):
 
 
 def str_process(s: str) -> str:
-    words = ['ticket', 'order', 'name',
+    words = ['ticket', 'order', 'name', 'security',
              'operation', 'spring', 'service', 'trip',
              'date', 'route', 'type', 'id', 'account', 'number']
     word_list = []

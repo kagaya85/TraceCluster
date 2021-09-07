@@ -54,7 +54,6 @@ class TraceClusterDataset(InMemoryDataset):
         for trace_id, trace in tqdm(raw_data.items()):
             node_feats = self._get_node_features(trace)
             edge_feats = self._get_edge_features(trace)
-            # [from1, from2, from3 ...] [to1, to2, to3 ...]
             edge_index = self._get_adjacency_info(trace)
 
             data = Data(
@@ -109,6 +108,7 @@ class TraceClusterDataset(InMemoryDataset):
     def _get_adjacency_info(self, trace):
         """
         adjacency list
+        [from1, from2, from3 ...] [to1, to2, to3 ...]
         """
         adj_list = [[], []]
         for from_id, to_list in trace["edges"]:
