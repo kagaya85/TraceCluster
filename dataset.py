@@ -1,24 +1,21 @@
-from typing import Callable, List, Optional, Tuple, Union
-
 import torch
-from torch_geometric.data import InMemoryDataset
-from torch_geometric.data.data import Data
-import pandas as pd
 import numpy as np
 import tqdm as tqdm
 import json
-
 import os
-import os.path as osp
-import shutil
+import os.path
 
-from itertools import repeat, product
+from typing import Callable, List, Optional, Tuple, Union
+from itertools import repeat
 from copy import deepcopy
-import pdb
+from torch_geometric.data import InMemoryDataset
+from torch_geometric.data.data import Data
 
 
 class TraceClusterDataset(InMemoryDataset):
-    def __init__(self, root: Optional[str], name: Optional[str], transform: Optional[Callable], pre_transform=False, pre_filter: Optional[Callable], aug: Optional[str]):
+    def __init__(self, root: Optional[str], name: Optional[str], transform: Optional[Callable],
+                 pre_transform=False, pre_filter=None, aug=None):
+
         super(TraceClusterDataset, self).__init__(root=root, transform=transform,
                                                   pre_transform=pre_transform, pre_filter=pre_filter)
 
@@ -27,6 +24,15 @@ class TraceClusterDataset(InMemoryDataset):
         self.aug = aug
         self.data, self.slices = torch.load(self.processed_paths[0])
 
+    @property
+    def raw_dir(self):
+        name = 'raw'
+        return os.path.join(self.root, name)
+
+    @property
+    def processed_dir(self):
+        name = 'processed'
+        return os.path.join(self.root, name)
 
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
@@ -79,9 +85,9 @@ class TraceClusterDataset(InMemoryDataset):
         [Number of Nodes, Node Feature size]
         """
         node_feats = []
-        for span_id, attr in sorted(trace["vertexs"]):
+        for id in sorted(trace["vertexs"]):
             feat = []
-            feat.append(attr)
+            feat.append(trace['vertexs'][id])
             node_feats.append(feat)
 
         node_feats = np.asarray(node_feats)
