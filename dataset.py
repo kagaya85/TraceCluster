@@ -18,23 +18,22 @@ import pdb
 
 
 class TraceClusterDataset(InMemoryDataset):
-    def __init__(self, root: Optional[str], transform: Optional[Callable], pre_transform: Optional[Callable], pre_filter: Optional[Callable], aug: Optional[str]):
+    def __init__(self, root: Optional[str], name: Optional[str], transform: Optional[Callable], pre_transform=False, pre_filter: Optional[Callable], aug: Optional[str]):
         super(TraceClusterDataset, self).__init__(root=root, transform=transform,
                                                   pre_transform=pre_transform, pre_filter=pre_filter)
 
+        self.root = root
+        self.name = name
+        self.aug = aug
         self.data, self.slices = torch.load(self.processed_paths[0])
 
-        self.aug = aug
 
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
-        database = 'data/processed'
         filename = 'processed.json'
-        dir_list = ['2021-09-02_13-06-3']
 
         path_list = []
-        for dir in dir_list:
-            path_list.append(os.path.join(database, dir, filename))
+        path_list.append(os.path.join(self.root, self.name, filename))
 
         return path_list
 
