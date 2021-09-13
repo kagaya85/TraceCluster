@@ -2,8 +2,10 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
-
-from torch_geometric.nn import GINConv, global_add_pool
+from torch.autograd import Variable
+from torch.nn.modules import loss
+from torch_geometric.nn import TransformerConv, global_add_pool
+from losses import local_global_loss
 
 
 class Encoder(torch.nn.Module):
@@ -16,14 +18,13 @@ class Encoder(torch.nn.Module):
 
         for i in range(num_gc_layers):
             if i:
-                x = nn.Sequential(nn.Linear(dim, dim),
-                                  nn.ReLU(), nn.Linear(dim, dim))
+                # in_channel, out_channel, edge_idm
+                conv = TransformerConv(
+                    in_channels=dim, out_channels=dim, edge_dim=1)
             else:
-                x = nn.Sequential(nn.Linear(num_features, dim),
-                                  nn.ReLU(), nn.Linear(dim, dim))
-            conv = GINConv(x)
+                conv = TransformerConv(
+                    in_channels=num_features, out_channels=dim, edge_dim=1)
             bn = nn.BatchNorm1d(dim)
-
             self.convs.append(conv)
             self.bns.append(bn)
 
@@ -38,8 +39,6 @@ class Encoder(torch.nn.Module):
             x = F.relu(self.convs[i](x, edge_index))
             x = self.bns[i](x)
             xs.append(x)
-            # if i == 2:
-            # feature_map = x2
 
         xpool = [global_add_pool(x, batch) for x in xs]
         x = torch.cat(xpool, 1)
@@ -72,6 +71,7 @@ class Encoder(torch.nn.Module):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         ret = []
         y = []
+
         with torch.no_grad():
             for n, data in enumerate(loader):
                 data.to(device)
@@ -87,6 +87,63 @@ class Encoder(torch.nn.Module):
                     break
 
         return x_g, ret, y
+
+
+class GcnInfomax(nn.Module):
+    def __init__(self, hidden_dim, num_gc_layers, prior, dataset_num_features, alpha=0.5, beta=1., gamma=.1):
+        super(GcnInfomax, self).__init__()
+
+        self.alpha = alpha
+        self.beta = beta
+        self.gamma = gamma
+        self.prior = prior
+
+        self.embedding_dim = mi_units = hidden_dim * num_gc_layers
+        self.encoder = Encoder(dataset_num_features, hidden_dim, num_gc_layers)
+
+        self.local_d = FF(self.embedding_dim)
+        self.global_d = FF(self.embedding_dim)
+        # self.local_d = MI1x1ConvNet(self.embedding_dim, mi_units)
+        # self.global_d = MIFCNet(self.embedding_dim, mi_units)
+
+        if self.prior:
+            self.prior_d = PriorDiscriminator(self.embedding_dim)
+
+        self.init_emb()
+
+    def init_emb(self):
+        initrange = -1.5 / self.embedding_dim
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                torch.nn.init.xavier_uniform_(m.weight.data)
+                if m.bias is not None:
+                    m.bias.data.fill_(0.0)
+
+    def forward(self, x, edge_index, batch, num_graphs):
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # batch_size = data.num_graphs
+        if x is None:
+            x = torch.ones(batch.shape[0]).to(device)
+
+        y, M = self.encoder(x, edge_index, batch)
+
+        g_enc = self.global_d(y)
+        l_enc = self.local_d(M)
+
+        mode = 'fd'
+        measure = 'JSD'
+        loss = local_global_loss(
+            l_enc, g_enc, edge_index, batch, measure)
+
+        if self.prior:
+            prior = torch.rand_like(y)
+            term_a = torch.log(self.prior_d(prior)).mean()
+            term_b = torch.log(1.0 - self.prior_d(y)).mean()
+            PRIOR = - (term_a + term_b) * self.gamma
+        else:
+            PRIOR = 0
+
+        return loss + PRIOR
 
 
 class simclr(torch.nn.Module):
@@ -127,7 +184,6 @@ class simclr(torch.nn.Module):
         return y
 
     def loss_cal(self, x, x_aug):
-
         T = 0.2
         batch_size, _ = x.size()
         x_abs = x.norm(dim=1)
@@ -141,3 +197,62 @@ class simclr(torch.nn.Module):
         loss = - torch.log(loss).mean()
 
         return loss
+
+
+class GlobalDiscriminator(nn.Module):
+    def __init__(self, args, input_dim):
+        super().__init__()
+
+        self.l0 = nn.Linear(32, 32)
+        self.l1 = nn.Linear(32, 32)
+        self.l2 = nn.Linear(512, 1)
+
+    def forward(self, y, M, data):
+
+        adj = Variable(data['adj'].float(), requires_grad=False).cuda()
+        # h0 = Variable(data['feats'].float()).cuda()
+        batch_num_nodes = data['num_nodes'].int().numpy()
+        M, _ = self.encoder(M, adj, batch_num_nodes)
+        # h = F.relu(self.c0(M))
+        # h = self.c1(h)
+        # h = h.view(y.shape[0], -1)
+        h = torch.cat((y, M), dim=1)
+        h = F.relu(self.l0(h))
+        h = F.relu(self.l1(h))
+        return self.l2(h)
+
+
+class PriorDiscriminator(nn.Module):
+    def __init__(self, input_dim):
+        super().__init__()
+        self.l0 = nn.Linear(input_dim, input_dim)
+        self.l1 = nn.Linear(input_dim, input_dim)
+        self.l2 = nn.Linear(input_dim, 1)
+
+    def forward(self, x):
+        h = F.relu(self.l0(x))
+        h = F.relu(self.l1(h))
+        return torch.sigmoid(self.l2(h))
+
+
+class FF(nn.Module):
+    def __init__(self, input_dim):
+        super().__init__()
+        # self.c0 = nn.Conv1d(input_dim, 512, kernel_size=1)
+        # self.c1 = nn.Conv1d(512, 512, kernel_size=1)
+        # self.c2 = nn.Conv1d(512, 1, kernel_size=1)
+        self.block = nn.Sequential(
+            nn.Linear(input_dim, input_dim),
+            nn.ReLU(),
+            nn.Linear(input_dim, input_dim),
+            nn.ReLU(),
+            nn.Linear(input_dim, input_dim),
+            nn.ReLU()
+        )
+        self.linear_shortcut = nn.Linear(input_dim, input_dim)
+        # self.c0 = nn.Conv1d(input_dim, 512, kernel_size=1, stride=1, padding=0)
+        # self.c1 = nn.Conv1d(512, 512, kernel_size=1, stride=1, padding=0)
+        # self.c2 = nn.Conv1d(512, 1, kernel_size=1, stride=1, padding=0)
+
+    def forward(self, x):
+        return self.block(x) + self.linear_shortcut(x)

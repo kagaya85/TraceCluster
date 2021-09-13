@@ -3,7 +3,7 @@ import argparse
 import random
 import os
 import numpy as np
-import json
+from tqdm import tqdm
 
 from dataset import TraceClusterDataset
 from model import simclr
@@ -32,6 +32,13 @@ def arguments():
                         help='')
     parser.add_argument('--aug', type=str, default='dnodes')
     parser.add_argument('--seed', type=int, default=0)
+
+    parser.add_argument('--epochs', dest='epochs', type=int, default=20,
+                        help='')
+    parser.add_argument('--log-interval', dest='log_interval', type=int, default=1,
+                        help='Log interval.')
+    parser.add_argument('--batch-size', dest='batch_size', type=int, default=128,
+                        help='Batch size.')    # 128
 
     return parser.parse_args()
 
@@ -101,24 +108,24 @@ def evaluate_embedding(embeddings, labels, search=True):
 
 
 def main():
-    accuracies = {'val': [], 'test': []}
-    epochs = 20
-    log_interval = 10
-    batch_size = 128
-
     args = arguments()
-    set_random_seed(args.seed)
 
-    dataroot = os.path.join('.', 'data', 'processed')
-    dirname = '2021-09-02_13-06-3' if args.dataset == '' else args.dataseet
+    accuracies = {'val': [], 'test': []}
+    epochs = args.epochs
+    log_interval = args.log_interval
+    batch_size = args.batch_size
+    lr = args.lr
+
+    set_random_seed(args.seed)
+    dataroot = os.path.join(os.path.dirname(
+        os.path.realpath(__file__)), '.', 'data')
 
     # init dataset
     dataset = TraceClusterDataset(
-        root=dataroot, name=dirname, aug=args.aug).shuffle()
+        root=dataroot, aug=args.aug).shuffle()
     dataset_eval = TraceClusterDataset(
-        root=dataroot, name=dirname, aug='none').shuffle()
+        root=dataroot, aug='none').shuffle()
     print("dataset size:", len(dataset))
-    print("feature numbers:", dataset.get_num_feature())
 
     try:
         feat_num = dataset.get_num_feature()
@@ -126,25 +133,26 @@ def main():
         feat_num = 1
 
     # init dataloader
-    loader = DataLoader(dataset, batch_size=batch_size)
-    loader_eval = DataLoader(dataset_eval, batch_size=batch_size)
+    dataloader = DataLoader(dataset, batch_size=batch_size)
+    dataloader_eval = DataLoader(dataset_eval, batch_size=batch_size)
 
     # set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = simclr(args.hidden_dim, args.num_gc_layers,
                    args.prior, feat_num).to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     print('----------------------')
-    print('lr: {}'.format(args.lr))
+    print('batch_size: {}'.format(batch_size))
+    print('lr: {}'.format(lr))
     print('feat_num: {}'.format(feat_num))
     print('hidden_dim: {}'.format(args.hidden_dim))
     print('num_gc_layers: {}'.format(args.num_gc_layers))
     print('----------------------')
 
     model.eval()
-    emb, y = model.encoder.get_embeddings(loader_eval)
+    emb, y = model.encoder.get_embeddings(dataloader_eval)
     print('embedding shape:', emb.shape)
     print('y shape:', y.shape)
 
@@ -152,15 +160,24 @@ def main():
     for epoch in range(1, epochs+1):
         loss_all = 0
         model.train()
-        for data in loader:
+        for data in tqdm(dataloader):
+
+            # print('start')
             data, data_aug = data
+
             optimizer.zero_grad()
 
             node_num, _ = data.x.size()
             data = data.to(device)
-            x = model(data.x, data.edge_index, data.batch, data.num_graphs)
 
-            if args.aug == 'dnodes' or args.aug == 'subgraph' or args.aug == 'random2' or args.aug == 'random3' or args.aug == 'random4':
+            x = model(data.x, data.edge_index, data.edge_attr, data.batch)
+            if data.x.size(0) != data.batch.size(0):
+                print("error: x and batch dim dismatch !")
+            #print("x.shape: {}".format(x.shape))
+
+            # 对 data.x 点特征进行处理
+            if args.aug == 'dnodes' or args.aug == 'pedges' or args.aug == 'subgraph' or args.aug == 'mask_nodes' or args.aug == 'random2' or args.aug == 'random3' or args.aug == 'random4':
+                # node_num_aug, _ = data_aug.x.size()
                 edge_idx = data_aug.edge_index.numpy()
                 _, edge_num = edge_idx.shape
                 idx_not_missing = [n for n in range(node_num) if (
@@ -170,10 +187,17 @@ def main():
                 data_aug.x = data_aug.x[idx_not_missing]
 
                 data_aug.batch = data.batch[idx_not_missing]
-                idx_dict = {idx_not_missing[n]: n for n in range(node_num_aug)}
+
+                idx_dict = {idx_not_missing[n]: n for n in range(
+                    node_num_aug)}    # 每个未丢的点所对应的位置
+
+                # 将点的序列变成连续的，由于之前数据增强（如 dnodes）将部分点删除使得点序列不连续，edge_index.max()+1 不能表示 node_num，故这几步用于对齐点序列
                 edge_idx = [[idx_dict[edge_idx[0, n]], idx_dict[edge_idx[1, n]]]
                             for n in range(edge_num) if not edge_idx[0, n] == edge_idx[1, n]]
-                data_aug.edge_index = torch.tensor(edge_idx).transpose_(0, 1)
+
+                if len(edge_idx) != 0:
+                    data_aug.edge_index = torch.tensor(
+                        edge_idx).transpose_(0, 1)
 
             data_aug = data_aug.to(device)
 
@@ -190,32 +214,26 @@ def main():
             '''
 
             x_aug = model(data_aug.x, data_aug.edge_index,
-                          data_aug.batch, data_aug.num_graphs)
+                          data_aug.edge_attr, data_aug.batch)
+            #print("x_aug.shape: {}".format(x.aug.shape))
 
             # print(x)
             # print(x_aug)
+            # x_aug = x
+
             loss = model.loss_cal(x, x_aug)
             print(loss)
+            print("loss: {}".format(loss))
             loss_all += loss.item() * data.num_graphs
             loss.backward()
             optimizer.step()
+            # print('batch')
+        print('Epoch {}, Loss {}'.format(epoch, loss_all / len(dataloader)))
 
-        print('Epoch {}, Loss {}'.format(epoch, loss_all / len(loader)))
-
-        if epoch % log_interval == 0:
-            model.eval()
-            emb, y = model.encoder.get_embeddings(loader_eval)
-            acc_val, acc = evaluate_embedding(emb, y)
-            accuracies['val'].append(acc_val)
-            accuracies['test'].append(acc)
-            # print(accuracies['val'][-1], accuracies['test'][-1])
-
-    tpe = ('local' if args.local else '') + ('prior' if args.prior else '')
-    with open('logs/log_' + args.DS + '_' + args.aug, 'a+') as f:
-        s = json.dumps(accuracies)
-        f.write('{},{},{},{},{},{},{}\n'.format(args.DS, tpe,
-                args.num_gc_layers, epochs, log_interval, args.lr, s))
-        f.write('\n')
+        # save model
+        print("Saving model... Epoch: {}".format(epoch))
+        torch.save(model.state_dict(), args.weights +
+                   'model_weights_epoch{}.pth'.format(epoch))
 
 
 if __name__ == '__main__':

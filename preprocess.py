@@ -150,12 +150,12 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     return graph
 
 
-def save_data(graphs: Dict, filename: str):
+def save_data(graphs: Dict):
     """
     save graph data to json file
     """
     filename = os.path.join(os.getcwd(), 'data',
-                            'processed', time_now_str, filename)
+                            'preprocessed', time_now_str+'.json')
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, 'a+', encoding='utf-8') as fd:
         data_json = json.dumps(graphs, ensure_ascii=False, indent=4)
@@ -235,7 +235,7 @@ def main():
             continue
         graph_map[trace_id] = graph
 
-    save_data(graph_map, 'processed.json')
+    save_data(graph_map)
 
 
 if __name__ == '__main__':
