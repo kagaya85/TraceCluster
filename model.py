@@ -28,7 +28,7 @@ class Encoder(torch.nn.Module):
             self.convs.append(conv)
             self.bns.append(bn)
 
-    def forward(self, x, edge_index, batch):
+    def forward(self, x, edge_index, edge_attr, batch):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         if x is None:
             x = torch.ones((batch.shape[0], 1)).to(device)
@@ -36,7 +36,7 @@ class Encoder(torch.nn.Module):
         xs = []
         for i in range(self.num_gc_layers):
 
-            x = F.relu(self.convs[i](x, edge_index))
+            x = F.relu(self.convs[i](x, edge_index, edge_attr))
             x = self.bns[i](x)
             xs.append(x)
 
@@ -147,7 +147,7 @@ class GcnInfomax(nn.Module):
 
 
 class simclr(torch.nn.Module):
-    def __init__(self, hidden_dim, num_gc_layers, prior, feat_num, alpha=0.5, beta=1., gamma=.1):
+    def __init__(self, hidden_dim, num_gc_layers, prior, feat_num=1, alpha=0.5, beta=1., gamma=.1):
         super(simclr, self).__init__()
 
         self.alpha = alpha
@@ -158,8 +158,9 @@ class simclr(torch.nn.Module):
         self.embedding_dim = mi_units = hidden_dim * num_gc_layers
         self.encoder = Encoder(feat_num, hidden_dim, num_gc_layers)
 
-        self.proj_head = nn.Sequential(nn.Linear(self.embedding_dim, self.embedding_dim), nn.ReLU(
-            inplace=True), nn.Linear(self.embedding_dim, self.embedding_dim))
+        self.proj_head = nn.Sequential(nn.Linear(self.embedding_dim, self.embedding_dim),
+                                       nn.ReLU(inplace=True),
+                                       nn.Linear(self.embedding_dim, self.embedding_dim))
 
         self.init_emb()
 
@@ -171,13 +172,13 @@ class simclr(torch.nn.Module):
                 if m.bias is not None:
                     m.bias.data.fill_(0.0)
 
-    def forward(self, x, edge_index, batch, num_graphs):
+    def forward(self, x, edge_index, edge_attr, batch):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         # batch_size = data.num_graphs
         if x is None:
             x = torch.ones(batch.shape[0]).to(device)
 
-        y, M = self.encoder(x, edge_index, batch)
+        y, M = self.encoder(x, edge_index, edge_attr, batch)
 
         y = self.proj_head(y)
 

@@ -138,27 +138,27 @@ class TraceClusterDataset(InMemoryDataset):
         """
         pass
 
-    # def get_num_feature(self):
-    #     data = self.data.__class__()
+    def get_num_feature(self):
+        data = self.data.__class__()
 
-    #     if hasattr(self.data, '__num_nodes__'):
-    #         data.num_nodes = self.data.__num_nodes__[0]
+        if hasattr(self.data, '__num_nodes__'):
+            data.num_nodes = self.data.__num_nodes__[0]
 
-    #     # 根据 slice 对整个数据集的 data 进行划分，得到每个 graph 的 data
-    #     for key in self.data.keys:
-    #         item, slices = self.data[key], self.slices[key]
-    #         if torch.is_tensor(item):
-    #             s = list(repeat(slice(None), item.dim()))
-    #             s[self.data.__cat_dim__(key, item)] = slice(
-    #                 slices[0], slices[0 + 1])
-    #         else:
-    #             s = slice(slices[idx], slices[idx + 1])
+        # 根据 slice 对整个数据集的 data 进行划分，得到每个 graph 的 data
+        for key in self.data.keys:
+            item, slices = self.data[key], self.slices[key]
+            if torch.is_tensor(item):
+                s = list(repeat(slice(None), item.dim()))
+                s[self.data.__cat_dim__(key, item)] = slice(
+                    slices[0], slices[0 + 1])
+            else:
+                s = slice(slices[idx], slices[idx + 1])
 
-    #         data[key] = item[s]
+            data[key] = item[s]
 
-    #     _, num_feature = data.x.size()
+        _, num_feature = data.x.size()
 
-    #     return num_feature
+        return num_feature
 
     def get(self, idx):
         data = self.data.__class__()
@@ -170,9 +170,8 @@ class TraceClusterDataset(InMemoryDataset):
             item, slices = self.data[key], self.slices[key]
             if torch.is_tensor(item):
                 s = list(repeat(slice(None), item.dim()))
-                s[self.data.__cat_dim__(key,
-                                        item)] = slice(slices[idx],
-                                                       slices[idx + 1])
+                s[self.data.__cat_dim__(key, item)] = slice(slices[idx],
+                                                            slices[idx + 1])
             else:
                 s = slice(slices[idx], slices[idx + 1])
             data[key] = item[s]

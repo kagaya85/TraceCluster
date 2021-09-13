@@ -33,6 +33,8 @@ def arguments():
     parser.add_argument('--aug', type=str, default='dnodes')
     parser.add_argument('--seed', type=int, default=0)
 
+    parser.add_argument('--save-to', dest='save_path',
+                        default='./data/weights/', help='Save path.')
     parser.add_argument('--epochs', dest='epochs', type=int, default=20,
                         help='')
     parser.add_argument('--log-interval', dest='log_interval', type=int, default=1,
@@ -127,11 +129,6 @@ def main():
         root=dataroot, aug='none').shuffle()
     print("dataset size:", len(dataset))
 
-    try:
-        feat_num = dataset.get_num_feature()
-    except:
-        feat_num = 1
-
     # init dataloader
     dataloader = DataLoader(dataset, batch_size=batch_size)
     dataloader_eval = DataLoader(dataset_eval, batch_size=batch_size)
@@ -139,22 +136,21 @@ def main():
     # set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = simclr(args.hidden_dim, args.num_gc_layers,
-                   args.prior, feat_num).to(device)
+                   args.prior).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     print('----------------------')
     print('batch_size: {}'.format(batch_size))
     print('lr: {}'.format(lr))
-    print('feat_num: {}'.format(feat_num))
     print('hidden_dim: {}'.format(args.hidden_dim))
     print('num_gc_layers: {}'.format(args.num_gc_layers))
     print('----------------------')
 
-    model.eval()
-    emb, y = model.encoder.get_embeddings(dataloader_eval)
-    print('embedding shape:', emb.shape)
-    print('y shape:', y.shape)
+    # model.eval()
+    # emb, y = model.encoder.get_embeddings(dataloader_eval)
+    # print('embedding shape:', emb.shape)
+    # print('y shape:', y.shape)
 
     # training
     for epoch in range(1, epochs+1):
@@ -164,7 +160,6 @@ def main():
 
             # print('start')
             data, data_aug = data
-
             optimizer.zero_grad()
 
             node_num, _ = data.x.size()
@@ -232,7 +227,7 @@ def main():
 
         # save model
         print("Saving model... Epoch: {}".format(epoch))
-        torch.save(model.state_dict(), args.weights +
+        torch.save(model.state_dict(), args.save_path +
                    'model_weights_epoch{}.pth'.format(epoch))
 
 
