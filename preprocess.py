@@ -118,8 +118,9 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
             spanIdMap[span.parentSpanId] = spanIdCounter
             spanIdCounter += 1
 
-        spanIdMap[span.spanId] = spanIdCounter
-        spanIdCounter += 1
+        if span.spanId not in spanIdMap.keys():
+            spanIdMap[span.spanId] = spanIdCounter
+            spanIdCounter += 1
 
         spanId, parentSpanId = spanIdMap[span.spanId], spanIdMap[span.parentSpanId]
 

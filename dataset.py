@@ -33,7 +33,7 @@ class TraceClusterDataset(InMemoryDataset):
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
         data_dir = 'preprocessed'
-        file_list = ['2021-09-13_11-24-37.json']
+        file_list = ['2021-09-13_16-09-36.json']
 
         path_list = []
         for file in file_list:
@@ -128,7 +128,7 @@ class TraceClusterDataset(InMemoryDataset):
             for to in to_list:
                 to_id = to["vertexId"]
                 adj_list[0].append(int(from_id))
-                adj_list[1].append(to_id)
+                adj_list[1].append(int(to_id))
 
         return torch.tensor(adj_list, dtype=torch.long)
 
