@@ -56,12 +56,17 @@ class Encoder(torch.nn.Module):
         xs = []
         for i in range(self.num_gc_layers):
 
-            x = F.relu(self.convs[i](x, edge_index, edge_attr))
+            # x = F.relu(self.convs[i](x, edge_index, edge_attr))
+            x = self.convs[i](x, edge_index, edge_attr)    # --> prelu
+            
             x = self.bns[i](x)
             xs.append(x)
 
-        xpool = [global_add_pool(x, batch) for x in xs]
+        # xpool = [global_add_pool(x, batch) for x in xs]
+        xpool = [global_mean_pool(x, batch) for x in xs]
+        
         x = torch.cat(xpool, 1)
+        # x = xpool[-1]
 
         return x, torch.cat(xs, 1)
 
@@ -75,10 +80,10 @@ class Encoder(torch.nn.Module):
 
                 data = data[0]
                 data.to(device)
-                x, edge_index, batch = data.x, data.edge_index, data.batch
+                x, edge_index, batch = data.x, data.edge_index, data.edge_attr, data.batch
                 if x is None:
                     x = torch.ones((batch.shape[0], 1)).to(device)
-                x, _ = self.forward(x, edge_index, batch)
+                x, _ = self.forward(x, edge_index, edge_attr, batch)
 
                 ret.append(x.cpu().numpy())
                 y.append(data.y.cpu().numpy())
