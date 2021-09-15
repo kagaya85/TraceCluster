@@ -15,7 +15,8 @@ class Encoder(torch.nn.Module):
         self.num_gc_layers = num_gc_layers
         self.convs = torch.nn.ModuleList()
         self.bns = torch.nn.ModuleList()
-
+        
+        '''
         for i in range(num_gc_layers):
             if i:
                 # in_channel, out_channel, edge_idm
@@ -27,6 +28,25 @@ class Encoder(torch.nn.Module):
             bn = nn.BatchNorm1d(dim)
             self.convs.append(conv)
             self.bns.append(bn)
+        '''
+        
+        # GNN
+        conv_0 = TransformerConv(in_channels = num_features, out_channels = dim*4, edge_dim = 1)
+        conv_1 = TransformerConv(in_channels = dim*4, out_channels = dim, edge_dim = 1)
+        self.convs.append(conv_0)
+        self.convs.append(conv_1)
+            
+
+        # conv = GINConv(nn)
+            
+        # BN
+        bn_0 = torch.nn.BatchNorm1d(dim*4)
+        bn_1 = torch.nn.BatchNorm1d(dim)
+        self.bns.append(bn_0)
+        self.bns.append(bn_1)
+        
+        
+        
 
     def forward(self, x, edge_index, edge_attr, batch):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
