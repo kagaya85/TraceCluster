@@ -4,7 +4,7 @@ import torch.nn as nn
 import numpy as np
 from torch.autograd import Variable
 from torch.nn.modules import loss
-from torch_geometric.nn import TransformerConv, global_add_pool
+from torch_geometric.nn import TransformerConv, global_add_pool, global_mean_pool
 from losses import local_global_loss
 
 
