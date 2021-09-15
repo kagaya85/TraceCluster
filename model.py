@@ -180,7 +180,10 @@ class simclr(torch.nn.Module):
         self.gamma = gamma
         self.prior = prior
 
-        self.embedding_dim = mi_units = hidden_dim * num_gc_layers
+        # self.embedding_dim = mi_units = hidden_dim * num_gc_layers
+        self.embedding_dim = hidden_dim + hidden_dim * 4
+        #self.embedding_dim = hidden_dim
+    
         self.encoder = Encoder(feat_num, hidden_dim, num_gc_layers)
 
         self.proj_head = nn.Sequential(nn.Linear(self.embedding_dim, self.embedding_dim),
@@ -212,8 +215,8 @@ class simclr(torch.nn.Module):
     def loss_cal(self, x, x_aug):
         T = 0.2
         batch_size, _ = x.size()
-        x_abs = x.norm(dim=1)
-        x_aug_abs = x_aug.norm(dim=1)
+        x_abs = x.norm(dim=1)    # 对每一列求 1 范数
+        x_aug_abs = x_aug.norm(dim=1)    # 1 范数
 
         sim_matrix = torch.einsum(
             'ik,jk->ij', x, x_aug) / torch.einsum('i,j->ij', x_abs, x_aug_abs)
