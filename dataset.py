@@ -77,6 +77,7 @@ class TraceClusterDataset(InMemoryDataset):
                 x=node_feats,
                 edge_index=edge_index,
                 edge_attr=edge_feats,
+                trace_id=trace_id,    # add trace_id for cluster
             )
             data_list.append(data)
 
@@ -152,7 +153,7 @@ class TraceClusterDataset(InMemoryDataset):
                 s[self.data.__cat_dim__(key, item)] = slice(
                     slices[0], slices[0 + 1])
             else:
-                s = slice(slices[idx], slices[idx + 1])
+                s = slice(slices[0], slices[0 + 1])
 
             data[key] = item[s]
 
