@@ -24,22 +24,22 @@ def arguments():
                         const=True, default=False)
     parser.add_argument('--prior', dest='prior', action='store_const',
                         const=True, default=False)
-    parser.add_argument('--lr', dest='lr', type=float, default=0.01,
+    parser.add_argument('--lr', dest='lr', type=float, default=0.001,
                         help='Learning rate.')
-    parser.add_argument('--num-gc-layers', dest='num_gc_layers', type=int, default=5,
+    parser.add_argument('--num-gc-layers', dest='num_gc_layers', type=int, default=2,
                         help='Number of graph convolution layers before each pooling')
     parser.add_argument('--hidden-dim', dest='hidden_dim', type=int, default=32,
                         help='')
-    parser.add_argument('--aug', type=str, default='dnodes')
+    parser.add_argument('--aug', type=str, default='random3')
     parser.add_argument('--seed', type=int, default=0)
 
     parser.add_argument('--save-to', dest='save_path',
-                        default='./data/weights/', help='Save path.')
+                        default='./weights/', help='Save path.')
     parser.add_argument('--epochs', dest='epochs', type=int, default=20,
                         help='')
     parser.add_argument('--log-interval', dest='log_interval', type=int, default=1,
                         help='Log interval.')
-    parser.add_argument('--batch-size', dest='batch_size', type=int, default=128,
+    parser.add_argument('--batch-size', dest='batch_size', type=int, default=64,
                         help='Batch size.')    # 128
 
     return parser.parse_args()
@@ -128,6 +128,13 @@ def main():
     dataset_eval = TraceClusterDataset(
         root=dataroot, aug='none').shuffle()
     print("dataset size:", len(dataset))
+    
+    # get feature dim
+    print(dataset.get_num_feature())
+    try:
+        dataset_num_features = dataset.get_num_feature()
+    except:
+        dataset_num_features = 1
 
     # init dataloader
     dataloader = DataLoader(dataset, batch_size=batch_size)
