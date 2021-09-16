@@ -143,7 +143,7 @@ def main():
     # set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = simclr(args.hidden_dim, args.num_gc_layers,
-                   args.prior).to(device)
+                   args.prior, dataset_num_features).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
