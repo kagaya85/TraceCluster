@@ -80,7 +80,7 @@ class Encoder(torch.nn.Module):
 
                 data = data[0]
                 data.to(device)
-                x, edge_index, batch = data.x, data.edge_index, data.edge_attr, data.batch
+                x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
                 if x is None:
                     x = torch.ones((batch.shape[0], 1)).to(device)
                 x, _ = self.forward(x, edge_index, edge_attr, batch)
