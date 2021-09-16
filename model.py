@@ -172,7 +172,7 @@ class GcnInfomax(nn.Module):
 
 
 class simclr(torch.nn.Module):
-    def __init__(self, hidden_dim, num_gc_layers, prior, feat_num=1, alpha=0.5, beta=1., gamma=.1):
+    def __init__(self, hidden_dim, num_gc_layers, prior, dataset_num_features, alpha=0.5, beta=1., gamma=.1):
         super(simclr, self).__init__()
 
         self.alpha = alpha
@@ -184,7 +184,7 @@ class simclr(torch.nn.Module):
         self.embedding_dim = hidden_dim + hidden_dim * 4
         #self.embedding_dim = hidden_dim
     
-        self.encoder = Encoder(feat_num, hidden_dim, num_gc_layers)
+        self.encoder = Encoder(dataset_num_features, hidden_dim, num_gc_layers)
 
         self.proj_head = nn.Sequential(nn.Linear(self.embedding_dim, self.embedding_dim),
                                        nn.ReLU(inplace=True),
