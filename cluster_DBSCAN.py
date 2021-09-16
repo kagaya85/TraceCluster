@@ -101,7 +101,7 @@ if __name__ == '__main__':
         X_output_gnn = torch.cat((X_output_gnn, x), 0)
 
         for idx in range(x.size(0)):
-            traceid_index[str(count*batch_size+idx)] = data['trace_id'][idx]
+            traceid_index[str(count*batch_size+idx)] = data['trace_id'][idx][0]
         count += 1
     
     X_input_db = X_output_gnn.detach().cpu().numpy()    # tensor --> list  X_input: (num_samples, num_features_graph)
@@ -142,8 +142,24 @@ if __name__ == '__main__':
     n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)    # 聚类后类别个数
     n_noise_ = list(labels).count(-1)    # 噪声样本个数
 
+    # #############################################################################
+    # Print out result
     print('Estimated number of clusters: %d' % n_clusters_)
+    for cluster_idx in range(n_clusters_):
+        print("Cluster_id {}:".format(cluster_idx))
+        for sample_idx in range(len(dataset)):
+            if labels[sample_idx] == cluster_idx:
+                print("Trace_id: {}".format(traceid_index[str(sample_idx)]))
+        print('\n')
+
+    print('\n')    
     print('Estimated number of noise points: %d' % n_noise_)
+    print("Noise:")
+    for sample_idx in range(len(dataset)):
+        if labels[sample_idx] == -1:
+            print("Trace_id: {}".format(traceid_index[str(sample_idx)]))
+
+
     #print("Homogeneity: %0.3f" % metrics.homogeneity_score(labels_true, labels))
     #print("Completeness: %0.3f" % metrics.completeness_score(labels_true, labels))
     #print("V-measure: %0.3f" % metrics.v_measure_score(labels_true, labels))
