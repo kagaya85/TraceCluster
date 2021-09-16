@@ -48,3 +48,7 @@ def wordSplit(s: str, words: List[str]) -> List[str]:
                 ans.append(substr)
 
     return ans
+
+
+def mergeDict(x: dict, y: dict):
+    return {**x, **y}

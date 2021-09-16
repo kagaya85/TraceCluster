@@ -4,20 +4,64 @@ import os
 import time
 import pandas as pd
 import numpy as np
-from torch.nn import factory_kwargs
-from torch_geometric.nn import glob
+import argparse
 from tqdm import tqdm
 import utils
 from typing import List, Callable, Dict
+from multiprocessing import Pool, Queue, cpu_count
+from multiprocessing.shared_memory import SharedMemory
+from multiprocessing.managers import SharedMemoryManager
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 data_path_list = [
-    'data/raw/F01-02/ERROR_F012_SpanData2021-08-14_01-52-43.csv'
+    # Normal
+    'data/raw/normal/normal0822_01/SUCCESS_SpanData2021-08-22_15-43-01.csv',
+    'data/raw/normal/normal0822_02/SUCCESS2_SpanData2021-08-22_22-04-35.csv',
+    'data/raw/normal/normal0823/SUCCESS2_SpanData2021-08-23_15-15-08.csv',
+
+    # F01
+    'data/raw/F01-01/SUCCESSF0101_SpanData2021-08-14_10-22-48.csv',
+    'data/raw/F01-02/ERROR_F012_SpanData2021-08-14_01-52-43.csv',
+    'data/raw/F01-03/SUCCESSerrorf0103_SpanData2021-08-16_16-17-08.csv',
+    'data/raw/F01-04/SUCCESSF0104_SpanData2021-08-14_02-14-51.csv',
+    'data/raw/F01-05/SUCCESSF0105_SpanData2021-08-14_02-45-59.csv',
+
+    # F02
+    'data/raw/F02-01/SUCCESS_errorf0201_SpanData2021-08-17_18-25-59.csv',
+    'data/raw/F02-02/SUCCESS_errorf0202_SpanData2021-08-17_18-47-04.csv',
+    'data/raw/F02-03/SUCCESS_errorf0203_SpanData2021-08-17_18-54-53.csv',
+    'data/raw/F02-04/ERROR_SpanData.csv',
+    'data/raw/F02-05/ERROR_SpanData.csv',
+    'data/raw/F02-06/ERROR_SpanData.csv',
+
+    # F03
+    'data/raw/F03-01/ERROR_SpanData.csv',
+    'data/raw/F03-02/ERROR_SpanData.csv',
+    'data/raw/F03-03/ERROR_SpanData.csv',
+    'data/raw/F03-04/ERROR_SpanData.csv',
+    'data/raw/F03-05/ERROR_SpanData.csv',
+    'data/raw/F03-06/ERROR_SpanData.csv',
+    'data/raw/F03-07/ERROR_SpanData.csv',
+    'data/raw/F03-08/ERROR_SpanData.csv',
+
+    # F04
+    'data/raw/F04-01/ERROR_SpanData.csv',
+    'data/raw/F04-02/ERROR_SpanData.csv',
+    'data/raw/F04-03/ERROR_SpanData.csv',
+    'data/raw/F04-04/ERROR_SpanData.csv',
+    'data/raw/F04-05/ERROR_SpanData.csv',
+    'data/raw/F04-06/ERROR_SpanData.csv',
+    'data/raw/F04-07/ERROR_SpanData.csv',
+    'data/raw/F04-08/ERROR_SpanData.csv',
 ]
 
 time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
 
 embedding_word_list = np.load('./data/glove/wordsList.npy').tolist()
 embedding_word_vector = np.load('./data/glove/wordVectors.npy')
+
+
+def normalize(x): return x
 
 
 class Item:
@@ -68,6 +112,12 @@ class Span:
             self.operation = raw_span[ITEM.OPERATION]
             self.code = str(utils.boolStr2Int(raw_span[ITEM.IS_ERROR]))
             self.isError = utils.boolStr2Bool(raw_span[ITEM.IS_ERROR])
+
+
+def arguments():
+    parser = argparse.ArgumentParser(description="Preporcess Argumentes.")
+    parser.add_argument('--cores', dest='cores',
+                        help='parallel processing core numberes', default=cpu_count())
 
 
 def load_span(pathList: list):
@@ -159,7 +209,7 @@ def save_data(graphs: Dict):
                             'preprocessed', time_now_str+'.json')
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, 'a+', encoding='utf-8') as fd:
-        data_json = json.dumps(graphs, ensure_ascii=False, indent=4)
+        data_json = json.dumps(graphs, ensure_ascii=False)
         fd.write(data_json)
         fd.write('\n')
     print(f"data saved in {filename}")
@@ -215,28 +265,73 @@ def embedding(input: str) -> List[float]:
 
 def z_score(x: float, mean: float, std: float) -> float:
     """
-    z_score normalize funciton 
+    z-score normalize funciton
     """
     return (x - mean) / std
 
 
-def main():
-    span_data = load_span(data_path_list)
-    duration_mean = span_data[ITEM.DURATION].mean()
-    duration_std = span_data[ITEM.DURATION].std()
+def min_max(x: float, min: float, max: float) -> float:
+    """
+    min-max normalize funciton
+    """
+    return (x - min) / (max - min)
+
+
+def task(shm_name, shape, dtype) -> dict:
+    shm = SharedMemory(shm_name)
+    np_array = np.recarray(shape=shape, dtype=dtype, buf=shm.buf)
+    span_data = pd.DataFrame(np_array)
 
     graph_map = {}
-    print("processing...")
 
     for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID])):
         trace = [Span(raw_span) for idx, raw_span in trace_data.iterrows()]
-        graph = build_graph(trace_process(trace),
-                            lambda x: z_score(x, duration_mean, duration_std))
+        graph = build_graph(trace_process(trace), normalize)
         if graph == None:
             continue
         graph_map[trace_id] = graph
 
-    save_data(graph_map)
+    return graph_map
+
+
+def main():
+    args = arguments()
+    print(f"parallel processing number: {args.cores}")
+
+    # load all span
+    span_data = load_span(data_path_list)
+    # duration_mean = span_data[ITEM.DURATION].mean()
+    # duration_std = span_data[ITEM.DURATION].std()
+    duration_max = span_data[ITEM.DURATION].max()
+    duration_min = span_data[ITEM.DURATION].min()
+
+    global normalize
+    def normalize(x): return min_max(x, duration_min, duration_max)
+
+    # TODO: handle span data
+
+    np_array = span_data.to_records(index=False)
+    del span_data
+    shape, dtype = np_array.shape, np_array.dtype
+    print(f"data size: {np_array.nbytes/1e6}MB")
+
+    result_map = {}
+
+    # With shared memory
+    with SharedMemoryManager as smm:
+        shm = smm.SharedMemory(np_array.nbytes)
+        shm_np_array = np.recarray(shape=shape, dtype=dtype, buf=shm.buf)
+        np.copyto(shm_np_array, np_array)
+        with ProcessPoolExecutor(args.cores) as exe:
+            data_size = len(span_data)
+            # TODO use submit
+            fs = [exe.submit(task, shm.name, shape, dtype)
+                  for _ in range(data_size)]
+            for fu in as_completed(fs):
+                utils.mergeDict(result_map, fu.result())
+
+    print("saving data...")
+    save_data(result_map)
 
 
 if __name__ == '__main__':
