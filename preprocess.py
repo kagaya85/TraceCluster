@@ -3,6 +3,7 @@ import json
 import os
 import time
 import pandas as pd
+from pandas.core.frame import DataFrame
 import numpy as np
 import argparse
 from tqdm import tqdm
@@ -120,7 +121,7 @@ def arguments():
                         help='parallel processing core numberes', default=cpu_count())
 
 
-def load_span(pathList: list):
+def load_span(pathList: list) -> List[DataFrame]:
     """
     load sapn data from pathList
     """
@@ -132,13 +133,10 @@ def load_span(pathList: list):
         spans = pd.read_csv(
             filepath, dtype=data_type
         ).drop_duplicates().dropna()
+        spans[ITEM.DURATION] = spans[ITEM.END_TIME] - spans[ITEM.START_TIME]
         spansList.append(spans)
 
-    spanData = pd.concat(spansList, axis=0, ignore_index=True)
-    spanData[ITEM.DURATION] = spanData[ITEM.END_TIME] - \
-        spanData[ITEM.START_TIME]
-
-    return spanData
+    return spansList
 
 
 def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
@@ -277,13 +275,11 @@ def min_max(x: float, min: float, max: float) -> float:
     return (x - min) / (max - min)
 
 
-def task(shm_name, shape, dtype) -> dict:
-    shm = SharedMemory(shm_name)
-    np_array = np.recarray(shape=shape, dtype=dtype, buf=shm.buf)
-    span_data = pd.DataFrame(np_array)
+def task(shm_name, idx) -> dict:
+    sl = SharedMemory(shm_name)
+    span_data = sl[idx]
 
     graph_map = {}
-
     for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID])):
         trace = [Span(raw_span) for idx, raw_span in trace_data.iterrows()]
         graph = build_graph(trace_process(trace), normalize)
@@ -299,34 +295,28 @@ def main():
     print(f"parallel processing number: {args.cores}")
 
     # load all span
-    span_data = load_span(data_path_list)
+    span_list = load_span(data_path_list)
+
+    # concat all span data in one list
+    span_data = pd.concat(span_list, axis=0, ignore_index=True)
     # duration_mean = span_data[ITEM.DURATION].mean()
     # duration_std = span_data[ITEM.DURATION].std()
     duration_max = span_data[ITEM.DURATION].max()
     duration_min = span_data[ITEM.DURATION].min()
+    del span_data
 
     global normalize
     def normalize(x): return min_max(x, duration_min, duration_max)
-
-    # TODO: handle span data
-
-    np_array = span_data.to_records(index=False)
-    del span_data
-    shape, dtype = np_array.shape, np_array.dtype
-    print(f"data size: {np_array.nbytes/1e6}MB")
 
     result_map = {}
 
     # With shared memory
     with SharedMemoryManager as smm:
-        shm = smm.SharedMemory(np_array.nbytes)
-        shm_np_array = np.recarray(shape=shape, dtype=dtype, buf=shm.buf)
-        np.copyto(shm_np_array, np_array)
+        sl = smm.ShareableList(span_list)
         with ProcessPoolExecutor(args.cores) as exe:
-            data_size = len(span_data)
-            # TODO use submit
-            fs = [exe.submit(task, shm.name, shape, dtype)
-                  for _ in range(data_size)]
+            data_size = len(sl)
+            fs = [exe.submit(task, sl.name, idx)
+                  for idx in range(data_size)]
             for fu in as_completed(fs):
                 utils.mergeDict(result_map, fu.result())
 

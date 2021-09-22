@@ -2,32 +2,24 @@
 
 A Trace cluster tool based on Graph Neural Network
 
-## Disscussion Records
+## Dependencies
 
-### 8.31
+TODO
 
-#### Task
+## How to use
 
-预处理：
+### Preprocess
 
-- [x] span id 映射
-- [x] word embedding
-  - [x] 转小写
-  - [x] 分隔符
-  - [x] url参数替换
-- [x] 响应时间归一化：Z-score
+edit file path variant `data_path_list` in preprocess.py
 
-Dataset：
-<!-- - [ ] 替换 InMemoryDataset -> Dataset -->
-- [x] GraphCL Dataset graph enhanced
+run script:
 
-#### Other
+```shell
+python preprocess.py
+```
 
-* 思考trace聚类效果的衡量标准
+### Train model
 
-### 9.13
-
-####
-
-- [ ] dbscan
-- [ ] 
+```python
+python train.py
+```
