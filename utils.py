@@ -16,6 +16,13 @@ def boolStr2Bool(str: str) -> bool:
         return False
 
 
+def int2Bool(n: int) -> bool:
+    if n == 0:
+        return False
+    else:
+        return True
+
+
 def hump2snake(s: str) -> str:
     '''
     驼峰形式字符串转成下划线形式

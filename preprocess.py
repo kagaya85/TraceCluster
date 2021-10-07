@@ -56,6 +56,10 @@ data_path_list = [
     'data/raw/F04-08/ERROR_SpanData.csv',
 ]
 
+mm_data_path_list = [
+    ''
+]
+
 time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
 
 embedding_word_list = np.load('./data/glove/wordsList.npy').tolist()
@@ -82,6 +86,38 @@ class Item:
 
 
 ITEM = Item()
+
+
+class mmSpan:
+    def __init__(self, raw_span=None) -> None:
+        """
+        conver wechat span to span object
+        """
+        if raw_span is None:
+            self.spanId = ''
+            self.parentSpanId = ''
+            self.traceId = ''
+            self.spanType = ''
+            self.startTime = 0
+            self.duration = 0
+            self.service = ''
+            self.peer = ''
+            self.operation = ''
+            self.code = ''
+            self.isError = False
+        else:
+            self.spanId = raw_span['CalleeCmdID']
+            self.parentSpanId = raw_span['CallerCmdID']
+            self.traceId = raw_span['GraphIdBase64']
+            self.spanType = 'EntrySpan'
+            self.startTime = raw_span['TimeStamp']
+            self.duration = raw_span['CostTime']
+            self.service = raw_span['CalleeOssID']
+            self.peer = raw_span['CallerOssID']
+            self.operation = ''  # TODO: replace cmdID to operation name
+            self.code = str(int(raw_span['NetworkRet']) | (
+                raw_span['ServiceRet']))  # 只要有一个返回不为0，代表调用异常
+            self.isError = utils.int2Bool(int(self.code))
 
 
 class Span:
@@ -119,24 +155,39 @@ def arguments():
     parser = argparse.ArgumentParser(description="Preporcess Argumentes.")
     parser.add_argument('--cores', dest='cores',
                         help='parallel processing core numberes', default=cpu_count())
+    parser.add_argument('--wechat', help='use wechat data',
+                        action='store_true')
 
 
-def load_span(pathList: list) -> List[DataFrame]:
+def load_span(pathList: list, is_wechat=False) -> List[DataFrame]:
     """
-    load sapn data from pathList
+    load raw sapn data from pathList
     """
-    spansList = []
+    raw_spans = []
 
-    for filepath in pathList:
-        print(f"load span data from {filepath}")
-        data_type = {ITEM.START_TIME: np.uint64, ITEM.END_TIME: np.uint64}
-        spans = pd.read_csv(
-            filepath, dtype=data_type
-        ).drop_duplicates().dropna()
-        spans[ITEM.DURATION] = spans[ITEM.END_TIME] - spans[ITEM.START_TIME]
-        spansList.append(spans)
+    if is_wechat:
+        for filepath in pathList:
+            print(f"load wechat span data from {filepath}")
+            with open(filepath, 'r') as f:
+                raw_data = json.load(f)
+                mmspans = raw_data['data']
+                spans = []
+                # for s in mmspans:
+                # TODO
+                raw_spans.append(spans)
 
-    return spansList
+    else:
+        for filepath in pathList:
+            print(f"load span data from {filepath}")
+            data_type = {ITEM.START_TIME: np.uint64, ITEM.END_TIME: np.uint64}
+            spans = pd.read_csv(
+                filepath, dtype=data_type
+            ).drop_duplicates().dropna()
+            spans[ITEM.DURATION] = spans[ITEM.END_TIME] - \
+                spans[ITEM.START_TIME]
+            raw_spans.append(spans)
+
+    return raw_spans
 
 
 def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
@@ -295,10 +346,10 @@ def main():
     print(f"parallel processing number: {args.cores}")
 
     # load all span
-    span_list = load_span(data_path_list)
+    raw_spans = load_span(data_path_list)
 
     # concat all span data in one list
-    span_data = pd.concat(span_list, axis=0, ignore_index=True)
+    span_data = pd.concat(raw_spans, axis=0, ignore_index=True)
     # duration_mean = span_data[ITEM.DURATION].mean()
     # duration_std = span_data[ITEM.DURATION].std()
     duration_max = span_data[ITEM.DURATION].max()
@@ -312,7 +363,7 @@ def main():
 
     # With shared memory
     with SharedMemoryManager as smm:
-        sl = smm.ShareableList(span_list)
+        sl = smm.ShareableList(raw_spans)
         with ProcessPoolExecutor(args.cores) as exe:
             data_size = len(sl)
             fs = [exe.submit(task, sl.name, idx)
