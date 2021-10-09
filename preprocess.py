@@ -82,46 +82,14 @@ class Item:
         self.SERVICE = 'Service'
         self.IS_ERROR = 'IsError'
         self.PEER = 'Peer'
-        self.TYPE = 'SpanType'
+        self.CODE = 'Code'
 
 
 ITEM = Item()
 
 
-class mmSpan:
-    def __init__(self, raw_span=None) -> None:
-        """
-        conver wechat span to span object
-        """
-        if raw_span is None:
-            self.spanId = ''
-            self.parentSpanId = ''
-            self.traceId = ''
-            self.spanType = ''
-            self.startTime = 0
-            self.duration = 0
-            self.service = ''
-            self.peer = ''
-            self.operation = ''
-            self.code = ''
-            self.isError = False
-        else:
-            self.spanId = raw_span['CalleeCmdID']
-            self.parentSpanId = raw_span['CallerCmdID']
-            self.traceId = raw_span['GraphIdBase64']
-            self.spanType = 'EntrySpan'
-            self.startTime = raw_span['TimeStamp']
-            self.duration = raw_span['CostTime']
-            self.service = raw_span['CalleeOssID']
-            self.peer = raw_span['CallerOssID']
-            self.operation = ''  # TODO: replace cmdID to operation name
-            self.code = str(int(raw_span['NetworkRet']) | (
-                raw_span['ServiceRet']))  # 只要有一个返回不为0，代表调用异常
-            self.isError = utils.int2Bool(int(self.code))
-
-
 class Span:
-    def __init__(self, raw_span=None) -> None:
+    def __init__(self, raw_span: dict) -> None:
         """
         convert raw span to span object
         """
@@ -147,7 +115,10 @@ class Span:
             self.service = raw_span[ITEM.SERVICE]
             self.peer = raw_span[ITEM.PEER]
             self.operation = raw_span[ITEM.OPERATION]
-            self.code = str(utils.boolStr2Int(raw_span[ITEM.IS_ERROR]))
+            if ITEM.CODE in raw_span.keys():
+                self.code = raw_span[ITEM.CODE]
+            else:
+                self.code = str(utils.boolStr2Int(raw_span[ITEM.IS_ERROR]))
             self.isError = utils.boolStr2Bool(raw_span[ITEM.IS_ERROR])
 
 
@@ -159,25 +130,50 @@ def arguments():
                         action='store_true')
 
 
-def load_span(pathList: list, is_wechat=False) -> List[DataFrame]:
+def load_span(is_wechat: bool) -> List[DataFrame]:
     """
     load raw sapn data from pathList
     """
     raw_spans = []
 
     if is_wechat:
-        for filepath in pathList:
+        for filepath in mm_data_path_list:
             print(f"load wechat span data from {filepath}")
             with open(filepath, 'r') as f:
                 raw_data = json.load(f)
                 mmspans = raw_data['data']
-                spans = []
-                # for s in mmspans:
+                spans = {
+                    ITEM.SPAN_ID: [],
+                    ITEM.PARENT_SPAN_ID: [],
+                    ITEM.TRACE_ID: [],
+                    ITEM.SPAN_TYPE: [],
+                    ITEM.START_TIME: [],
+                    ITEM.DURATION: [],
+                    ITEM.SERVICE: [],
+                    ITEM.PEER: [],
+                    ITEM.OPERATION: [],
+                    ITEM.IS_ERROR: [],
+                    ITEM.CODE: [],
+                }
+                for s in mmspans:
+                    spans[ITEM.SPAN_ID].append(s['CalleeCmdID'])
+                    spans[ITEM.PARENT_SPAN_ID].append(s[])
+                    spans[ITEM.TRACE_ID].append(s[])
+                    spans[ITEM.SPAN_TYPE].append('EntrySpan')
+                    spans[ITEM.START_TIME].append(
+                        s['TimeStamp'])  # may need convert format
+                    spans[ITEM.DURATION].append(s['CostTime'])
+                    spans[ITEM.SERVICE].append(s[])
+                    spans[ITEM.PEER].append(s[])
+                    spans[ITEM.OPERATION].append(s[])
+                    spans[ITEM.IS_ERROR].append(s[])
+                    spans[ITEM.CODE].append(s[])
+
                 # TODO
-                raw_spans.append(spans)
+                raw_spans.append(DataFrame(spans))
 
     else:
-        for filepath in pathList:
+        for filepath in data_path_list:
             print(f"load span data from {filepath}")
             data_type = {ITEM.START_TIME: np.uint64, ITEM.END_TIME: np.uint64}
             spans = pd.read_csv(
@@ -346,7 +342,7 @@ def main():
     print(f"parallel processing number: {args.cores}")
 
     # load all span
-    raw_spans = load_span(data_path_list)
+    raw_spans = load_span(args.wechat)
 
     # concat all span data in one list
     span_data = pd.concat(raw_spans, axis=0, ignore_index=True)
