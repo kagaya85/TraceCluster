@@ -336,9 +336,8 @@ def min_max(x: float, min: float, max: float) -> float:
     return (x - min) / (max - min)
 
 
-def task(shm_name, idx) -> dict:
-    sl = SharedMemory(shm_name)
-    span_data = sl[idx]
+def task(shared_list, idx) -> dict:
+    span_data = shared_list[idx]
 
     graph_map = {}
     for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID])):
@@ -376,7 +375,7 @@ def main():
         sl = smm.ShareableList(raw_spans)
         with ProcessPoolExecutor(args.cores) as exe:
             data_size = len(sl)
-            fs = [exe.submit(task, sl.name, idx)
+            fs = [exe.submit(task, sl, idx)
                   for idx in range(data_size)]
             for fu in as_completed(fs):
                 utils.mergeDict(result_map, fu.result())
