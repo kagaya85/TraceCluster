@@ -4,6 +4,7 @@ import os
 import time
 import pandas as pd
 from pandas.core.frame import DataFrame
+from datetime import datetime
 import numpy as np
 import argparse
 from tqdm import tqdm
@@ -137,6 +138,7 @@ def load_span(is_wechat: bool) -> List[DataFrame]:
     raw_spans = []
 
     if is_wechat:
+        # wechat data
         for filepath in mm_data_path_list:
             print(f"load wechat span data from {filepath}")
             with open(filepath, 'r') as f:
@@ -155,24 +157,31 @@ def load_span(is_wechat: bool) -> List[DataFrame]:
                     ITEM.IS_ERROR: [],
                     ITEM.CODE: [],
                 }
-                for s in mmspans:
-                    spans[ITEM.SPAN_ID].append(s['CalleeCmdID'])
-                    spans[ITEM.PARENT_SPAN_ID].append(s[])
-                    spans[ITEM.TRACE_ID].append(s[])
-                    spans[ITEM.SPAN_TYPE].append('EntrySpan')
-                    spans[ITEM.START_TIME].append(
-                        s['TimeStamp'])  # may need convert format
-                    spans[ITEM.DURATION].append(s['CostTime'])
-                    spans[ITEM.SERVICE].append(s[])
-                    spans[ITEM.PEER].append(s[])
-                    spans[ITEM.OPERATION].append(s[])
-                    spans[ITEM.IS_ERROR].append(s[])
-                    spans[ITEM.CODE].append(s[])
 
-                # TODO
+                # convert to dataframe
+                for s in mmspans:
+                    spans[ITEM.SPAN_ID].append(str(s['CalleeCmdID']))
+                    spans[ITEM.PARENT_SPAN_ID].append(str(s['CallerCmdID']))
+                    spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
+                    spans[ITEM.SPAN_TYPE].append('EntrySpan')
+                    st = datetime.strptime(s['TimeStamp'], '%Y-%m-%d %H:%M:%S')
+                    spans[ITEM.START_TIME].append(int(datetime.timestamp(st)))
+                    spans[ITEM.DURATION].append(int(s['CostTime']))
+                    spans[ITEM.SERVICE].append(s['CalleeOssID'])
+                    spans[ITEM.PEER].append(s['CallerOssID'])
+                    # convert to operation string
+                    spans[ITEM.OPERATION].append(
+                        convert_operation_name(s['CalleeCmdID'])
+                    )
+                    spans[ITEM.IS_ERROR].append(
+                        not utils.int2Bool(s['IFSuccess']))
+                    spans[ITEM.CODE].append(
+                        s['NetworkRet'] if s['NetworkRet'] != 0 else s['ServiceRet'])
+
                 raw_spans.append(DataFrame(spans))
 
     else:
+        # skywalking data
         for filepath in data_path_list:
             print(f"load span data from {filepath}")
             data_type = {ITEM.START_TIME: np.uint64, ITEM.END_TIME: np.uint64}
@@ -294,6 +303,11 @@ def trace_process(trace: List[Span]) -> List[Span]:
             span.operation = operationMap[span.spanId]
 
     return trace
+
+
+def convert_operation_name(opid: int) -> str:
+    # TODO
+    return str(opid)
 
 
 def embedding(input: str) -> List[float]:

@@ -3,17 +3,17 @@ from typing import List
 
 
 def boolStr2Int(str: str) -> int:
-    if str == 'True' or str == 'true' or str == 'TRUE':
-        return 1
-    else:
+    if str in ['FALSE', 'False', 'false', '0']:
         return 0
+    else:
+        return 1
 
 
 def boolStr2Bool(str: str) -> bool:
-    if str == 'True' or str == 'true' or str == 'TRUE':
-        return True
-    else:
+    if str in ['FALSE', 'False', 'false', '0']:
         return False
+    else:
+        return True
 
 
 def int2Bool(n: int) -> bool:
