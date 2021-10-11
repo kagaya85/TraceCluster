@@ -10,9 +10,7 @@ import argparse
 from tqdm import tqdm
 import utils
 from typing import List, Callable, Dict
-from multiprocessing import Pool, Queue, cpu_count
-from multiprocessing.shared_memory import SharedMemory
-from multiprocessing.managers import SharedMemoryManager
+from multiprocessing import Pool, Queue, cpu_count, Manager
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 data_path_list = [
@@ -129,6 +127,7 @@ def arguments():
                         help='parallel processing core numberes', default=cpu_count())
     parser.add_argument('--wechat', help='use wechat data',
                         action='store_true')
+    return parser.parse_args()
 
 
 def load_span(is_wechat: bool) -> List[DataFrame]:
@@ -178,7 +177,8 @@ def load_span(is_wechat: bool) -> List[DataFrame]:
                     spans[ITEM.CODE].append(
                         s['NetworkRet'] if s['NetworkRet'] != 0 else s['ServiceRet'])
 
-                raw_spans.append(DataFrame(spans))
+                df = DataFrame(spans)
+                raw_spans.append(df)
 
     else:
         # skywalking data
@@ -190,12 +190,26 @@ def load_span(is_wechat: bool) -> List[DataFrame]:
             ).drop_duplicates().dropna()
             spans[ITEM.DURATION] = spans[ITEM.END_TIME] - \
                 spans[ITEM.START_TIME]
-            raw_spans.append(spans)
+
+            raw_spans.extend(data_partition(spans, 1000))
 
     return raw_spans
 
 
-def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
+def data_partition(data: DataFrame, size: int = 1000) -> List[DataFrame]:
+    id_list = data[ITEM.TRACE_ID].unique()
+    if len(id_list) < size:
+        return [data]
+
+    res = []
+    for sub in [id_list[i:i+size] for i in range(0, len(id_list), size)]:
+        df = data[data[ITEM.TRACE_ID].isin(sub)]
+        res.append(df)
+
+    return res
+
+
+def build_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> dict:
     """
     build trace graph from span list
     """
@@ -336,11 +350,12 @@ def min_max(x: float, min: float, max: float) -> float:
     return (x - min) / (max - min)
 
 
-def task(shared_list, idx) -> dict:
-    span_data = shared_list[idx]
+def task(ns, idx) -> dict:
+    span_data = ns.sl[idx]
 
     graph_map = {}
-    for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID])):
+    text = "processing #{}".format(idx)
+    for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID]), desc=text, position=idx):
         trace = [Span(raw_span) for idx, raw_span in trace_data.iterrows()]
         graph = build_graph(trace_process(trace), normalize)
         if graph == None:
@@ -371,11 +386,12 @@ def main():
     result_map = {}
 
     # With shared memory
-    with SharedMemoryManager as smm:
-        sl = smm.ShareableList(raw_spans)
+    with Manager() as m:
+        ns = m.Namespace()
+        ns.sl = raw_spans
         with ProcessPoolExecutor(args.cores) as exe:
-            data_size = len(sl)
-            fs = [exe.submit(task, sl, idx)
+            data_size = len(raw_spans)
+            fs = [exe.submit(task, ns, idx)
                   for idx in range(data_size)]
             for fu in as_completed(fs):
                 utils.mergeDict(result_map, fu.result())
