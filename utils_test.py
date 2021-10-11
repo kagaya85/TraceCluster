@@ -1,6 +1,7 @@
+from pandas.core.reshape.merge import merge
 from preprocess import embedding, str_process
 import unittest
-from utils import hump2snake, wordSplit
+from utils import hump2snake, mergeDict, wordSplit
 
 
 class TestUtils(unittest.TestCase):
@@ -45,10 +46,26 @@ class TestUtils(unittest.TestCase):
         )
         return
 
-    def test_embedding(self):
-        print(embedding('start'))
-        print(embedding('end'))
-        print(embedding('start/end'))
+    # def test_embedding(self):
+    #     print(embedding('start'))
+    #     print(embedding('end'))
+    #     print(embedding('start/end'))
+
+    def test_mergeDict(self):
+        self.assertDictEqual(
+            mergeDict({}, {'a': 1}),
+            {'a': 1}
+        )
+
+        self.assertDictEqual(
+            mergeDict({'a': 1}, {'b': 2}),
+            {'a': 1, 'b': 2}
+        )
+
+        self.assertDictEqual(
+            mergeDict({'a': 1}, {'b': {'c': 3}}),
+            {'a': 1, 'b': {'c': 3}}
+        )
 
 
 if __name__ == '__main__':
