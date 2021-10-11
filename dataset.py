@@ -78,6 +78,7 @@ class TraceClusterDataset(InMemoryDataset):
                 edge_index=edge_index,
                 edge_attr=edge_feats,
                 trace_id=trace_id,    # add trace_id for cluster
+                time_stamp=trace["edges"]["0"][0]["startTime"],    # add time_stamp for DenStream
             )
             data_list.append(data)
 
