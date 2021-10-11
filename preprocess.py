@@ -190,11 +190,11 @@ class Span:
             self.service = raw_span[ITEM.SERVICE]
             self.peer = raw_span[ITEM.PEER]
             self.operation = raw_span[ITEM.OPERATION]
-            if ITEM.CODE in raw_span.keys():
-                self.code = raw_span[ITEM.CODE]
-            else:
+            if ITEM.IS_ERROR in raw_span.keys():
                 self.code = str(utils.boolStr2Int(raw_span[ITEM.IS_ERROR]))
-            self.isError = utils.boolStr2Bool(raw_span[ITEM.IS_ERROR])
+                self.isError = utils.boolStr2Bool(raw_span[ITEM.IS_ERROR])
+            if ITEM.CODE in raw_span.keys():
+                self.code = str(raw_span[ITEM.CODE])
 
 
 def arguments():
@@ -242,19 +242,19 @@ def load_span() -> List[DataFrame]:
                     st = datetime.strptime(s['TimeStamp'], '%Y-%m-%d %H:%M:%S')
                     spans[ITEM.START_TIME].append(int(datetime.timestamp(st)))
                     spans[ITEM.DURATION].append(int(s['CostTime']))
-                    spans[ITEM.SERVICE].append(s['CalleeOssID'])
+                    spans[ITEM.SERVICE].append(str(s['CalleeOssID']))
                     spans[ITEM.PEER].append(s['CallerOssID'])
                     # convert to operation string
                     spans[ITEM.OPERATION].append(
                         convert_operation_name(s['CalleeCmdID'])
                     )
                     spans[ITEM.IS_ERROR].append(
-                        not utils.int2Bool(s['IFSuccess']))
+                        not utils.int2Bool(s['IfSuccess']))
                     spans[ITEM.CODE].append(
-                        s['NetworkRet'] if s['NetworkRet'] != 0 else s['ServiceRet'])
+                        str(s['NetworkRet'] if s['NetworkRet'] != 0 else s['ServiceRet']))
 
                 df = DataFrame(spans)
-                raw_spans.append(df)
+                raw_spans.extend(data_partition(df))
 
     else:
         # skywalking data
@@ -267,12 +267,12 @@ def load_span() -> List[DataFrame]:
             spans[ITEM.DURATION] = spans[ITEM.END_TIME] - \
                 spans[ITEM.START_TIME]
 
-            raw_spans.extend(data_partition(spans, 1000))
+            raw_spans.extend(data_partition(spans))
 
     return raw_spans
 
 
-def data_partition(data: DataFrame, size: int = 1000) -> List[DataFrame]:
+def data_partition(data: DataFrame, size: int = 1024) -> List[DataFrame]:
     id_list = data[ITEM.TRACE_ID].unique()
     if len(id_list) < size:
         return [data]
@@ -334,7 +334,7 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> 
             'isError': span.isError,
         })
 
-    if rootSpan == None:
+    if not is_wechat and rootSpan == None:
         return None
 
     graph = {
@@ -479,7 +479,6 @@ def main():
             fs = [exe.submit(task, ns, idx)
                   for idx in range(data_size)]
             for fu in as_completed(fs):
-                a = fu.result()
                 result_map = utils.mergeDict(result_map, fu.result())
 
     print("saving data...")
