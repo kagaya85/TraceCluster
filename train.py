@@ -28,7 +28,7 @@ def arguments():
                         help='Learning rate.')
     parser.add_argument('--num-gc-layers', dest='num_gc_layers', type=int, default=2,
                         help='Number of graph convolution layers before each pooling')
-    parser.add_argument('--hidden-dim', dest='hidden_dim', type=int, default=32,
+    parser.add_argument('--hidden-dim', dest='hidden_dim', type=int, default=16,    # 32
                         help='')
     parser.add_argument('--aug', type=str, default='random3')
     parser.add_argument('--seed', type=int, default=0)
