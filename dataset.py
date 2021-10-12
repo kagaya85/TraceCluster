@@ -33,7 +33,7 @@ class TraceClusterDataset(InMemoryDataset):
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
         data_dir = 'preprocessed'
-        file_list = ['2021-09-13_16-09-36.json']
+        file_list = ['2021-10-12_09-04-44.json']
 
         path_list = []
         for file in file_list:
