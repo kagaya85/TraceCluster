@@ -16,7 +16,7 @@ from sklearn.metrics import accuracy_score
 
 
 def arguments():
-    parser = argparse.ArgumentParser(description="GNN Argumentes.")
+    parser = argparse.ArgumentParser(description="GcnInformax Argumentes.")
     parser.add_argument('--dataset', dest='dataset', help='Dataset')
     parser.add_argument('--local', dest='local', action='store_const',
                         const=True, default=False)
@@ -34,7 +34,7 @@ def arguments():
     parser.add_argument('--seed', type=int, default=0)
 
     parser.add_argument('--save-to', dest='save_path',
-                        default='./weights/', help='Save path.')
+                        default='./weights_DIM/', help='Save path.')
     parser.add_argument('--epochs', dest='epochs', type=int, default=20,
                         help='')
     parser.add_argument('--log-interval', dest='log_interval', type=int, default=1,
@@ -124,7 +124,7 @@ def main():
 
     # init dataset
     dataset = TraceClusterDataset(
-        root=dataroot, aug=args.aug).shuffle()
+        root=dataroot, aug='none').shuffle()
     dataset_eval = TraceClusterDataset(
         root=dataroot, aug='none').shuffle()
     print("dataset size:", len(dataset))
@@ -142,7 +142,7 @@ def main():
 
     # set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = simclr(args.hidden_dim, args.num_gc_layers,
+    model = GcnInfomax(args.hidden_dim, args.num_gc_layers,
                    args.prior, dataset_num_features).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -164,72 +164,15 @@ def main():
         loss_all = 0
         model.train()
         for data in tqdm(dataloader):
-
-            # print('start')
             data, data_aug = data
-            optimizer.zero_grad()
-
-            node_num, _ = data.x.size()
             data = data.to(device)
-
-            x = model(data.x, data.edge_index, data.edge_attr, data.batch)
-            if data.x.size(0) != data.batch.size(0):
-                print("error: x and batch dim dismatch !")
-            #print("x.shape: {}".format(x.shape))
-
-            # 对 data.x 点特征进行处理
-            if args.aug == 'dnodes' or args.aug == 'pedges' or args.aug == 'subgraph' or args.aug == 'mask_nodes' or args.aug == 'random2' or args.aug == 'random3' or args.aug == 'random4':
-                # node_num_aug, _ = data_aug.x.size()
-                edge_idx = data_aug.edge_index.numpy()
-                _, edge_num = edge_idx.shape
-                idx_not_missing = [n for n in range(node_num) if (
-                    n in edge_idx[0] or n in edge_idx[1])]
-
-                node_num_aug = len(idx_not_missing)
-                data_aug.x = data_aug.x[idx_not_missing]
-
-                data_aug.batch = data.batch[idx_not_missing]
-
-                idx_dict = {idx_not_missing[n]: n for n in range(
-                    node_num_aug)}    # 每个未丢的点所对应的位置
-
-                # 将点的序列变成连续的，由于之前数据增强（如 dnodes）将部分点删除使得点序列不连续，edge_index.max()+1 不能表示 node_num，故这几步用于对齐点序列
-                edge_idx = [[idx_dict[edge_idx[0, n]], idx_dict[edge_idx[1, n]]]
-                            for n in range(edge_num) if not edge_idx[0, n] == edge_idx[1, n]]
-
-                if len(edge_idx) != 0:
-                    data_aug.edge_index = torch.tensor(
-                        edge_idx).transpose_(0, 1)
-
-            data_aug = data_aug.to(device)
-
-            '''
-            print(data.edge_index)
-            print(data.edge_index.size())
-            print(data_aug.edge_index)
-            print(data_aug.edge_index.size())
-            print(data.x.size())
-            print(data_aug.x.size())
-            print(data.batch.size())
-            print(data_aug.batch.size())
-            pdb.set_trace()
-            '''
-
-            x_aug = model(data_aug.x, data_aug.edge_index,
-                          data_aug.edge_attr, data_aug.batch)
-            #print("x_aug.shape: {}".format(x.aug.shape))
-
-            # print(x)
-            # print(x_aug)
-            # x_aug = x
-
-            loss = model.loss_cal(x, x_aug)
+            optimizer.zero_grad()
+            loss = model(data.x, data.edge_index, data.edge_attr, data.batch)
             print(loss)
             print("loss: {}".format(loss))
             loss_all += loss.item() * data.num_graphs
             loss.backward()
             optimizer.step()
-            # print('batch')
         print('Epoch {}, Loss {}'.format(epoch, loss_all / len(dataloader)))
 
         # save model

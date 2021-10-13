@@ -123,7 +123,8 @@ class GcnInfomax(nn.Module):
         self.gamma = gamma
         self.prior = prior
 
-        self.embedding_dim = mi_units = hidden_dim * num_gc_layers
+        # self.embedding_dim = mi_units = hidden_dim * num_gc_layers
+        self.embedding_dim = hidden_dim + hidden_dim * 4
         self.encoder = Encoder(dataset_num_features, hidden_dim, num_gc_layers)
 
         self.local_d = FF(self.embedding_dim)
@@ -144,13 +145,13 @@ class GcnInfomax(nn.Module):
                 if m.bias is not None:
                     m.bias.data.fill_(0.0)
 
-    def forward(self, x, edge_index, batch, num_graphs):
+    def forward(self, x, edge_index, edge_attr, batch):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         # batch_size = data.num_graphs
         if x is None:
             x = torch.ones(batch.shape[0]).to(device)
 
-        y, M = self.encoder(x, edge_index, batch)
+        y, M = self.encoder(x, edge_index, edge_attr, batch)
 
         g_enc = self.global_d(y)
         l_enc = self.local_d(M)
