@@ -1,55 +1,54 @@
 
 import torch
-from torch_geometric.data import InMemoryDataset
+from torch_geometric.data import Dataset, InMemoryDataset
 from torch_geometric.data.data import Data
 import numpy as np
 from tqdm import tqdm
 import json
-import os
+import os.path as osp
 
-from typing import Callable, List, Optional, Tuple, Union
-from itertools import repeat, product
+from typing import List, Tuple, Union
+from itertools import repeat
 from copy import deepcopy
 
 
-class TraceClusterDataset(InMemoryDataset):
+class TraceClusterDataset(Dataset):
     def __init__(self, root, transform=None, pre_transform=None, pre_filter=None, aug=None):
         super(TraceClusterDataset, self).__init__(
             root, transform, pre_transform, pre_filter)
 
-        self.data, self.slices = torch.load(self.processed_paths[0])
+        # self.data, self.slices = torch.load(self.processed_paths[0])
         self.aug = aug
 
     @property
     def raw_dir(self):
-        name = 'raw'
-        return os.path.join(self.root, name)
+        name = 'preprocessed'
+        return osp.join(self.root, name)
 
     @property
     def processed_dir(self):
         name = 'processed'
-        return os.path.join(self.root, name)
+        return osp.join(self.root, name)
 
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
-        data_dir = 'preprocessed'
         file_list = ['2021-10-13_16-57-51.json']
 
         path_list = []
         for file in file_list:
-            path_list.append(os.path.join(os.path.dirname(
-                os.path.realpath(__file__)), self.root, data_dir, file))
+            path_list.append(osp.join(self.raw_dir, file))
 
         return path_list
 
     @property
     def processed_file_names(self) -> Union[str, List[str], Tuple]:
-        return ['data.pt']
+        return ['data_{}.pt'.format(i) for i in range(77320)]
 
     def download(self):
         pass
 
     def process(self):
+        idx = 0
         data_list = []
 
         with open(self.raw_file_names[0], "r") as f:    # file name not list
@@ -78,18 +77,23 @@ class TraceClusterDataset(InMemoryDataset):
                 edge_index=edge_index,
                 edge_attr=edge_feats,
                 trace_id=trace_id,    # add trace_id for cluster
-                time_stamp=trace["edges"]["0"][0]["startTime"],    # add time_stamp for DenStream
+                # add time_stamp for DenStream
+                time_stamp=trace["edges"]["0"][0]["startTime"],
             )
-            data_list.append(data)
 
-        if self.pre_filter is not None:
-            data_list = [data for data in data_list if self.pre_filter(data)]
+            filename = osp.join(self.processed_dir, 'data_{}.pt'.format(idx))
+            torch.save(data, filename)
+            idx += 1
+            # data_list.append(data)
 
-        if self.pre_transform is not None:
-            data_list = [self.pre_transform(data) for data in data_list]
+        # if self.pre_filter is not None:
+        #     data_list = [data for data in data_list if self.pre_filter(data)]
 
-        datas, slices = self.collate(data_list)
-        torch.save((datas, slices), self.processed_paths[0])
+        # if self.pre_transform is not None:
+        #     data_list = [self.pre_transform(data) for data in data_list]
+
+        # datas, slices = self.collate(data_list)
+        # torch.save((datas, slices), self.processed_paths[0])
 
     def _get_node_features(self, trace):
         """ 
@@ -141,42 +145,44 @@ class TraceClusterDataset(InMemoryDataset):
         pass
 
     def get_num_feature(self):
-        data = self.data.__class__()
+        data = torch.load(
+            osp.join(self.processed_dir, 'data_0.pt'))
 
-        if hasattr(self.data, '__num_nodes__'):
-            data.num_nodes = self.data.__num_nodes__[0]
+        # if hasattr(self.data, '__num_nodes__'):
+        #     data.num_nodes = self.data.__num_nodes__[0]
 
         # 根据 slice 对整个数据集的 data 进行划分，得到每个 graph 的 data
-        for key in self.data.keys:
-            item, slices = self.data[key], self.slices[key]
-            if torch.is_tensor(item):
-                s = list(repeat(slice(None), item.dim()))
-                s[self.data.__cat_dim__(key, item)] = slice(
-                    slices[0], slices[0 + 1])
-            else:
-                s = slice(slices[0], slices[0 + 1])
+        # for key in self.data.keys:
+        #     item, slices = self.data[key], self.slices[key]
+        #     if torch.is_tensor(item):
+        #         s = list(repeat(slice(None), item.dim()))
+        #         s[self.data.__cat_dim__(key, item)] = slice(
+        #             slices[0], slices[0 + 1])
+        #     else:
+        #         s = slice(slices[0], slices[0 + 1])
 
-            data[key] = item[s]
+        #     data[key] = item[s]
 
         _, num_feature = data.x.size()
 
         return num_feature
 
     def get(self, idx):
-        data = self.data.__class__()
+        data = torch.load(
+            osp.join(self.processed_dir, 'data_{}.pt'.format(idx)))
 
-        if hasattr(self.data, '__num_nodes__'):
-            data.num_nodes = self.data.__num_nodes__[idx]
+        # if hasattr(self.data, '__num_nodes__'):
+        #     data.num_nodes = self.data.__num_nodes__[idx]
 
-        for key in self.data.keys:
-            item, slices = self.data[key], self.slices[key]
-            if torch.is_tensor(item):
-                s = list(repeat(slice(None), item.dim()))
-                s[self.data.__cat_dim__(key, item)] = slice(slices[idx],
-                                                            slices[idx + 1])
-            else:
-                s = slice(slices[idx], slices[idx + 1])
-            data[key] = item[s]
+        # for key in self.data.keys:
+        #     item, slices = self.data[key], self.slices[key]
+        #     if torch.is_tensor(item):
+        #         s = list(repeat(slice(None), item.dim()))
+        #         s[self.data.__cat_dim__(key, item)] = slice(slices[idx],
+        #                                                     slices[idx + 1])
+        #     else:
+        #         s = slice(slices[idx], slices[idx + 1])
+        #     data[key] = item[s]
 
         if data.x.size(0) != data.edge_index.max()+1:
             print("dim dismatch !!!!!, idx: {}".format(idx))
@@ -255,6 +261,9 @@ class TraceClusterDataset(InMemoryDataset):
         # assert False
 
         return data, data_aug
+
+    def len(self) -> int:
+        return len(self.processed_file_names)
 
 
 def drop_nodes(data):

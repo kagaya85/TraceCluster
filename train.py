@@ -128,9 +128,9 @@ def main():
     dataset_eval = TraceClusterDataset(
         root=dataroot, aug='none').shuffle()
     print("dataset size:", len(dataset))
-    
+
     # get feature dim
-    print(dataset.get_num_feature())
+    print("feature number:", dataset.get_num_feature())
     try:
         dataset_num_features = dataset.get_num_feature()
     except:
