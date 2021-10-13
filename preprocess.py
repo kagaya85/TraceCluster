@@ -1,6 +1,7 @@
 # Kagaya kagaya85@outlook.com
 import json
 import os
+from sys import getsizeof
 import time
 import pandas as pd
 from pandas.core.frame import DataFrame
@@ -168,19 +169,19 @@ class Span:
         """
         convert raw span to span object
         """
-        if raw_span is None:
-            self.spanId = ''
-            self.parentSpanId = ''
-            self.traceId = ''
-            self.spanType = ''
-            self.startTime = 0
-            self.duration = 0
-            self.service = ''
-            self.peer = ''
-            self.operation = ''
-            self.code = ''
-            self.isError = False
-        else:
+        self.spanId = ''
+        self.parentSpanId = ''
+        self.traceId = ''
+        self.spanType = ''
+        self.startTime = 0
+        self.duration = 0
+        self.service = ''
+        self.peer = ''
+        self.operation = ''
+        self.code = ''
+        self.isError = False
+
+        if raw_span is not None:
             self.spanId = raw_span[ITEM.SPAN_ID]
             self.parentSpanId = raw_span[ITEM.PARENT_SPAN_ID]
             self.traceId = raw_span[ITEM.TRACE_ID]
@@ -356,12 +357,12 @@ def save_data(graphs: Dict):
     else:
         filename = os.path.join(os.getcwd(), 'data',
                                 'preprocessed', time_now_str+'.json')
-
+    print(f'prepare saving to {filename}')
     os.makedirs(os.path.dirname(filename), exist_ok=True)
-    with open(filename, 'a+', encoding='utf-8') as fd:
-        data_json = json.dumps(graphs, ensure_ascii=False)
-        fd.write(data_json)
-        fd.write('\n')
+    
+    with open(filename, 'w', encoding='utf-8') as fd:
+        json.dump(graphs, fd, ensure_ascii=False)
+    
     print(f"data saved in {filename}")
 
 
@@ -481,7 +482,7 @@ def main():
             for fu in as_completed(fs):
                 result_map = utils.mergeDict(result_map, fu.result())
 
-    print("saving data...")
+    print("saving data..., map size: {}".format(getsizeof(result_map)))
     save_data(result_map)
 
 
