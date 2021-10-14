@@ -1,10 +1,11 @@
 
 import torch
-from torch_geometric.data import Dataset, InMemoryDataset
+from torch_geometric.data import Dataset
 from torch_geometric.data.data import Data
 import numpy as np
 from tqdm import tqdm
 import json
+import os
 import os.path as osp
 
 from typing import List, Tuple, Union
@@ -42,7 +43,12 @@ class TraceClusterDataset(Dataset):
 
     @property
     def processed_file_names(self) -> Union[str, List[str], Tuple]:
-        return ['data_{}.pt'.format(i) for i in range(77320)]
+        file_list = []
+        for file in os.listdir(self.processed_dir):
+            if os.path.splitext(file)[1] == '.pt':
+                file_list.append(file)
+
+        return file_list
 
     def download(self):
         pass
