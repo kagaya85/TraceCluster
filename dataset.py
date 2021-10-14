@@ -33,7 +33,7 @@ class TraceClusterDataset(Dataset):
 
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
-        file_list = ['2021-10-13_16-57-51.json']
+        file_list = ['2021-09-13_16-09-36.json']
 
         path_list = []
         for file in file_list:
@@ -43,12 +43,16 @@ class TraceClusterDataset(Dataset):
 
     @property
     def processed_file_names(self) -> Union[str, List[str], Tuple]:
+<<<<<<< HEAD
         file_list = []
         for file in os.listdir(self.processed_dir):
             if os.path.splitext(file)[1] == '.pt':
                 file_list.append(file)
 
         return file_list
+=======
+        return ['data_{}.pt'.format(i) for i in range(325)]
+>>>>>>> gnn
 
     def download(self):
         pass

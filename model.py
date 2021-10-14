@@ -4,7 +4,7 @@ import torch.nn as nn
 import numpy as np
 from torch.autograd import Variable
 from torch.nn.modules import loss
-from torch_geometric.nn import TransformerConv, global_add_pool, global_mean_pool
+from torch_geometric.nn import TransformerConv, global_add_pool, global_mean_pool, GATConv
 from losses import local_global_loss
 
 
@@ -31,8 +31,17 @@ class Encoder(torch.nn.Module):
         '''
         
         # GNN
+        # TransformerConv
         conv_0 = TransformerConv(in_channels = num_features, out_channels = dim*4, edge_dim = 1)
         conv_1 = TransformerConv(in_channels = dim*4, out_channels = dim, edge_dim = 1)
+        # GATConv
+        # conv_0 = GATConv(in_channels = num_features, out_channels = dim*4, edge_dim = 1)
+        # conv_1 = GATConv(in_channels = dim*4, out_channels = dim, edge_dim = 1)
+        # GENConv
+        # conv_0 = GENConv(in_channels = num_features, out_channels = dim*4, edge_dim = 1)
+        # conv_1 = GENConv(in_channels = dim*4, out_channels = dim, edge_dim = 1)
+
+
         self.convs.append(conv_0)
         self.convs.append(conv_1)
             

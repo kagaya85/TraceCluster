@@ -8,7 +8,7 @@ from tqdm import tqdm
 from dataset import TraceClusterDataset
 from model import simclr, GcnInfomax
 
-from torch_geometric.data import DataLoader
+from torch_geometric.loader import DataLoader
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.svm import SVC, LinearSVC
 from sklearn import preprocessing
