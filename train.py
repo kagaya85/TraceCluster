@@ -34,7 +34,7 @@ def arguments():
     parser.add_argument('--seed', type=int, default=0)
 
     parser.add_argument('--save-to', dest='save_path',
-                        default='./weights/', help='Save path.')
+                        default='./weights', help='Save path.')
     parser.add_argument('--epochs', dest='epochs', type=int, default=20,
                         help='')
     parser.add_argument('--log-interval', dest='log_interval', type=int, default=1,
@@ -111,10 +111,11 @@ def evaluate_embedding(embeddings, labels, search=True):
 
 def main():
     args = arguments()
+    print('----------------------')
 
-    accuracies = {'val': [], 'test': []}
+    # accuracies = {'val': [], 'test': []}
     epochs = args.epochs
-    log_interval = args.log_interval
+    # log_interval = args.log_interval
     batch_size = args.batch_size
     lr = args.lr
 
@@ -138,7 +139,7 @@ def main():
 
     # init dataloader
     dataloader = DataLoader(dataset, batch_size=batch_size)
-    dataloader_eval = DataLoader(dataset_eval, batch_size=batch_size)
+    # dataloader_eval = DataLoader(dataset_eval, batch_size=batch_size)
 
     # set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -147,7 +148,6 @@ def main():
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-    print('----------------------')
     print('batch_size: {}'.format(batch_size))
     print('lr: {}'.format(lr))
     print('hidden_dim: {}'.format(args.hidden_dim))
@@ -175,7 +175,7 @@ def main():
             x = model(data.x, data.edge_index, data.edge_attr, data.batch)
             if data.x.size(0) != data.batch.size(0):
                 print("error: x and batch dim dismatch !")
-            #print("x.shape: {}".format(x.shape))
+            # print("x.shape: {}".format(x.shape))
 
             # 对 data.x 点特征进行处理
             if args.aug == 'dnodes' or args.aug == 'pedges' or args.aug == 'subgraph' or args.aug == 'mask_nodes' or args.aug == 'random2' or args.aug == 'random3' or args.aug == 'random4':
@@ -217,15 +217,14 @@ def main():
 
             x_aug = model(data_aug.x, data_aug.edge_index,
                           data_aug.edge_attr, data_aug.batch)
-            #print("x_aug.shape: {}".format(x.aug.shape))
+            # print("x_aug.shape: {}".format(x.aug.shape))
 
             # print(x)
             # print(x_aug)
             # x_aug = x
 
             loss = model.loss_cal(x, x_aug)
-            print(loss)
-            print("loss: {}".format(loss))
+            # print("loss: {}".format(loss))
             loss_all += loss.item() * data.num_graphs
             loss.backward()
             optimizer.step()
@@ -233,9 +232,10 @@ def main():
         print('Epoch {}, Loss {}'.format(epoch, loss_all / len(dataloader)))
 
         # save model
-        print("Saving model... Epoch: {}".format(epoch))
-        torch.save(model.state_dict(), args.save_path +
-                   'model_weights_epoch{}.pth'.format(epoch))
+        filename = os.path.join(
+            args.save_path, 'model_weights_epoch{}.pth'.format(epoch))
+        torch.save(model.state_dict(), filename)
+        print(f"Saving model to {filename}")
 
 
 if __name__ == '__main__':
