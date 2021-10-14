@@ -1,11 +1,14 @@
 from math import atan
 import os.path as osp
+from copy import copy
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import json
+import time
+import warnings
 # from core.encoders import *
 
 from model import simclr
@@ -27,13 +30,18 @@ import pdb
 
 from sklearn.cluster import DBSCAN    # 聚类
 from sklearn.manifold import TSNE    # 降维
+from sklearn.neighbors import kneighbors_graph
 from sklearn import metrics
 from sklearn.datasets import make_blobs
 from sklearn.preprocessing import StandardScaler
 
+from itertools import cycle, islice
+
 import matplotlib.pyplot as plt
 
+# from CluStream_master.CluStream import CluStream
 
+from clustream_py_master.CluStream import CluStream 
 
 
 import random
@@ -55,8 +63,8 @@ if __name__ == '__main__':
     
     path = osp.join(osp.dirname(osp.realpath(__file__)), '.', 'data')
 
-    dataset = TraceClusterDataset(path, aug='none').shuffle()
-    dataset_eval = TraceClusterDataset(path, aug='none').shuffle()
+    dataset = TraceClusterDataset(path, aug='none')    # 不要 shuffle，按照时间顺序
+    dataset_eval = TraceClusterDataset(path, aug='none')
     print("dataset length: {}".format(len(dataset)))
 
     print("dataset num_features: {}".format(dataset.get_num_feature()))
@@ -76,6 +84,12 @@ if __name__ == '__main__':
     model.load_state_dict(torch.load(args.save_path + '/' + 'model_weights_epoch20.pth'))    # 做一个软链接？映射？到 latest
     model.eval()
 
+
+    # #############################################################################
+    # Create cluster objects
+    clustream = CluStream()    # DenStream(eps=0.3, lambd=0.1, beta=0.5, mu=11)
+
+
     print('================')
     print('batch_size: {}'.format(batch_size))
     print('num_features: {}'.format(dataset_num_features))
@@ -85,23 +99,35 @@ if __name__ == '__main__':
 
 
     # #############################################################################
-    # Generate sample data
+    # Online Stage
     count = 0
-    traceid_index = {}
-    X_output_gnn = torch.Tensor([]).to(device)
+    traceid_index = {}    # 需要改进
+    # timestamp_list = []
+    X_output_gnn = torch.Tensor([]).to(device)    # 需要改进
     for data in tqdm(dataloader):
         # print('start')
         data = data[0]
         data = data.to(device)
+
+        # timestamp_list = []
             
         x = model(data.x, data.edge_index, data.edge_attr, data.batch)    # 每个图的特征均表示为一个 tensor
         if data.x.size(0) != data.batch.size(0):
             print("error: x and batch dim dismatch !")
-
+                
         X_output_gnn = torch.cat((X_output_gnn, x), 0)
 
         for idx in range(x.size(0)):
             traceid_index[str(count*batch_size+idx)] = data['trace_id'][idx][0]
+            # timestamp_list.append(data['time_stamp'][idx])
+            timestamp = data['time_stamp'][idx].detach().cpu().numpy()
+            
+            X_CS_Input = x[idx].detach().cpu().numpy()
+            # clustream.fit(x[idx].cpu())
+            # clustream.partial_fit(X_CS_Input, timestamp)
+            clustream.offline_cluster(X_CS_Input, timestamp)
+            print(f"Number of micro_clusters is {len(clustream.kernels)}")
+
         count += 1
     
     X_input_db = X_output_gnn.detach().cpu().numpy()    # tensor --> list  X_input: (num_samples, num_features_graph)
@@ -113,6 +139,7 @@ if __name__ == '__main__':
     print('num_samples: {}'.format(len(X_input_db)))    # 数据集中样本个数
     print('num_features: {}'.format(len(X_input_db[0])))    # 每个图表示特征维数 hidden-dim*num-gc-layers
     print('================')
+
 
 
     # #############################################################################
@@ -127,16 +154,20 @@ if __name__ == '__main__':
 
 
     # #############################################################################
-    # Compute DBSCAN
+    # Offline stage
+    # Compute DenStream
     # default eps=0.3 min_samples=10
-    db = DBSCAN(eps=0.3, min_samples=10, metric='euclidean', metric_params=None).fit(X_input_db)    # eps 和 min_samples 两个超参如何设置
+    # db = DBSCAN(eps=0.3, min_samples=10, metric='euclidean', metric_params=None).fit(X_input_db)    # eps 和 min_samples 两个超参如何设置
     '''
     eps 表示邻域半径
     min_samples 表示核心点阈值
     '''
-    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)    # (num_samples, )
-    core_samples_mask[db.core_sample_indices_] = True    # 核心对象对应的位置为 True
-    labels = db.labels_
+    labels = clustream.predict(X_input_db)
+
+
+    # core_samples_mask = np.zeros_like(db.labels_, dtype=bool)    # (num_samples, )
+    # core_samples_mask[db.core_sample_indices_] = True    # 核心对象对应的位置为 True
+    # labels = db.labels_
 
     # Number of clusters in labels, ignoring noise if present.
     n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)    # 聚类后类别个数

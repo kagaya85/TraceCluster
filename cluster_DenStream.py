@@ -14,7 +14,7 @@ import warnings
 from model import simclr
 from dataset import TraceClusterDataset
 #from aug import TUDataset_aug as TUDataset
-from torch_geometric.data import DataLoader
+from torch_geometric.loader import DataLoader
 import sys
 import json
 from torch import optim
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     # Load the pre-trained model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = simclr(args.hidden_dim, args.num_gc_layers, args.prior, dataset_num_features).to(device)
-    model.load_state_dict(torch.load(args.save_path + 'model_weights_epoch20.pth'))    # 做一个软链接？映射？到 latest
+    model.load_state_dict(torch.load(args.save_path + '/' + 'model_weights_epoch20.pth'))    # 做一个软链接？映射？到 latest
     model.eval()
 
 
