@@ -43,16 +43,12 @@ class TraceClusterDataset(Dataset):
 
     @property
     def processed_file_names(self) -> Union[str, List[str], Tuple]:
-<<<<<<< HEAD
         file_list = []
         for file in os.listdir(self.processed_dir):
             if os.path.splitext(file)[1] == '.pt':
                 file_list.append(file)
 
         return file_list
-=======
-        return ['data_{}.pt'.format(i) for i in range(325)]
->>>>>>> gnn
 
     def download(self):
         pass
