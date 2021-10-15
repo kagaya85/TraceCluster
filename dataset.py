@@ -46,6 +46,8 @@ class TraceClusterDataset(Dataset):
         file_list = []
         for file in os.listdir(self.processed_dir):
             if os.path.splitext(file)[1] == '.pt':
+                if file in ['pre_filter.pt', 'pre_transform.pt']:
+                    continue
                 file_list.append(file)
 
         return file_list
