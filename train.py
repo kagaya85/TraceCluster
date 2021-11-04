@@ -231,11 +231,12 @@ def main():
             # print('batch')
         print('Epoch {}, Loss {}'.format(epoch, loss_all / len(dataloader)))
 
-        # save model
-        filename = os.path.join(
-            args.save_path, 'model_weights_epoch{}.pth'.format(epoch))
-        torch.save(model.state_dict(), filename)
-        print(f"Saving model to {filename}")
+        if (epoch == epochs):
+            # save model
+            filename = os.path.join(
+                args.save_path, 'model_weights_epoch{}.pth'.format(epoch))
+            torch.save(model.state_dict(), filename)
+            print(f"Saving model to {filename}")
 
 
 if __name__ == '__main__':
