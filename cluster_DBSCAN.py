@@ -101,7 +101,7 @@ if __name__ == '__main__':
         X_output_gnn = torch.cat((X_output_gnn, x), 0)
 
         for idx in range(x.size(0)):
-            traceid_index[str(count*batch_size+idx)] = data['trace_id'][idx][0]
+            traceid_index[str(count*batch_size+idx)] = data['trace_id'][idx]
         count += 1
     
     X_input_db = X_output_gnn.detach().cpu().numpy()    # tensor --> list  X_input: (num_samples, num_features_graph)
