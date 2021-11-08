@@ -1,5 +1,6 @@
 # Kagaya kagaya85@outlook.com
 import json
+import yaml
 import os
 from sys import getsizeof
 import time
@@ -13,6 +14,7 @@ import utils
 from typing import List, Callable, Dict
 from multiprocessing import Pool, Queue, cpu_count, Manager, current_process
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import requests
 
 data_path_list = [
     # Normal
@@ -141,8 +143,23 @@ embedding_word_list = np.load('./data/glove/wordsList.npy').tolist()
 embedding_word_vector = np.load('./data/glove/wordVectors.npy')
 is_wechat = False
 
+cache_file = './secrets/cache.json'
 
 def normalize(x): return x
+
+def get_mmapi() -> dict:
+    api_file = './secrets/api.yaml'
+    print(f"read api url from {api_file}")
+
+    with open(api_file, 'r', encoding='utf-8') as f:
+        data = yaml.load(f.read())
+
+    return data
+
+
+mmapis = get_mmapi()
+service_url = mmapis['getApps']
+operation_url = mmapis['getModuleInterface']
 
 
 class Item:
@@ -214,6 +231,8 @@ def load_span() -> List[DataFrame]:
     raw_spans = []
 
     if is_wechat:
+        # load name cache
+        cache = load_name_cache()
         # wechat data
         for filepath in mm_data_path_list:
             print(f"load wechat span data from {filepath}")
@@ -243,12 +262,15 @@ def load_span() -> List[DataFrame]:
                     st = datetime.strptime(s['TimeStamp'], '%Y-%m-%d %H:%M:%S')
                     spans[ITEM.START_TIME].append(int(datetime.timestamp(st)))
                     spans[ITEM.DURATION].append(int(s['CostTime']))
-                    spans[ITEM.SERVICE].append(str(s['CalleeOssID']))
-                    spans[ITEM.PEER].append(s['CallerOssID'])
-                    # convert to operation string
+
+                    # 尝试替换id为name
+                    spans[ITEM.SERVICE].append(
+                        get_service_name(s['CalleeOssID'], cache))
                     spans[ITEM.OPERATION].append(
-                        convert_operation_name(s['CalleeCmdID'])
+                        get_operation_name(s['CalleeCmdID'], cache)
                     )
+
+                    spans[ITEM.PEER].append(s['CallerOssID'])
                     spans[ITEM.IS_ERROR].append(
                         not utils.int2Bool(s['IfSuccess']))
                     spans[ITEM.CODE].append(
@@ -256,6 +278,8 @@ def load_span() -> List[DataFrame]:
 
                 df = DataFrame(spans)
                 raw_spans.extend(data_partition(df))
+
+        save_name_cache(cache)
 
     else:
         # skywalking data
@@ -359,10 +383,10 @@ def save_data(graphs: Dict):
                                 'preprocessed', time_now_str+'.json')
     print(f'prepare saving to {filename}')
     os.makedirs(os.path.dirname(filename), exist_ok=True)
-    
+
     with open(filename, 'w', encoding='utf-8') as fd:
         json.dump(graphs, fd, ensure_ascii=False)
-    
+
     print(f"data saved in {filename}")
 
 
@@ -402,9 +426,46 @@ def trace_process(trace: List[Span]) -> List[Span]:
     return trace
 
 
-def convert_operation_name(opid: int) -> str:
-    # TODO
-    return str(opid)
+def get_operation_name(cmdid: int, cache: dict) -> str:
+    if cmdid in cache['cmd_name'].keys():
+        return cache['cmd_name'][cmdid]
+
+    try:
+        req = requests.get(operation_url, timeout=10)
+    except Exception as e:
+        print(f"get operation name from cmdb failed:", e)
+        return str(cmdid)
+    else:
+        data = req.json()
+        return data['']
+
+
+def get_service_name(ossid: int, cache: dict) -> str:
+    if ossid in cache['oss_name'].keys():
+        return cache['oss_name'][ossid]
+    
+    try:
+        req = requests.get(service_url, timeout=10)
+    except Exception as e:
+        print(f"get service name from cmdb failed:", e)
+        return str(ossid)
+    else:
+        data = req.json()
+        return data['']
+
+
+def load_name_cache() -> dict:
+    with open(cache_file, 'r') as f:
+        cache = json.load(f)
+        print(f"load cache from {cache_file}")
+
+    return cache
+
+
+def save_name_cache(cache: dict):
+    with open(cache_file, 'w') as f:
+        json.dump(cache, f)
+        print('save cache success')
 
 
 def embedding(input: str) -> List[float]:
