@@ -145,7 +145,9 @@ is_wechat = False
 
 cache_file = './secrets/cache.json'
 
+
 def normalize(x): return x
+
 
 def get_mmapi() -> dict:
     api_file = './secrets/api.yaml'
@@ -264,11 +266,11 @@ def load_span() -> List[DataFrame]:
                     spans[ITEM.DURATION].append(int(s['CostTime']))
 
                     # 尝试替换id为name
-                    spans[ITEM.SERVICE].append(
-                        get_service_name(s['CalleeOssID'], cache))
+
+                    service_name = get_service_name(s['CalleeOssID'], cache)
+                    spans[ITEM.SERVICE].append(service_name)
                     spans[ITEM.OPERATION].append(
-                        get_operation_name(s['CalleeCmdID'], cache)
-                    )
+                        get_operation_name(s['CalleeCmdID'], service_name, cache))
 
                     spans[ITEM.PEER].append(s['CallerOssID'])
                     spans[ITEM.IS_ERROR].append(
@@ -426,32 +428,55 @@ def trace_process(trace: List[Span]) -> List[Span]:
     return trace
 
 
-def get_operation_name(cmdid: int, cache: dict) -> str:
+def get_operation_name(cmdid: int, module_name: str, cache: dict) -> str:
+
+    # TODO use moduel_name
     if cmdid in cache['cmd_name'].keys():
         return cache['cmd_name'][cmdid]
 
+    params = {
+        'sn': '96072c5c04a6cc4222e687a090ab88b4fad52ab0',
+        'fields': 'interface_id,name,module_id,module_name,interface_id',
+        'page': 1,
+        'page_size': 1000,
+        'where_module_name': module_name,
+        'where_interface_id': cmdid,
+    }
+
     try:
-        req = requests.get(operation_url, timeout=10)
+        rsp = requests.get(operation_url, timeout=10, params=params)
     except Exception as e:
         print(f"get operation name from cmdb failed:", e)
-        return str(cmdid)
     else:
-        data = req.json()
-        return data['']
+        if rsp.ok:
+            data = rsp.json()['data'][0]
+            return data['name']
+        print(f'cant get name, code:', rsp.status_code)
+
+    return str(cmdid)
 
 
 def get_service_name(ossid: int, cache: dict) -> str:
     if ossid in cache['oss_name'].keys():
         return cache['oss_name'][ossid]
-    
+
+    params = {
+        'sn': '96072c5c04a6cc4222e687a090ab88b4fad52ab0',
+        'fields': 'module_name,ossid',
+        'where_ossid': ossid,
+    }
+
     try:
-        req = requests.get(service_url, timeout=10)
+        rsp = requests.get(service_url, timeout=10, params=params)
     except Exception as e:
         print(f"get service name from cmdb failed:", e)
-        return str(ossid)
     else:
-        data = req.json()
-        return data['']
+        if rsp.ok:
+            data = rsp.json()['data'][0]
+            return data['module_name']
+        print(f'cant get name, code:', rsp.status_code)
+
+    return str(ossid)
 
 
 def load_name_cache() -> dict:
