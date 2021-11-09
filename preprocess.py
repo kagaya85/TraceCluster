@@ -162,6 +162,16 @@ def get_mmapi() -> dict:
     return data
 
 
+def load_name_cache() -> dict:
+    with open(cache_file, 'r') as f:
+        cache = json.load(f)
+        print(f"load cache from {cache_file}")
+
+    return cache
+
+
+# load name cache
+cache = load_name_cache()
 mmapis = get_mmapi()
 service_url = mmapis['api']['getApps']
 operation_url = mmapis['api']['getModuleInterface']
@@ -237,8 +247,6 @@ def load_span() -> List[DataFrame]:
     raw_spans = []
 
     if is_wechat:
-        # load name cache
-        cache = load_name_cache()
         # wechat data
         for filepath in mm_data_path_list:
             print(f"load wechat span data from {filepath}")
@@ -270,16 +278,23 @@ def load_span() -> List[DataFrame]:
                     spans[ITEM.DURATION].append(int(s['CostTime']))
 
                     # 尝试替换id为name
-                    service_name = get_service_name(s['CalleeOssID'], cache)
+                    service_name = get_service_name(s['CalleeOssID'])
                     if service_name == "":
                         spans[ITEM.SERVICE].append(str(s['CalleeOssID']))
                     else:
                         spans[ITEM.SERVICE].append(service_name)
 
                     spans[ITEM.OPERATION].append(
-                        get_operation_name(s['CalleeCmdID'], service_name, cache))
+                        get_operation_name(s['CalleeCmdID'], service_name))
 
-                    spans[ITEM.PEER].append(s['CallerOssID'])
+                    peer_service_name = get_service_name(s['CallerOssID'])
+                    if peer_service_name == "":
+                        spans[ITEM.PEER].append(str(s['CallerOssID']))
+                    else:
+                        spans[ITEM.PEER].append(peer_service_name)
+
+                    get_operation_name(s['CallerCmdID'], peer_service_name)
+
                     spans[ITEM.IS_ERROR].append(
                         not utils.int2Bool(s['IfSuccess']))
                     spans[ITEM.CODE].append(
@@ -324,14 +339,21 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> 
     build trace graph from span list
     """
 
+    trace.sort(key=lambda s: s.startTime)
+
+    if is_wechat:
+        return build_wechat_graph(trace, time_normolize)
+
+    return build_sw_graph(trace, time_normolize)
+
+
+def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> dict:
     vertexs = {0: embedding('start')}
     edges = {}
 
     spanIdMap = {'-1': 0}
     spanIdCounter = 1
     rootSpan = None
-
-    trace.sort(key=lambda s: s.startTime)
 
     for span in trace:
         """
@@ -365,11 +387,70 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> 
             'spanId': span.spanId,
             'startTime': span.startTime,
             'duration': time_normolize(span.duration),
+            'peer': span.peer,
             'isError': span.isError,
         })
 
-    if not is_wechat and rootSpan == None:
+    if rootSpan == None:
         return None
+
+    graph = {
+        'vertexs': vertexs,
+        'edges': edges,
+    }
+
+    return graph
+
+
+def build_wechat_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> dict:
+    vertexs = {0: embedding('start')}
+    edges = {}
+
+    spanIdMap = {}
+    spanIdCounter = 1
+
+    for span in trace:
+        """
+        (raph object contains Vertexs and Edges
+        Edge: [(from, to, duration), ...]
+        Vertex: [(id, nodestr), ...]
+        """
+
+        if span.parentSpanId not in spanIdMap.keys():
+            spanIdMap[span.parentSpanId] = spanIdCounter
+            spanIdCounter += 1
+
+        if span.spanId not in spanIdMap.keys():
+            spanIdMap[span.spanId] = spanIdCounter
+            spanIdCounter += 1
+
+        spanId, parentSpanId = spanIdMap[span.spanId], spanIdMap[span.parentSpanId]
+
+        # span id should be unique
+        if spanId not in vertexs.keys():
+            vertexs[spanId] = embedding('/'.join(
+                [span.service, span.operation, span.code]))
+
+        if parentSpanId not in edges.keys():
+            edges[parentSpanId] = []
+
+        edges[parentSpanId].append({
+            'vertexId': spanId,
+            'parentSpanID': span.parentSpanId,
+            'spanId': span.spanId,
+            'startTime': span.startTime,
+            'duration': time_normolize(span.duration),
+            'peer': span.peer,
+            'isError': span.isError,
+        })
+
+    # map fix
+    for id in edges:
+        e = edges[id][0]
+        if id not in vertexs.keys():
+            service = e['peer']
+            operation = cache['cmd_name'][service][e['parentSpanID']]
+            vertexs[id] = embedding('/'.join([service, operation, '0']))
 
     graph = {
         'vertexs': vertexs,
@@ -438,7 +519,9 @@ def trace_process(trace: List[Span]) -> List[Span]:
     return trace
 
 
-def get_operation_name(cmdid: int, module_name: str, cache: dict) -> str:
+def get_operation_name(cmdid: int, module_name: str) -> str:
+    global cache
+
     if module_name == "":
         return str(cmdid)
 
@@ -476,7 +559,9 @@ def get_operation_name(cmdid: int, module_name: str, cache: dict) -> str:
     return str(cmdid)
 
 
-def get_service_name(ossid: int, cache: dict) -> str:
+def get_service_name(ossid: int) -> str:
+    global cache
+
     if ossid in cache['oss_name'].keys():
         return cache['oss_name'][ossid]
 
@@ -503,14 +588,6 @@ def get_service_name(ossid: int, cache: dict) -> str:
         print(f'cant get name, code:', rsp.status_code)
 
     return ""
-
-
-def load_name_cache() -> dict:
-    with open(cache_file, 'r') as f:
-        cache = json.load(f)
-        print(f"load cache from {cache_file}")
-
-    return cache
 
 
 def save_name_cache(cache: dict):

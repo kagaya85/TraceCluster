@@ -86,7 +86,7 @@ class TraceClusterDataset(Dataset):
                 edge_attr=edge_feats,
                 trace_id=trace_id,    # add trace_id for cluster
                 # add time_stamp for DenStream
-                time_stamp=trace["edges"]["0"][0]["startTime"],
+                time_stamp=list(trace["edges"].items())[0][1][0]["startTime"],
             )
 
             filename = osp.join(self.processed_dir, 'data_{}.pt'.format(idx))
