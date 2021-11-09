@@ -15,6 +15,7 @@ from typing import List, Callable, Dict
 from multiprocessing import Pool, Queue, cpu_count, Manager, current_process
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import requests
+import wordninja
 
 data_path_list = [
     # Normal
@@ -156,14 +157,14 @@ def get_mmapi() -> dict:
     print(f"read api url from {api_file}")
 
     with open(api_file, 'r', encoding='utf-8') as f:
-        data = yaml.load(f.read())
+        data = yaml.safe_load(f)
 
-    return data['api']
+    return data
 
 
 mmapis = get_mmapi()
-service_url = mmapis['getApps']
-operation_url = mmapis['getModuleInterface']
+service_url = mmapis['api']['getApps']
+operation_url = mmapis['api']['getModuleInterface']
 sn = mmapis['sn']
 
 
@@ -259,7 +260,7 @@ def load_span() -> List[DataFrame]:
                 }
 
                 # convert to dataframe
-                for s in mmspans:
+                for s in tqdm(mmspans):
                     spans[ITEM.SPAN_ID].append(str(s['CalleeCmdID']))
                     spans[ITEM.PARENT_SPAN_ID].append(str(s['CallerCmdID']))
                     spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
@@ -399,6 +400,9 @@ def save_data(graphs: Dict):
 
 
 def str_process(s: str) -> str:
+    if is_wechat:
+        return '/'.join(wordninja.split(s))
+
     words = ['ticket', 'order', 'name', 'security',
              'operation', 'spring', 'service', 'trip',
              'date', 'route', 'type', 'id', 'account', 'number']
@@ -464,8 +468,9 @@ def get_operation_name(cmdid: int, module_name: str, cache: dict) -> str:
                 name = datas[0]['name']
                 cache['cmd_name'][module_name][cmdid] = name
                 return name
-            print(
-                f'module_name: {module_name}, cmdid: {cmdid} not find in cmdb')
+            # not found
+            cache['cmd_name'][module_name][cmdid] = str(cmdid)
+            return str(cmdid)
         print(f'cant get operation name, code:', rsp.status_code)
 
     return str(cmdid)
@@ -492,7 +497,9 @@ def get_service_name(ossid: int, cache: dict) -> str:
                 name = datas[0]['module_name']
                 cache['oss_name'][ossid] = name
                 return name
-            print(f'ossid: {ossid} not find in cmdb')
+            # not found
+            cache['oss_name'][ossid] = str(ossid)
+            return ""
         print(f'cant get name, code:', rsp.status_code)
 
     return ""
@@ -508,7 +515,7 @@ def load_name_cache() -> dict:
 
 def save_name_cache(cache: dict):
     with open(cache_file, 'w') as f:
-        json.dump(cache, f)
+        json.dump(cache, f, indent=4)
         print('save cache success')
 
 
