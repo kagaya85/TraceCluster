@@ -1,12 +1,13 @@
 from os import stat
 from time import daylight
-from py2neo import Node, Relationship, Graph
+from py2neo import Node, Relationship, Graph, Subgraph
+from tqdm import tqdm
 import json
 
-preprocessed_file = '../data/preprocessed/wechat/2021-11-10_11-49-49.json'
+preprocessed_file = '../data/preprocessed/wechat/2021-11-10_17-38-57.json'
 
-node_label = 'operation'
-edge_label = 'call'
+node_label = 'Operation'
+edge_label = 'Call'
 
 
 def main():
@@ -17,14 +18,15 @@ def main():
     f.close()
 
     graph = Graph('http://localhost:7474',
-                  username='neo4j', password='password')
+                  auth=('neo4j', 'password'))
 
     graph.delete_all()
 
     # insert data
-    for traceid, trace in data.items():
+    for traceid, trace in tqdm(data.items()):
         # insert edges and nodes
-        sub = []
+        nodes = []
+        relationships = []
         for fromid, edges in trace["edges"].items():
             for edge in edges:
                 sub = edge['peer'].split('/', 1)
@@ -39,13 +41,14 @@ def main():
                 )
 
                 call = Relationship(
-                    from_node, 'CALL', to_node,
+                    from_node, edge_label, to_node,
                     start_time=edge['startTime'], duration=edge['duration'],
                     is_error=edge['isError']
                 )
-                sub.append(from_node, to_node, call)
+                nodes.extend([from_node, to_node])
+                relationships.append(call)
 
-        graph.create(py2neo.Subgraph(sub))
+        graph.create(Subgraph(nodes, relationships))
 
 
 if __name__ == "__main__":
