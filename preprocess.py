@@ -288,12 +288,15 @@ def load_span() -> List[DataFrame]:
                         get_operation_name(s['CalleeCmdID'], service_name))
 
                     peer_service_name = get_service_name(s['CallerOssID'])
-                    if peer_service_name == "":
-                        spans[ITEM.PEER].append(str(s['CallerOssID']))
-                    else:
-                        spans[ITEM.PEER].append(peer_service_name)
+                    peer_cmd_name = get_operation_name(
+                        s['CallerCmdID'], peer_service_name)
 
-                    get_operation_name(s['CallerCmdID'], peer_service_name)
+                    if peer_service_name == "":
+                        spans[ITEM.PEER].append(
+                            '/'.join([str(s['CallerOssID']), peer_cmd_name]))
+                    else:
+                        spans[ITEM.PEER].append(
+                            '/'.join([peer_service_name, peer_cmd_name]))
 
                     spans[ITEM.IS_ERROR].append(
                         not utils.int2Bool(s['IfSuccess']))
@@ -385,8 +388,11 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
         edges[parentSpanId].append({
             'vertexId': spanId,
             'spanId': span.spanId,
+            'parentSpanId': span.parentSpanId,
             'startTime': span.startTime,
             'duration': time_normolize(span.duration),
+            'service': span.service,
+            'operation': span.operation,
             'peer': span.peer,
             'isError': span.isError,
         })
@@ -443,10 +449,12 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
 
         edges[parentSpanId].append({
             'vertexId': spanId,
-            'parentSpanID': span.parentSpanId,
+            'parentSpanId': span.parentSpanId,
             'spanId': span.spanId,
             'startTime': span.startTime,
             'duration': time_normolize(span.duration),
+            'service': span.service,
+            'operation': span.operation,
             'peer': span.peer,
             'isError': span.isError,
         })
@@ -455,12 +463,11 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
     isolate_point_id = 0
     ipc = 0
     for id in edges:
-        e = edges[id][0]
         if id not in vertexs.keys():
             isolate_point_id = id
             ipc = ipc + 1
             # service = e['peer']
-            # operation = cache['cmd_name'][service][e['parentSpanID']]
+            # operation = cache['cmd_name'][service][e['parentSpanId']]
             # vertexs[id] = embedding('/'.join([service, operation, '0']))
 
     if ipc != 1:
