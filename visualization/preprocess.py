@@ -1,6 +1,4 @@
-from os import stat
-from time import daylight
-from py2neo import Node, Relationship, Graph, Subgraph, NodeMatcher
+from py2neo import Node, Relationship, Graph, Subgraph
 from tqdm import tqdm
 import json
 
@@ -23,6 +21,7 @@ def main():
     graph.delete_all()
 
     # insert data
+    print("start insert to Neo4j...")
     for traceid, trace in tqdm(data.items()):
         # insert edges and nodes
         nodes = []
@@ -32,7 +31,7 @@ def main():
                 sub = edge['peer'].split('/', 1)
 
                 from_node = Node(
-                    node_label, id=fromid,
+                    node_label, id=edge['parentSpanId'],
                     traceid=traceid, service=sub[0], name=sub[1]
                 )
 
@@ -63,6 +62,7 @@ def main():
 
                 call = Relationship(
                     from_node, edge_label, to_node,
+                    from_cmd_id=edge['parentSpanId'], to_cmd_id=edge['spanId'],
                     start_time=edge['startTime'], duration=edge['duration'],
                     is_error=edge['isError']
                 )
