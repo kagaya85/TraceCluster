@@ -342,7 +342,7 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> 
     trace.sort(key=lambda s: s.startTime)
 
     if is_wechat:
-        return build_wechat_graph(trace, time_normolize)
+        return build_mm_graph(trace, time_normolize)
 
     return build_sw_graph(trace, time_normolize)
 
@@ -402,13 +402,15 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
     return graph
 
 
-def build_wechat_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> dict:
+def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> dict:
     vertexs = {0: embedding('start')}
-    edges = {}
+    edges = {0: []}
 
     spanIdMap = {}
     spanIdCounter = 1
 
+    is_error = False
+    tot_duration = 0
     for span in trace:
         """
         (raph object contains Vertexs and Edges
@@ -434,6 +436,11 @@ def build_wechat_graph(trace: List[Span], time_normolize: Callable[[float], floa
         if parentSpanId not in edges.keys():
             edges[parentSpanId] = []
 
+        # statistics
+        if span.isError:
+            is_error = True
+        tot_duration = tot_duration + span.duration
+
         edges[parentSpanId].append({
             'vertexId': spanId,
             'parentSpanID': span.parentSpanId,
@@ -444,13 +451,22 @@ def build_wechat_graph(trace: List[Span], time_normolize: Callable[[float], floa
             'isError': span.isError,
         })
 
-    # map fix
+    # graph check，如果图是连通的，edge的起始点中应该只有一个不存在在vertexs集合里
+    isolate_point_id = 0
+    ipc = 0
     for id in edges:
         e = edges[id][0]
         if id not in vertexs.keys():
-            service = e['peer']
-            operation = cache['cmd_name'][service][e['parentSpanID']]
-            vertexs[id] = embedding('/'.join([service, operation, '0']))
+            isolate_point_id = id
+            ipc = ipc + 1
+            # service = e['peer']
+            # operation = cache['cmd_name'][service][e['parentSpanID']]
+            # vertexs[id] = embedding('/'.join([service, operation, '0']))
+
+    if ipc != 1:
+        return None
+
+    edges[0] = edges.pop(isolate_point_id)
 
     graph = {
         'vertexs': vertexs,
