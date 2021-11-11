@@ -1,5 +1,6 @@
 # Kagaya kagaya85@outlook.com
 import json
+import yaml
 import os
 from sys import getsizeof
 import time
@@ -13,6 +14,8 @@ import utils
 from typing import List, Callable, Dict
 from multiprocessing import Pool, Queue, cpu_count, Manager, current_process
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import requests
+import wordninja
 
 data_path_list = [
     # Normal
@@ -139,10 +142,40 @@ time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
 
 embedding_word_list = np.load('./data/glove/wordsList.npy').tolist()
 embedding_word_vector = np.load('./data/glove/wordVectors.npy')
+
+# wecath data flag
 is_wechat = False
+
+cache_file = './secrets/cache.json'
 
 
 def normalize(x): return x
+
+
+def get_mmapi() -> dict:
+    api_file = './secrets/api.yaml'
+    print(f"read api url from {api_file}")
+
+    with open(api_file, 'r', encoding='utf-8') as f:
+        data = yaml.safe_load(f)
+
+    return data
+
+
+def load_name_cache() -> dict:
+    with open(cache_file, 'r') as f:
+        cache = json.load(f)
+        print(f"load cache from {cache_file}")
+
+    return cache
+
+
+# load name cache
+cache = load_name_cache()
+mmapis = get_mmapi()
+service_url = mmapis['api']['getApps']
+operation_url = mmapis['api']['getModuleInterface']
+sn = mmapis['sn']
 
 
 class Item:
@@ -235,7 +268,7 @@ def load_span() -> List[DataFrame]:
                 }
 
                 # convert to dataframe
-                for s in mmspans:
+                for s in tqdm(mmspans):
                     spans[ITEM.SPAN_ID].append(str(s['CalleeCmdID']))
                     spans[ITEM.PARENT_SPAN_ID].append(str(s['CallerCmdID']))
                     spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
@@ -243,12 +276,28 @@ def load_span() -> List[DataFrame]:
                     st = datetime.strptime(s['TimeStamp'], '%Y-%m-%d %H:%M:%S')
                     spans[ITEM.START_TIME].append(int(datetime.timestamp(st)))
                     spans[ITEM.DURATION].append(int(s['CostTime']))
-                    spans[ITEM.SERVICE].append(str(s['CalleeOssID']))
-                    spans[ITEM.PEER].append(s['CallerOssID'])
-                    # convert to operation string
+
+                    # 尝试替换id为name
+                    service_name = get_service_name(s['CalleeOssID'])
+                    if service_name == "":
+                        spans[ITEM.SERVICE].append(str(s['CalleeOssID']))
+                    else:
+                        spans[ITEM.SERVICE].append(service_name)
+
                     spans[ITEM.OPERATION].append(
-                        convert_operation_name(s['CalleeCmdID'])
-                    )
+                        get_operation_name(s['CalleeCmdID'], service_name))
+
+                    peer_service_name = get_service_name(s['CallerOssID'])
+                    peer_cmd_name = get_operation_name(
+                        s['CallerCmdID'], peer_service_name)
+
+                    if peer_service_name == "":
+                        spans[ITEM.PEER].append(
+                            '/'.join([str(s['CallerOssID']), peer_cmd_name]))
+                    else:
+                        spans[ITEM.PEER].append(
+                            '/'.join([peer_service_name, peer_cmd_name]))
+
                     spans[ITEM.IS_ERROR].append(
                         not utils.int2Bool(s['IfSuccess']))
                     spans[ITEM.CODE].append(
@@ -256,6 +305,8 @@ def load_span() -> List[DataFrame]:
 
                 df = DataFrame(spans)
                 raw_spans.extend(data_partition(df))
+
+        save_name_cache(cache)
 
     else:
         # skywalking data
@@ -291,14 +342,21 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> 
     build trace graph from span list
     """
 
+    trace.sort(key=lambda s: s.startTime)
+
+    if is_wechat:
+        return build_mm_graph(trace, time_normolize)
+
+    return build_sw_graph(trace, time_normolize)
+
+
+def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> dict:
     vertexs = {0: embedding('start')}
     edges = {}
 
     spanIdMap = {'-1': 0}
     spanIdCounter = 1
     rootSpan = None
-
-    trace.sort(key=lambda s: s.startTime)
 
     for span in trace:
         """
@@ -330,13 +388,92 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> 
         edges[parentSpanId].append({
             'vertexId': spanId,
             'spanId': span.spanId,
+            'parentSpanId': span.parentSpanId,
             'startTime': span.startTime,
             'duration': time_normolize(span.duration),
+            'service': span.service,
+            'operation': span.operation,
+            'peer': span.peer,
             'isError': span.isError,
         })
 
-    if not is_wechat and rootSpan == None:
+    if rootSpan == None:
         return None
+
+    graph = {
+        'vertexs': vertexs,
+        'edges': edges,
+    }
+
+    return graph
+
+
+def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> dict:
+    vertexs = {0: embedding('start')}
+    edges = {0: []}
+
+    spanIdMap = {}
+    spanIdCounter = 1
+
+    is_error = False
+    tot_duration = 0
+    for span in trace:
+        """
+        (raph object contains Vertexs and Edges
+        Edge: [(from, to, duration), ...]
+        Vertex: [(id, nodestr), ...]
+        """
+
+        if span.parentSpanId not in spanIdMap.keys():
+            spanIdMap[span.parentSpanId] = spanIdCounter
+            spanIdCounter += 1
+
+        if span.spanId not in spanIdMap.keys():
+            spanIdMap[span.spanId] = spanIdCounter
+            spanIdCounter += 1
+
+        spanId, parentSpanId = spanIdMap[span.spanId], spanIdMap[span.parentSpanId]
+
+        # span id should be unique
+        if spanId not in vertexs.keys():
+            vertexs[spanId] = embedding('/'.join(
+                [span.service, span.operation, span.code]))
+
+        if parentSpanId not in edges.keys():
+            edges[parentSpanId] = []
+
+        # statistics
+        if span.isError:
+            is_error = True
+        tot_duration = tot_duration + span.duration
+
+        edges[parentSpanId].append({
+            'vertexId': spanId,
+            'parentSpanId': span.parentSpanId,
+            'spanId': span.spanId,
+            'startTime': span.startTime,
+            'duration': time_normolize(span.duration),
+            'service': span.service,
+            'operation': span.operation,
+            'peer': span.peer,
+            'isError': span.isError,
+        })
+
+    # graph check，如果图是连通的，edge的起始点中应该只有一个不存在在vertexs集合里
+    isolate_point_id = 0
+    ipc = 0
+    for id in edges:
+        if id not in vertexs.keys():
+            isolate_point_id = id
+            ipc = ipc + 1
+            # service = e['peer']
+            # operation = cache['cmd_name'][service][e['parentSpanId']]
+            # vertexs[id] = embedding('/'.join([service, operation, '0']))
+
+    if ipc != 1:
+        return None
+
+    edges[0] = edges.pop(isolate_point_id)
 
     graph = {
         'vertexs': vertexs,
@@ -359,14 +496,17 @@ def save_data(graphs: Dict):
                                 'preprocessed', time_now_str+'.json')
     print(f'prepare saving to {filename}')
     os.makedirs(os.path.dirname(filename), exist_ok=True)
-    
+
     with open(filename, 'w', encoding='utf-8') as fd:
         json.dump(graphs, fd, ensure_ascii=False)
-    
+
     print(f"data saved in {filename}")
 
 
 def str_process(s: str) -> str:
+    if is_wechat:
+        return '/'.join(wordninja.split(s))
+
     words = ['ticket', 'order', 'name', 'security',
              'operation', 'spring', 'service', 'trip',
              'date', 'route', 'type', 'id', 'account', 'number']
@@ -402,9 +542,81 @@ def trace_process(trace: List[Span]) -> List[Span]:
     return trace
 
 
-def convert_operation_name(opid: int) -> str:
-    # TODO
-    return str(opid)
+def get_operation_name(cmdid: int, module_name: str) -> str:
+    global cache
+
+    if module_name == "":
+        return str(cmdid)
+
+    if module_name not in cache['cmd_name'].keys():
+        cache['cmd_name'][module_name] = {}
+
+    if cmdid in cache['cmd_name'][module_name].keys():
+        return cache['cmd_name'][module_name][cmdid]
+
+    params = {
+        'sn': sn,
+        'fields': 'interface_id,name,module_id,module_name,interface_id',
+        'page': 1,
+        'page_size': 1000,
+        'where_module_name': module_name,
+        'where_interface_id': cmdid,
+    }
+
+    try:
+        rsp = requests.get(operation_url, timeout=10, params=params)
+    except Exception as e:
+        print(f"get operation name from cmdb failed:", e)
+    else:
+        if rsp.ok:
+            datas = rsp.json()['data']
+            if len(datas) > 0:
+                name = datas[0]['name']
+                cache['cmd_name'][module_name][cmdid] = name
+                return name
+            # not found
+            cache['cmd_name'][module_name][cmdid] = str(cmdid)
+            return str(cmdid)
+        print(f'cant get operation name, code:', rsp.status_code)
+
+    return str(cmdid)
+
+
+def get_service_name(ossid: int) -> str:
+    global cache
+
+    if ossid in cache['oss_name'].keys():
+        return cache['oss_name'][ossid]
+
+    params = {
+        'sn': sn,
+        'fields': 'module_name,ossid,module_id',
+        'where_ossid': ossid,
+    }
+
+    try:
+        rsp = requests.get(service_url, timeout=10, params=params)
+    except Exception as e:
+        print(f"get service name from cmdb failed:", e)
+    else:
+        if rsp.ok:
+            datas = rsp.json()['data']
+            if len(datas) > 0:
+                name = datas[0]['module_name']
+                cache['oss_name'][ossid] = name
+                return name
+            # not found
+            cache['oss_name'][ossid] = str(ossid)
+            return ""
+        print(f'cant get name, code:', rsp.status_code)
+
+    return ""
+
+
+def save_name_cache(cache: dict):
+    with open(cache_file, 'w') as f:
+        json.dump(cache, f, indent=4)
+        print('save cache success')
 
 
 def embedding(input: str) -> List[float]:
