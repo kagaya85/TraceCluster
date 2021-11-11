@@ -1,6 +1,7 @@
 from math import atan
 import os.path as osp
 from copy import copy
+from re import X
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
@@ -41,7 +42,7 @@ import matplotlib.pyplot as plt
 
 # from CluStream_master.CluStream import CluStream
 
-from clustream_py_master.CluStream import CluStream 
+from CluStream_master.CluStream import CluStream 
 
 
 import random
@@ -102,7 +103,7 @@ if __name__ == '__main__':
     # Online Stage
     count = 0
     traceid_index = {}    # 需要改进
-    # timestamp_list = []
+    timestamp_list = []
     X_output_gnn = torch.Tensor([]).to(device)    # 需要改进
     for data in tqdm(dataloader):
         # print('start')
@@ -118,19 +119,44 @@ if __name__ == '__main__':
         X_output_gnn = torch.cat((X_output_gnn, x), 0)
 
         for idx in range(x.size(0)):
-            traceid_index[str(count*batch_size+idx)] = data['trace_id'][idx][0]
-            # timestamp_list.append(data['time_stamp'][idx])
-            timestamp = data['time_stamp'][idx].detach().cpu().numpy()
+            traceid_index[str(count*batch_size+idx)] = data['trace_id'][idx]
+            timestamp_list.append(data['time_stamp'][idx])
+
+        if count == 0:
+            clustream.initial(X_output_gnn.detach().cpu().numpy(), torch.Tensor(timestamp_list).view(-1, 1).detach().cpu().numpy())
+            X_output_gnn = torch.Tensor([]).to(device)
+            traceid_index.clear()
+            timestamp_list.clear()
+        else:
+            for x, timestamp in tqdm(zip(X_output_gnn.detach().cpu().numpy(), torch.Tensor(timestamp_list).view(-1, 1).detach().cpu().numpy())):
+            # for x, timestamp in tqdm(zip(X_output_gnn.detach().cpu(), torch.Tensor(timestamp_list).view(-1, 1).detach().cpu())):
+                clustream.partial_fit(x, timestamp)
+                print("Number of micro_clusters is {}".format(len(clustream.micro_clusters)))
             
-            X_CS_Input = x[idx].detach().cpu().numpy()
+            # timestamp = data['time_stamp'][idx].detach().cpu().numpy()
+            # X_CS_Input = x[idx].detach().cpu().numpy()
+
             # clustream.fit(x[idx].cpu())
             # clustream.partial_fit(X_CS_Input, timestamp)
-            clustream.offline_cluster(X_CS_Input, timestamp)
-            print(f"Number of micro_clusters is {len(clustream.kernels)}")
+            
+            # clustream.offline_cluster(X_CS_Input, timestamp)
+            # print(f"Number of micro_clusters is {len(clustream.micro_clusters)}")
 
         count += 1
     
     X_input_db = X_output_gnn.detach().cpu().numpy()    # tensor --> list  X_input: (num_samples, num_features_graph)
+
+
+    # clustream.initial(X_input_initial, timestamp_list)
+
+
+    '''
+    for x, timestamp in tqdm(zip(X_input_db, timestamp_list)):
+        clustream.partial_fit(x, timestamp)
+        print(f"Number of micro_clusters is {len(clustream.micro_clusters)}")
+    '''
+
+
 
     if len(X_input_db) != len(dataset):
         print("error: sample miss! len(X_input_db) is {} but len(dataset) is {} !".format(len(X_input_db), len(dataset)))

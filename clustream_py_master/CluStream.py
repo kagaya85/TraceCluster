@@ -5,6 +5,7 @@ https://github.com/Waikato/moa/blob/master/moa/src/main/java/moa/clusterers/clus
 from clustream_py_master.Kernel import Kernel
 import numpy as np
 import itertools
+from sklearn.cluster import KMeans
 
 # from multiprocessing.dummy import Pool
 
@@ -37,7 +38,7 @@ class CluStream:
 		m (int): m
 		t (int): t
 	"""
-	def __init__(self,h=1000,m=800,t=2):
+	def __init__(self,h=10000000000000000,m=800,t=2):    # h=1000, m=100
 		self.kernels=[]
 		self.time_window=h
 		self.m=m
@@ -99,3 +100,10 @@ class CluStream:
 
 		self.kernels[closest_a].add(self.kernels[closest_b])
 		self.kernels[closest_b]=Kernel(datapoint,timestamp,self.t,self.m)
+
+	def predict(self, X=None):
+		cluster_centers = list(map((lambda i: i.get_center()), self.kernels))
+        #centers_weights = list(map((lambda i: i.get_weight()), self.micro_clusters))
+		kmeans = KMeans(n_clusters=5, random_state=1)
+		y_pred = kmeans.fit_predict(X=cluster_centers, y=None)
+		return y_pred
