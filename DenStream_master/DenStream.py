@@ -127,7 +127,7 @@ class DenStream:
                                             self.p_micro_clusters])
         p_micro_cluster_weights = [p_micro_cluster.weight() for p_micro_cluster in
                                    self.p_micro_clusters]
-        dbscan = DBSCAN(eps=0.3, algorithm='brute')
+        dbscan = DBSCAN(eps=0.3, min_samples=10, algorithm='brute')
         dbscan.fit(p_micro_cluster_centers,
                    sample_weight=p_micro_cluster_weights)
 
@@ -180,7 +180,7 @@ class DenStream:
                                             self.p_micro_clusters])
         p_micro_cluster_weights = [p_micro_cluster.weight() for p_micro_cluster in
                                    self.p_micro_clusters]
-        dbscan = DBSCAN(eps=0.3, algorithm='brute')
+        dbscan = DBSCAN(eps=0.3, min_samples=10, algorithm='brute')
         dbscan.fit(p_micro_cluster_centers,
                    sample_weight=p_micro_cluster_weights)
 

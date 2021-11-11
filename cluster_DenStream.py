@@ -34,6 +34,8 @@ from sklearn.neighbors import kneighbors_graph
 from sklearn import metrics
 from sklearn.datasets import make_blobs
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics.pairwise import euclidean_distances
+
 
 from itertools import cycle, islice
 
@@ -102,6 +104,24 @@ if __name__ == '__main__':
     traceid_index = {}    # 需要改进
     # timestamp_list = []
     X_output_gnn = torch.Tensor([]).to(device)    # 需要改进
+
+    
+    
+    
+    # x_test = []
+    
+    # x_class0_0 = []
+    # x_class0_1 = []
+    # x_class0_2 = []
+    # x_class0_3 = []
+    
+    # x_class1_0 = []
+    # x_class1_1 = []
+    # x_class1_2 = []
+    # x_class1_3 = []
+
+
+
     for data in tqdm(dataloader):
         # print('start')
         data = data[0]
@@ -117,17 +137,68 @@ if __name__ == '__main__':
         X_output_gnn = torch.cat((X_output_gnn, x), 0)
 
         for idx in range(x.size(0)):
-            traceid_index[str(count*batch_size+idx)] = data['trace_id'][idx][0]
+            traceid_index[str(count*batch_size+idx)] = data['trace_id'][idx]
+            
+
+
+            
+            # if data['trace_id'][idx] == '1e3c47720fe24523938fff342ebe6c0d.35.16288656971030003':    # abnormal
+            #     x_test = x[idx]    
+            # if data['trace_id'][idx] == '1e3c47720fe24523938fff342ebe6c0d.35.16288657098040005':    # class 0
+            #     x_class0_0 = x[idx]
+            # if data['trace_id'][idx] == '1e3c47720fe24523938fff342ebe6c0d.35.16288658127040021':    # class 0
+            #     x_class0_1 = x[idx]
+            # if data['trace_id'][idx] == '1e3c47720fe24523938fff342ebe6c0d.35.16288659736030045':    # class 0
+            #     x_class0_2 = x[idx]
+            # if data['trace_id'][idx] == '1e3c47720fe24523938fff342ebe6c0d.35.16288661525040073':    # class 0
+            #     x_class0_3 = x[idx]
+
+            # if data['trace_id'][idx] == '3dcc96ad77fe45dfae8436f31379e7ad.38.16294251479940163':    # class 1
+            #     x_class1_0 = x[idx]
+            # if data['trace_id'][idx] == '3dcc96ad77fe45dfae8436f31379e7ad.38.16294251729850247':    # class 1
+            #     x_class1_1 = x[idx]
+            # if data['trace_id'][idx] == '3dcc96ad77fe45dfae8436f31379e7ad.38.16294252025170439':    # class 1
+            #     x_class1_2 = x[idx]
+            # if data['trace_id'][idx] == '3dcc96ad77fe45dfae8436f31379e7ad.38.16294252307460683':    # class 1
+            #     x_class1_3 = x[idx]
+
+
+
+
             timestamp_list.append(data['time_stamp'][idx])
         
         
         X_DS_Input = copy(x).detach().cpu().numpy()
         denstream.partial_fit(X_DS_Input, timestamp_list)
-        print(f"Number of p_micro_clusters is {len(denstream.p_micro_clusters)}")
-        print(f"Number of o_micro_clusters is {len(denstream.o_micro_clusters)}")
+        # print(f"Number of p_micro_clusters is {len(denstream.p_micro_clusters)}")
+        # print(f"Number of o_micro_clusters is {len(denstream.o_micro_clusters)}")
 
 
         count += 1
+    
+    
+    # # compute distance
+    # # class 0
+    # dist = euclidean_distances(x_test.detach().cpu().numpy().reshape(1, -1), x_class0_0.detach().cpu().numpy().reshape(1, -1))
+    # print("Distance between x_test and x_class0_0 is: {}".format(dist))
+    # dist = euclidean_distances(x_test.detach().cpu().numpy().reshape(1, -1), x_class0_1.detach().cpu().numpy().reshape(1, -1))
+    # print("Distance between x_test and x_class0_1 is: {}".format(dist))
+    # dist = euclidean_distances(x_test.detach().cpu().numpy().reshape(1, -1), x_class0_2.detach().cpu().numpy().reshape(1, -1))
+    # print("Distance between x_test and x_class0_2 is: {}".format(dist))
+    # dist = euclidean_distances(x_test.detach().cpu().numpy().reshape(1, -1), x_class0_3.detach().cpu().numpy().reshape(1, -1))
+    # print("Distance between x_test and x_class0_3 is: {}".format(dist))
+    # # class 1
+    # dist = euclidean_distances(x_test.detach().cpu().numpy().reshape(1, -1), x_class1_0.detach().cpu().numpy().reshape(1, -1))
+    # print("Distance between x_test and x_class1_0 is: {}".format(dist))
+    # dist = euclidean_distances(x_test.detach().cpu().numpy().reshape(1, -1), x_class1_1.detach().cpu().numpy().reshape(1, -1))
+    # print("Distance between x_test and x_class1_1 is: {}".format(dist))
+    # dist = euclidean_distances(x_test.detach().cpu().numpy().reshape(1, -1), x_class1_2.detach().cpu().numpy().reshape(1, -1))
+    # print("Distance between x_test and x_class1_2 is: {}".format(dist))
+    # dist = euclidean_distances(x_test.detach().cpu().numpy().reshape(1, -1), x_class1_3.detach().cpu().numpy().reshape(1, -1))
+    # print("Distance between x_test and x_class1_3 is: {}".format(dist))
+
+
+    
     
     X_input_db = X_output_gnn.detach().cpu().numpy()    # tensor --> list  X_input: (num_samples, num_features_graph)
 
@@ -180,6 +251,9 @@ if __name__ == '__main__':
         for sample_idx in range(len(dataset)):
             if labels[sample_idx] == cluster_idx:
                 print("Trace_id: {}".format(traceid_index[str(sample_idx)]))
+
+                # if traceid_index[str(sample_idx)] == '1e3c47720fe24523938fff342ebe6c0d.35.16288656971030003':
+                #     print("############################################################################################################")
         print('\n')
 
     print('\n')    
