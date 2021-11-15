@@ -132,10 +132,11 @@ data_path_list = [
 ]
 
 mm_data_path_list = [
-    'data/raw/wechat/5-18/finer_data.json',
-    'data/raw/wechat/5-18/finer_data2.json',
-    'data/raw/wechat/8-2/data.json',
-    'data/raw/wechat/8-3/data.json',
+    # 'data/raw/wechat/5-18/finer_data.json',
+    # 'data/raw/wechat/5-18/finer_data2.json',
+    # 'data/raw/wechat/8-2/data.json',
+    # 'data/raw/wechat/8-3/data.json',
+    'data/raw/wechat/11-9/data.json',
 ]
 
 time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
@@ -145,7 +146,7 @@ embedding_word_vector = np.load('./data/glove/wordVectors.npy')
 
 # wecath data flag
 is_wechat = False
-
+use_request = False
 cache_file = './secrets/cache.json'
 
 
@@ -237,6 +238,8 @@ def arguments():
                         help='parallel processing core numberes', default=cpu_count())
     parser.add_argument('--wechat', help='use wechat data',
                         action='store_true')
+    parser.add_argument('--use-request', dest='use_request', help='use http request when replace id to name',
+                        action='store_true')
     return parser.parse_args()
 
 
@@ -298,10 +301,9 @@ def load_span() -> List[DataFrame]:
                         spans[ITEM.PEER].append(
                             '/'.join([peer_service_name, peer_cmd_name]))
 
-                    spans[ITEM.IS_ERROR].append(
-                        not utils.int2Bool(s['IfSuccess']))
-                    spans[ITEM.CODE].append(
-                        str(s['NetworkRet'] if s['NetworkRet'] != 0 else s['ServiceRet']))
+                    error_code = s['NetworkRet'] if s['NetworkRet'] != 0 else s['ServiceRet']
+                    spans[ITEM.IS_ERROR].append(utils.int2Bool(error_code))
+                    spans[ITEM.CODE].append(str(error_code))
 
                 df = DataFrame(spans)
                 raw_spans.extend(data_partition(df))
@@ -554,30 +556,31 @@ def get_operation_name(cmdid: int, module_name: str) -> str:
     if cmdid in cache['cmd_name'][module_name].keys():
         return cache['cmd_name'][module_name][cmdid]
 
-    params = {
-        'sn': sn,
-        'fields': 'interface_id,name,module_id,module_name,interface_id',
-        'page': 1,
-        'page_size': 1000,
-        'where_module_name': module_name,
-        'where_interface_id': cmdid,
-    }
+    if use_request:
+        params = {
+            'sn': sn,
+            'fields': 'interface_id,name,module_id,module_name,interface_id',
+            'page': 1,
+            'page_size': 1000,
+            'where_module_name': module_name,
+            'where_interface_id': cmdid,
+        }
 
-    try:
-        rsp = requests.get(operation_url, timeout=10, params=params)
-    except Exception as e:
-        print(f"get operation name from cmdb failed:", e)
-    else:
-        if rsp.ok:
-            datas = rsp.json()['data']
-            if len(datas) > 0:
-                name = datas[0]['name']
-                cache['cmd_name'][module_name][cmdid] = name
-                return name
-            # not found
-            cache['cmd_name'][module_name][cmdid] = str(cmdid)
-            return str(cmdid)
-        print(f'cant get operation name, code:', rsp.status_code)
+        try:
+            rsp = requests.get(operation_url, timeout=10, params=params)
+        except Exception as e:
+            print(f"get operation name from cmdb failed:", e)
+        else:
+            if rsp.ok:
+                datas = rsp.json()['data']
+                if len(datas) > 0:
+                    name = datas[0]['name']
+                    cache['cmd_name'][module_name][cmdid] = name
+                    return name
+                # not found
+                cache['cmd_name'][module_name][cmdid] = str(cmdid)
+                return str(cmdid)
+            print(f'cant get operation name, code:', rsp.status_code)
 
     return str(cmdid)
 
@@ -588,27 +591,28 @@ def get_service_name(ossid: int) -> str:
     if ossid in cache['oss_name'].keys():
         return cache['oss_name'][ossid]
 
-    params = {
-        'sn': sn,
-        'fields': 'module_name,ossid,module_id',
-        'where_ossid': ossid,
-    }
+    if use_request:
+        params = {
+            'sn': sn,
+            'fields': 'module_name,ossid,module_id',
+            'where_ossid': ossid,
+        }
 
-    try:
-        rsp = requests.get(service_url, timeout=10, params=params)
-    except Exception as e:
-        print(f"get service name from cmdb failed:", e)
-    else:
-        if rsp.ok:
-            datas = rsp.json()['data']
-            if len(datas) > 0:
-                name = datas[0]['module_name']
-                cache['oss_name'][ossid] = name
-                return name
-            # not found
-            cache['oss_name'][ossid] = str(ossid)
-            return ""
-        print(f'cant get name, code:', rsp.status_code)
+        try:
+            rsp = requests.get(service_url, timeout=10, params=params)
+        except Exception as e:
+            print(f"get service name from cmdb failed:", e)
+        else:
+            if rsp.ok:
+                datas = rsp.json()['data']
+                if len(datas) > 0:
+                    name = datas[0]['module_name']
+                    cache['oss_name'][ossid] = name
+                    return name
+                # not found
+                cache['oss_name'][ossid] = str(ossid)
+                return ""
+            print(f'cant get name, code:', rsp.status_code)
 
     return ""
 
@@ -662,8 +666,9 @@ def task(ns, idx) -> dict:
 
 def main():
     args = arguments()
-    global is_wechat
+    global is_wechat, use_request
     is_wechat = args.wechat
+    use_request = args.use_request
 
     print(f"parallel processing number: {args.cores}")
 
