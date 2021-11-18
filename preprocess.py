@@ -16,6 +16,7 @@ from multiprocessing import Pool, Queue, cpu_count, Manager, current_process
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import requests
 import wordninja
+from transformers import BertTokenizer
 
 data_path_list = [
     # Normal
@@ -141,9 +142,6 @@ mm_data_path_list = [
 
 time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
 
-embedding_word_list = np.load('./data/glove/wordsList.npy').tolist()
-embedding_word_vector = np.load('./data/glove/wordVectors.npy')
-
 # wecath data flag
 is_wechat = False
 use_request = False
@@ -151,6 +149,10 @@ cache_file = './secrets/cache.json'
 
 
 def normalize(x): return x
+
+
+def embedding(input: str) -> List[float]:
+    return []
 
 
 def get_mmapi() -> dict:
@@ -240,6 +242,10 @@ def arguments():
                         action='store_true')
     parser.add_argument('--use-request', dest='use_request', help='use http request when replace id to name',
                         action='store_true')
+    parser.add_argument('--normalize', dest='normalize',
+                        help='normarlize method [zscore/minmax]', default='minmax')
+    parser.add_argument('--embedding', dest='embedding',
+                        help='word embedding method [bert/glove]', default='glove')
     return parser.parse_args()
 
 
@@ -505,9 +511,9 @@ def save_data(graphs: Dict):
     print(f"data saved in {filename}")
 
 
-def str_process(s: str) -> str:
+def divide_word(s: str, sep: str = "/") -> str:
     if is_wechat:
-        return '/'.join(wordninja.split(s))
+        return sep.join(wordninja.split(s))
 
     words = ['ticket', 'order', 'name', 'security',
              'operation', 'spring', 'service', 'trip',
@@ -525,14 +531,14 @@ def str_process(s: str) -> str:
             snake = utils.hump2snake(sub)
             word_list.append(snake)
 
-    return '/'.join(word_list)
+    return sep.join(word_list)
 
 
 def trace_process(trace: List[Span]) -> List[Span]:
     operationMap = {}
     for span in trace:
-        span.service = str_process(span.service)
-        span.operation = str_process(span.operation)
+        span.service = divide_word(span.service)
+        span.operation = divide_word(span.operation)
         if span.spanType == "Entry":
             operationMap[span.parentSpanId] = span.operation
 
@@ -623,16 +629,32 @@ def save_name_cache(cache: dict):
         print('save cache success')
 
 
-def embedding(input: str) -> List[float]:
-    words = input.split('/')
-    vec_sum = []
-    for w in words:
-        if w in embedding_word_list:
-            idx = embedding_word_list.index(w)
-            vec = embedding_word_vector[idx]
-            vec_sum.append(vec)
+def glove_embedding() -> Callable[[str], List[float]]:
+    embedding_word_list = np.load('./data/glove/wordsList.npy').tolist()
+    embedding_word_vector = np.load('./data/glove/wordVectors.npy')
 
-    return np.mean(np.array(vec_sum), axis=0).tolist()
+    def glove(input: str) -> List[float]:
+        words = input.split('/')
+        vec_sum = []
+        for w in words:
+            if w in embedding_word_list:
+                idx = embedding_word_list.index(w)
+                vec = embedding_word_vector[idx]
+                vec_sum.append(vec)
+
+        return np.mean(np.array(vec_sum), axis=0).tolist()
+
+    return glove
+
+
+def bert_embedding() -> Callable[[str], List[float]]:
+    # TODO
+
+    def bert(input: str) -> List[float]:
+        # TODO
+        return input
+
+    return bert
 
 
 def z_score(x: float, mean: float, std: float) -> float:
@@ -677,14 +699,26 @@ def main():
 
     # concat all span data in one list
     span_data = pd.concat(raw_spans, axis=0, ignore_index=True)
-    # duration_mean = span_data[ITEM.DURATION].mean()
-    # duration_std = span_data[ITEM.DURATION].std()
-    duration_max = span_data[ITEM.DURATION].max()
-    duration_min = span_data[ITEM.DURATION].min()
+    global normalize
+    if args.normalize == 'minmax':
+        def normalize(x): return min_max(
+            x, span_data[ITEM.DURATION].max(), span_data[ITEM.DURATION].min())
+    elif args.mormalize == 'zscore':
+        def normalize(x): return z_score(
+            x, span_data[ITEM.DURATION].mean(), span_data[ITEM.DURATION].std())
+    else:
+        print(f"invalid normalize method name: {args.embedding}")
+        exit()
     del span_data
 
-    global normalize
-    def normalize(x): return min_max(x, duration_min, duration_max)
+    global embedding
+    if args.embedding == 'glove':
+        embedding = glove_embedding()
+    elif args.embedding == 'bert':
+        embedding = bert_embedding()
+    else:
+        print(f"invalid embedding method name: {args.embedding}")
+        exit()
 
     result_map = {}
 
