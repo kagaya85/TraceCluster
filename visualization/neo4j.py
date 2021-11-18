@@ -11,7 +11,7 @@ edge_label = 'Call'
 def main():
     # load data
     f = open(preprocessed_file, 'r')
-    print(f"load preprocessed from {preprocessed_file}")
+    print(f"load preprocessed data from {preprocessed_file}")
     data = json.load(f)
     f.close()
 
@@ -66,10 +66,13 @@ def main():
 
 
 def check_node_exists(target, node_list):
+    '''
+    用于判断结点是否已经存在在图中，可以修改判断方法来调整trace中结点的粒度（接口、服务）
+    '''
     for node in node_list:
         if node['traceid'] == target['traceid'] \
-                and node['service'] == target['service'] \
-                and node['operation'] == target['operation']:
+                and node['service'] == target['service']:
+            # and node['operation'] == target['operation']:
             return node
 
     return None
