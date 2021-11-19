@@ -12,7 +12,7 @@ import argparse
 from tqdm import tqdm
 import utils
 from typing import List, Callable, Dict
-from multiprocessing import Pool, Queue, cpu_count, Manager, current_process
+from multiprocessing import cpu_count, Manager, current_process
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import requests
 import wordninja
