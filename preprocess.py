@@ -21,115 +21,115 @@ from transformers import AutoTokenizer
 data_path_list = [
     # Normal
     'data/raw/normal/normal0822_01/SUCCESS_SpanData2021-08-22_15-43-01.csv',
-    # 'data/raw/normal/normal0822_02/SUCCESS2_SpanData2021-08-22_22-04-35.csv',
-    # 'data/raw/normal/normal0823/SUCCESS2_SpanData2021-08-23_15-15-08.csv',
+    'data/raw/normal/normal0822_02/SUCCESS2_SpanData2021-08-22_22-04-35.csv',
+    'data/raw/normal/normal0823/SUCCESS2_SpanData2021-08-23_15-15-08.csv',
 
-    # # F01
-    # 'data/raw/F01-01/SUCCESSF0101_SpanData2021-08-14_10-22-48.csv',
-    # 'data/raw/F01-02/ERROR_F012_SpanData2021-08-14_01-52-43.csv',
-    # 'data/raw/F01-03/SUCCESSerrorf0103_SpanData2021-08-16_16-17-08.csv',
-    # 'data/raw/F01-04/SUCCESSF0104_SpanData2021-08-14_02-14-51.csv',
-    # 'data/raw/F01-05/SUCCESSF0105_SpanData2021-08-14_02-45-59.csv',
+    # F01
+    'data/raw/F01-01/SUCCESSF0101_SpanData2021-08-14_10-22-48.csv',
+    'data/raw/F01-02/ERROR_F012_SpanData2021-08-14_01-52-43.csv',
+    'data/raw/F01-03/SUCCESSerrorf0103_SpanData2021-08-16_16-17-08.csv',
+    'data/raw/F01-04/SUCCESSF0104_SpanData2021-08-14_02-14-51.csv',
+    'data/raw/F01-05/SUCCESSF0105_SpanData2021-08-14_02-45-59.csv',
 
-    # # F02
-    # 'data/raw/F02-01/SUCCESS_errorf0201_SpanData2021-08-17_18-25-59.csv',
-    # 'data/raw/F02-02/SUCCESS_errorf0202_SpanData2021-08-17_18-47-04.csv',
-    # 'data/raw/F02-03/SUCCESS_errorf0203_SpanData2021-08-17_18-54-53.csv',
-    # 'data/raw/F02-04/ERROR_SpanData.csv',
-    # 'data/raw/F02-05/ERROR_SpanData.csv',
-    # 'data/raw/F02-06/ERROR_SpanData.csv',
+    # F02
+    'data/raw/F02-01/SUCCESS_errorf0201_SpanData2021-08-17_18-25-59.csv',
+    'data/raw/F02-02/SUCCESS_errorf0202_SpanData2021-08-17_18-47-04.csv',
+    'data/raw/F02-03/SUCCESS_errorf0203_SpanData2021-08-17_18-54-53.csv',
+    'data/raw/F02-04/ERROR_SpanData.csv',
+    'data/raw/F02-05/ERROR_SpanData.csv',
+    'data/raw/F02-06/ERROR_SpanData.csv',
 
-    # # F03
-    # 'data/raw/F03-01/ERROR_SpanData.csv',
-    # 'data/raw/F03-02/ERROR_SpanData.csv',
-    # 'data/raw/F03-03/ERROR_SpanData.csv',
-    # 'data/raw/F03-04/ERROR_SpanData.csv',
-    # 'data/raw/F03-05/ERROR_SpanData.csv',
-    # 'data/raw/F03-06/ERROR_SpanData.csv',
-    # 'data/raw/F03-07/ERROR_SpanData.csv',
-    # 'data/raw/F03-08/ERROR_SpanData.csv',
+    # F03
+    'data/raw/F03-01/ERROR_SpanData.csv',
+    'data/raw/F03-02/ERROR_SpanData.csv',
+    'data/raw/F03-03/ERROR_SpanData.csv',
+    'data/raw/F03-04/ERROR_SpanData.csv',
+    'data/raw/F03-05/ERROR_SpanData.csv',
+    'data/raw/F03-06/ERROR_SpanData.csv',
+    'data/raw/F03-07/ERROR_SpanData.csv',
+    'data/raw/F03-08/ERROR_SpanData.csv',
 
-    # # F04
-    # 'data/raw/F04-01/ERROR_SpanData.csv',
-    # 'data/raw/F04-02/ERROR_SpanData.csv',
-    # 'data/raw/F04-03/ERROR_SpanData.csv',
-    # 'data/raw/F04-04/ERROR_SpanData.csv',
-    # 'data/raw/F04-05/ERROR_SpanData.csv',
-    # 'data/raw/F04-06/ERROR_SpanData.csv',
-    # 'data/raw/F04-07/ERROR_SpanData.csv',
-    # 'data/raw/F04-08/ERROR_SpanData.csv',
+    # F04
+    'data/raw/F04-01/ERROR_SpanData.csv',
+    'data/raw/F04-02/ERROR_SpanData.csv',
+    'data/raw/F04-03/ERROR_SpanData.csv',
+    'data/raw/F04-04/ERROR_SpanData.csv',
+    'data/raw/F04-05/ERROR_SpanData.csv',
+    'data/raw/F04-06/ERROR_SpanData.csv',
+    'data/raw/F04-07/ERROR_SpanData.csv',
+    'data/raw/F04-08/ERROR_SpanData.csv',
 
-    # # F05
-    # "data/raw/F05-02/ERROR_errorf0502_SpanData2021-08-10_13-53-38.csv",
-    # "data/raw/F05-03/ERROR_SpanData2021-08-07_20-34-09.csv",
-    # "data/raw/F05-04/ERROR_SpanData2021-08-07_21-02-22.csv",
-    # "data/raw/F05-05/ERROR_SpanData2021-08-07_21-28-23.csv",
+    # F05
+    "data/raw/F05-02/ERROR_errorf0502_SpanData2021-08-10_13-53-38.csv",
+    "data/raw/F05-03/ERROR_SpanData2021-08-07_20-34-09.csv",
+    "data/raw/F05-04/ERROR_SpanData2021-08-07_21-02-22.csv",
+    "data/raw/F05-05/ERROR_SpanData2021-08-07_21-28-23.csv",
 
-    # # F07
-    # "data/raw/F07-01/back0729/ERROR_SpanData2021-07-29_10-36-21.csv",
-    # "data/raw/F07-01/back0729/SUCCESS_SpanData2021-07-29_10-38-09.csv",
-    # "data/raw/F07-01/ERROR_errorf0701_SpanData2021-08-10_14-09-59.csv",
-    # "data/raw/F07-02/back0729/ERROR_SpanData2021-07-29_13-58-37.csv",
-    # "data/raw/F07-02/back0729/SUCCESS_SpanData2021-07-29_13-51-48.csv",
-    # "data/raw/F07-02/ERROR_errorf0702_SpanData2021-08-10_14-33-35.csv",
-    # "data/raw/F07-03/ERROR_SpanData2021-08-07_22-53-33.csv",
-    # "data/raw/F07-04/ERROR_SpanData2021-08-07_23-49-11.csv",
-    # "data/raw/F07-05/ERROR_SpanData2021-08-07_23-57-44.csv",
+    # F07
+    "data/raw/F07-01/back0729/ERROR_SpanData2021-07-29_10-36-21.csv",
+    "data/raw/F07-01/back0729/SUCCESS_SpanData2021-07-29_10-38-09.csv",
+    "data/raw/F07-01/ERROR_errorf0701_SpanData2021-08-10_14-09-59.csv",
+    "data/raw/F07-02/back0729/ERROR_SpanData2021-07-29_13-58-37.csv",
+    "data/raw/F07-02/back0729/SUCCESS_SpanData2021-07-29_13-51-48.csv",
+    "data/raw/F07-02/ERROR_errorf0702_SpanData2021-08-10_14-33-35.csv",
+    "data/raw/F07-03/ERROR_SpanData2021-08-07_22-53-33.csv",
+    "data/raw/F07-04/ERROR_SpanData2021-08-07_23-49-11.csv",
+    "data/raw/F07-05/ERROR_SpanData2021-08-07_23-57-44.csv",
 
-    # # F08
-    # "data/raw/F08-01/ERROR_SpanData2021-07-29_19-15-36.csv",
-    # "data/raw/F08-01/SUCCESS_SpanData2021-07-29_19-16-01.csv",
-    # "data/raw/F08-02/ERROR_SpanData2021-07-30_10-13-04.csv",
-    # "data/raw/F08-02/SUCCESS_SpanData2021-07-30_10-13-46.csv",
-    # "data/raw/F08-03/ERROR_SpanData2021-07-30_12-07-36.csv",
-    # "data/raw/F08-03/SUCCESS_SpanData2021-07-30_12-07-23.csv",
-    # "data/raw/F08-04/ERROR_SpanData2021-07-30_14-20-15.csv",
-    # "data/raw/F08-04/SUCCESS_SpanData2021-07-30_14-22-24.csv",
-    # "data/raw/F08-05/ERROR_SpanData2021-07-30_11-00-30.csv",
-    # "data/raw/F08-05/SUCCESS_SpanData2021-07-30_11-01-05.csv",
+    # F08
+    "data/raw/F08-01/ERROR_SpanData2021-07-29_19-15-36.csv",
+    "data/raw/F08-01/SUCCESS_SpanData2021-07-29_19-16-01.csv",
+    "data/raw/F08-02/ERROR_SpanData2021-07-30_10-13-04.csv",
+    "data/raw/F08-02/SUCCESS_SpanData2021-07-30_10-13-46.csv",
+    "data/raw/F08-03/ERROR_SpanData2021-07-30_12-07-36.csv",
+    "data/raw/F08-03/SUCCESS_SpanData2021-07-30_12-07-23.csv",
+    "data/raw/F08-04/ERROR_SpanData2021-07-30_14-20-15.csv",
+    "data/raw/F08-04/SUCCESS_SpanData2021-07-30_14-22-24.csv",
+    "data/raw/F08-05/ERROR_SpanData2021-07-30_11-00-30.csv",
+    "data/raw/F08-05/SUCCESS_SpanData2021-07-30_11-01-05.csv",
 
-    # # F11
-    # "data/raw/F11-01/SUCCESSF1101_SpanData2021-08-14_10-18-35.csv",
-    # "data/raw/F11-02/SUCCESSerrorf1102_SpanData2021-08-16_16-57-36.csv",
-    # "data/raw/F11-03/SUCCESSF1103_SpanData2021-08-14_03-04-11.csv",
-    # "data/raw/F11-04/SUCCESSF1104_SpanData2021-08-14_03-35-38.csv",
-    # "data/raw/F11-05/SUCCESSF1105_SpanData2021-08-14_03-38-35.csv",
+    # F11
+    "data/raw/F11-01/SUCCESSF1101_SpanData2021-08-14_10-18-35.csv",
+    "data/raw/F11-02/SUCCESSerrorf1102_SpanData2021-08-16_16-57-36.csv",
+    "data/raw/F11-03/SUCCESSF1103_SpanData2021-08-14_03-04-11.csv",
+    "data/raw/F11-04/SUCCESSF1104_SpanData2021-08-14_03-35-38.csv",
+    "data/raw/F11-05/SUCCESSF1105_SpanData2021-08-14_03-38-35.csv",
 
-    # # F12
-    # "data/raw/F12-01/ERROR_SpanData2021-08-12_16-17-46.csv",
-    # "data/raw/F12-02/ERROR_SpanData2021-08-12_16-24-54.csv",
-    # "data/raw/F12-03/ERROR_SpanData2021-08-12_16-36-33.csv",
-    # "data/raw/F12-04/ERROR_SpanData2021-08-12_17-04-34.csv",
-    # "data/raw/F12-05/ERROR_SpanData2021-08-12_16-49-08.csv",
+    # F12
+    "data/raw/F12-01/ERROR_SpanData2021-08-12_16-17-46.csv",
+    "data/raw/F12-02/ERROR_SpanData2021-08-12_16-24-54.csv",
+    "data/raw/F12-03/ERROR_SpanData2021-08-12_16-36-33.csv",
+    "data/raw/F12-04/ERROR_SpanData2021-08-12_17-04-34.csv",
+    "data/raw/F12-05/ERROR_SpanData2021-08-12_16-49-08.csv",
 
-    # # F13
-    # "data/raw/F13-01/SUCCESSerrorf1301_SpanData2021-08-16_21-01-36.csv",
-    # "data/raw/F13-02/SUCCESS_SpanData2021-08-13_17-34-58.csv",
-    # "data/raw/F13-03/SUCCESSerrorf1303_SpanData2021-08-16_18-55-52.csv",
-    # "data/raw/F13-04/SUCCESSF1304_SpanData2021-08-14_10-50-42.csv",
-    # "data/raw/F13-05/SUCCESSF1305_SpanData2021-08-14_11-13-43.csv",
+    # F13
+    "data/raw/F13-01/SUCCESSerrorf1301_SpanData2021-08-16_21-01-36.csv",
+    "data/raw/F13-02/SUCCESS_SpanData2021-08-13_17-34-58.csv",
+    "data/raw/F13-03/SUCCESSerrorf1303_SpanData2021-08-16_18-55-52.csv",
+    "data/raw/F13-04/SUCCESSF1304_SpanData2021-08-14_10-50-42.csv",
+    "data/raw/F13-05/SUCCESSF1305_SpanData2021-08-14_11-13-43.csv",
 
-    # # F14
-    # "data/raw/F14-01/SUCCESS_SpanData2021-08-12_14-56-41.csv",
-    # "data/raw/F14-02/SUCCESS_SpanData2021-08-12_15-24-50.csv",
-    # "data/raw/F14-03/SUCCESS_SpanData2021-08-12_15-46-08.csv",
+    # F14
+    "data/raw/F14-01/SUCCESS_SpanData2021-08-12_14-56-41.csv",
+    "data/raw/F14-02/SUCCESS_SpanData2021-08-12_15-24-50.csv",
+    "data/raw/F14-03/SUCCESS_SpanData2021-08-12_15-46-08.csv",
 
-    # # F23
-    # "data/raw/F23-01/ERROR_SpanData2021-08-07_20-30-26.csv",
-    # "data/raw/F23-02/ERROR_SpanData2021-08-07_20-51-14.csv",
-    # "data/raw/F23-03/ERROR_SpanData2021-08-07_21-10-11.csv",
-    # "data/raw/F23-04/ERROR_SpanData2021-08-07_21-34-47.csv",
-    # "data/raw/F23-05/ERROR_SpanData2021-08-07_22-02-42.csv",
+    # F23
+    "data/raw/F23-01/ERROR_SpanData2021-08-07_20-30-26.csv",
+    "data/raw/F23-02/ERROR_SpanData2021-08-07_20-51-14.csv",
+    "data/raw/F23-03/ERROR_SpanData2021-08-07_21-10-11.csv",
+    "data/raw/F23-04/ERROR_SpanData2021-08-07_21-34-47.csv",
+    "data/raw/F23-05/ERROR_SpanData2021-08-07_22-02-42.csv",
 
-    # # F24
-    # "data/raw/F24-01/ERROR_SpanData.csv",
-    # "data/raw/F24-02/ERROR_SpanData.csv",
-    # "data/raw/F24-03/ERROR_SpanData.csv",
+    # F24
+    "data/raw/F24-01/ERROR_SpanData.csv",
+    "data/raw/F24-02/ERROR_SpanData.csv",
+    "data/raw/F24-03/ERROR_SpanData.csv",
 
-    # # F25
-    # "data/raw/F25-01/ERROR_SpanData2021-08-16_11-17-21.csv",
-    # "data/raw/F25-02/ERROR_SpanData2021-08-16_11-21-59.csv",
-    # "data/raw/F25-03/ERROR_SpanData2021-08-16_12-20-59.csv",
+    # F25
+    "data/raw/F25-01/ERROR_SpanData2021-08-16_11-17-21.csv",
+    "data/raw/F25-02/ERROR_SpanData2021-08-16_11-21-59.csv",
+    "data/raw/F25-03/ERROR_SpanData2021-08-16_12-20-59.csv",
 ]
 
 mm_data_path_list = [
@@ -260,8 +260,8 @@ def load_span() -> List[DataFrame]:
 
                 # convert to dataframe
                 for s in tqdm(mmspans):
-                    spans[ITEM.SPAN_ID].append(str(s['CalleeCmdID']))
-                    spans[ITEM.PARENT_SPAN_ID].append(str(s['CallerCmdID']))
+                    spans[ITEM.SPAN_ID].append(str(s['CalleeNodeID']))
+                    spans[ITEM.PARENT_SPAN_ID].append(str(s['CallerNodeID']))
                     spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
                     spans[ITEM.SPAN_TYPE].append('EntrySpan')
                     st = datetime.strptime(s['TimeStamp'], '%Y-%m-%d %H:%M:%S')
@@ -460,8 +460,8 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
             # operation = cache['cmd_name'][service][e['parentSpanId']]
             # vertexs[id] = embedding('/'.join([service, operation, '0']))
 
-    if ipc != 1:
-        return None
+    # if ipc != 1:
+    #     return None
 
     edges[0] = edges.pop(isolate_point_id)
 
@@ -491,17 +491,19 @@ def load_name_cache() -> dict:
     return cache
 
 
-def save_data(graphs: Dict):
+def save_data(graphs: Dict, embedding: str):
     """
     save graph data to json file
     """
 
+    name = embedding + '_' + time_now_str+'.json'
+
     if is_wechat:
         filename = os.path.join(os.getcwd(), 'data',
-                                'preprocessed', 'wechat', time_now_str+'.json')
+                                'preprocessed', 'wechat', name)
     else:
         filename = os.path.join(os.getcwd(), 'data',
-                                'preprocessed', time_now_str+'.json')
+                                'preprocessed', name)
     print(f'prepare saving to {filename}')
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 
@@ -758,7 +760,7 @@ def main():
                 result_map = utils.mergeDict(result_map, fu.result())
 
     print("saving data..., map size: {}".format(getsizeof(result_map)))
-    save_data(result_map)
+    save_data(result_map, args.embedding)
 
 
 if __name__ == '__main__':

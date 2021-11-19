@@ -2,7 +2,7 @@ from py2neo import Node, Relationship, Graph, Subgraph
 from tqdm import tqdm
 import json
 
-preprocessed_file = '../data/preprocessed/wechat/2021-11-15_16-41-38.json'
+preprocessed_file = 'data/preprocessed/wechat/2021-11-19_15-37-28.json'
 
 node_label = 'Operation'
 edge_label = 'Call'
@@ -71,8 +71,7 @@ def check_node_exists(target, node_list):
     '''
     for node in node_list:
         if node['traceid'] == target['traceid'] \
-                and node['service'] == target['service']:
-            # and node['operation'] == target['operation']:
+                and node['spanid'] == target['spanid']:
             return node
 
     return None
