@@ -35,8 +35,8 @@ class TraceClusterDataset(Dataset):
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
         # file_list = ['2021-10-13_16-57-51.json']
         # file_list = ['2021-11-09_21-10-48.json']
-        # file_list = ['2021-11-08_19-21-29.json']
-        file_list = ['2021-11-10_21-13-58.json']
+        file_list = ['2021-11-08_19-21-29.json']
+        # file_list = ['wechat/2021-11-15_16-41-38.json']
         # file_list = ['1.json']
 
         path_list = []
@@ -95,7 +95,7 @@ class TraceClusterDataset(Dataset):
             )
 
             # test
-            #if data.trace_id == '1e3c47720fe24523938fff342ebe6c0d.35.16288656971030003':
+            # if data.trace_id == '1e3c47720fe24523938fff342ebe6c0d.35.16288656971030003':
             #    data.edge_attr = data.edge_attr * 1000
 
             filename = osp.join(self.processed_dir, 'data_{}.pt'.format(idx))

@@ -12,10 +12,11 @@ import argparse
 from tqdm import tqdm
 import utils
 from typing import List, Callable, Dict
-from multiprocessing import Pool, Queue, cpu_count, Manager, current_process
+from multiprocessing import cpu_count, Manager, current_process
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import requests
 import wordninja
+from transformers import AutoTokenizer
 
 data_path_list = [
     # Normal
@@ -136,13 +137,11 @@ mm_data_path_list = [
     # 'data/raw/wechat/5-18/finer_data2.json',
     # 'data/raw/wechat/8-2/data.json',
     # 'data/raw/wechat/8-3/data.json',
-    'data/raw/wechat/11-9/data.json',
+    # 'data/raw/wechat/11-9/data.json',
+    'data/raw/wecaht/11-18/call_graph_2021-11-18_61266.csv'
 ]
 
 time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
-
-embedding_word_list = np.load('./data/glove/wordsList.npy').tolist()
-embedding_word_vector = np.load('./data/glove/wordVectors.npy')
 
 # wecath data flag
 is_wechat = False
@@ -153,30 +152,16 @@ cache_file = './secrets/cache.json'
 def normalize(x): return x
 
 
-def get_mmapi() -> dict:
-    api_file = './secrets/api.yaml'
-    print(f"read api url from {api_file}")
-
-    with open(api_file, 'r', encoding='utf-8') as f:
-        data = yaml.safe_load(f)
-
-    return data
-
-
-def load_name_cache() -> dict:
-    with open(cache_file, 'r') as f:
-        cache = json.load(f)
-        print(f"load cache from {cache_file}")
-
-    return cache
+def embedding(input: str) -> List[float]:
+    return []
 
 
 # load name cache
-cache = load_name_cache()
-mmapis = get_mmapi()
-service_url = mmapis['api']['getApps']
-operation_url = mmapis['api']['getModuleInterface']
-sn = mmapis['sn']
+cache = {}
+mmapis = {}
+service_url = ""
+operation_url = ""
+sn = ""
 
 
 class Item:
@@ -240,6 +225,10 @@ def arguments():
                         action='store_true')
     parser.add_argument('--use-request', dest='use_request', help='use http request when replace id to name',
                         action='store_true')
+    parser.add_argument('--normalize', dest='normalize',
+                        help='normarlize method [zscore/minmax]', default='minmax')
+    parser.add_argument('--embedding', dest='embedding',
+                        help='word embedding method [bert/glove]', default='bert')
     return parser.parse_args()
 
 
@@ -253,62 +242,68 @@ def load_span() -> List[DataFrame]:
         # wechat data
         for filepath in mm_data_path_list:
             print(f"load wechat span data from {filepath}")
-            with open(filepath, 'r') as f:
-                raw_data = json.load(f)
+            if filepath.endswith('.json'):
+                with open(filepath, 'r') as f:
+                    raw_data = json.load(f)
                 mmspans = raw_data['data']
-                spans = {
-                    ITEM.SPAN_ID: [],
-                    ITEM.PARENT_SPAN_ID: [],
-                    ITEM.TRACE_ID: [],
-                    ITEM.SPAN_TYPE: [],
-                    ITEM.START_TIME: [],
-                    ITEM.DURATION: [],
-                    ITEM.SERVICE: [],
-                    ITEM.PEER: [],
-                    ITEM.OPERATION: [],
-                    ITEM.IS_ERROR: [],
-                    ITEM.CODE: [],
-                }
+            elif filepath.endswith('.csv'):
+                raw_data = pd.read_csv(filepath).drop_duplicates().dropna()
+                mmspans = raw_data.iterrows()
+            else:
+                print(f'invalid file type: {filepath}')
+                continue
 
-                # convert to dataframe
-                for s in tqdm(mmspans):
-                    spans[ITEM.SPAN_ID].append(str(s['CalleeCmdID']))
-                    spans[ITEM.PARENT_SPAN_ID].append(str(s['CallerCmdID']))
-                    spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
-                    spans[ITEM.SPAN_TYPE].append('EntrySpan')
-                    st = datetime.strptime(s['TimeStamp'], '%Y-%m-%d %H:%M:%S')
-                    spans[ITEM.START_TIME].append(int(datetime.timestamp(st)))
-                    spans[ITEM.DURATION].append(int(s['CostTime']))
+            spans = {
+                ITEM.SPAN_ID: [],
+                ITEM.PARENT_SPAN_ID: [],
+                ITEM.TRACE_ID: [],
+                ITEM.SPAN_TYPE: [],
+                ITEM.START_TIME: [],
+                ITEM.DURATION: [],
+                ITEM.SERVICE: [],
+                ITEM.PEER: [],
+                ITEM.OPERATION: [],
+                ITEM.IS_ERROR: [],
+                ITEM.CODE: [],
+            }
 
-                    # 尝试替换id为name
-                    service_name = get_service_name(s['CalleeOssID'])
-                    if service_name == "":
-                        spans[ITEM.SERVICE].append(str(s['CalleeOssID']))
-                    else:
-                        spans[ITEM.SERVICE].append(service_name)
+            # convert to dataframe
+            for s in tqdm(mmspans):
+                spans[ITEM.SPAN_ID].append(str(s['CalleeNodeID']))
+                spans[ITEM.PARENT_SPAN_ID].append(str(s['CallerNodeID']))
+                spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
+                spans[ITEM.SPAN_TYPE].append('EntrySpan')
+                st = datetime.strptime(s['TimeStamp'], '%Y-%m-%d %H:%M:%S')
+                spans[ITEM.START_TIME].append(int(datetime.timestamp(st)))
+                spans[ITEM.DURATION].append(int(s['CostTime']))
 
-                    spans[ITEM.OPERATION].append(
-                        get_operation_name(s['CalleeCmdID'], service_name))
+                # 尝试替换id为name
+                service_name = get_service_name(s['CalleeOssID'])
+                if service_name == "":
+                    spans[ITEM.SERVICE].append(str(s['CalleeOssID']))
+                else:
+                    spans[ITEM.SERVICE].append(service_name)
 
-                    peer_service_name = get_service_name(s['CallerOssID'])
-                    peer_cmd_name = get_operation_name(
-                        s['CallerCmdID'], peer_service_name)
+                spans[ITEM.OPERATION].append(
+                    get_operation_name(s['CalleeCmdID'], service_name))
 
-                    if peer_service_name == "":
-                        spans[ITEM.PEER].append(
-                            '/'.join([str(s['CallerOssID']), peer_cmd_name]))
-                    else:
-                        spans[ITEM.PEER].append(
-                            '/'.join([peer_service_name, peer_cmd_name]))
+                peer_service_name = get_service_name(s['CallerOssID'])
+                peer_cmd_name = get_operation_name(
+                    s['CallerCmdID'], peer_service_name)
 
-                    error_code = s['NetworkRet'] if s['NetworkRet'] != 0 else s['ServiceRet']
-                    spans[ITEM.IS_ERROR].append(utils.int2Bool(error_code))
-                    spans[ITEM.CODE].append(str(error_code))
+                if peer_service_name == "":
+                    spans[ITEM.PEER].append(
+                        '/'.join([str(s['CallerOssID']), peer_cmd_name]))
+                else:
+                    spans[ITEM.PEER].append(
+                        '/'.join([peer_service_name, peer_cmd_name]))
 
-                df = DataFrame(spans)
-                raw_spans.extend(data_partition(df))
+                error_code = s['NetworkRet'] if s['NetworkRet'] != 0 else s['ServiceRet']
+                spans[ITEM.IS_ERROR].append(utils.int2Bool(error_code))
+                spans[ITEM.CODE].append(str(error_code))
 
-        save_name_cache(cache)
+            df = DataFrame(spans)
+            raw_spans.extend(data_partition(df))
 
     else:
         # skywalking data
@@ -324,6 +319,9 @@ def load_span() -> List[DataFrame]:
             raw_spans.extend(data_partition(spans))
 
     return raw_spans
+
+
+def convert
 
 
 def data_partition(data: DataFrame, size: int = 1024) -> List[DataFrame]:
@@ -472,8 +470,8 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
             # operation = cache['cmd_name'][service][e['parentSpanId']]
             # vertexs[id] = embedding('/'.join([service, operation, '0']))
 
-    if ipc != 1:
-        return None
+    # if ipc != 1:
+    #     return None
 
     edges[0] = edges.pop(isolate_point_id)
 
@@ -485,17 +483,37 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
     return graph
 
 
-def save_data(graphs: Dict):
+def get_mmapi() -> dict:
+    api_file = './secrets/api.yaml'
+    print(f"read api url from {api_file}")
+
+    with open(api_file, 'r', encoding='utf-8') as f:
+        data = yaml.safe_load(f)
+
+    return data
+
+
+def load_name_cache() -> dict:
+    with open(cache_file, 'r') as f:
+        cache = json.load(f)
+        print(f"load cache from {cache_file}")
+
+    return cache
+
+
+def save_data(graphs: Dict, embedding: str):
     """
     save graph data to json file
     """
 
+    name = embedding + '_' + time_now_str+'.json'
+
     if is_wechat:
         filename = os.path.join(os.getcwd(), 'data',
-                                'preprocessed', 'wechat', time_now_str+'.json')
+                                'preprocessed', 'wechat', name)
     else:
         filename = os.path.join(os.getcwd(), 'data',
-                                'preprocessed', time_now_str+'.json')
+                                'preprocessed', name)
     print(f'prepare saving to {filename}')
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 
@@ -505,9 +523,9 @@ def save_data(graphs: Dict):
     print(f"data saved in {filename}")
 
 
-def str_process(s: str) -> str:
+def divide_word(s: str, sep: str = "/") -> str:
     if is_wechat:
-        return '/'.join(wordninja.split(s))
+        return sep.join(wordninja.split(s))
 
     words = ['ticket', 'order', 'name', 'security',
              'operation', 'spring', 'service', 'trip',
@@ -525,14 +543,15 @@ def str_process(s: str) -> str:
             snake = utils.hump2snake(sub)
             word_list.append(snake)
 
-    return '/'.join(word_list)
+    return sep.join(word_list)
 
 
-def trace_process(trace: List[Span]) -> List[Span]:
+def trace_process(trace: List[Span], enable_word_division: bool) -> List[Span]:
     operationMap = {}
     for span in trace:
-        span.service = str_process(span.service)
-        span.operation = str_process(span.operation)
+        if enable_word_division:
+            span.service = divide_word(span.service)
+            span.operation = divide_word(span.operation)
         if span.spanType == "Entry":
             operationMap[span.parentSpanId] = span.operation
 
@@ -623,16 +642,36 @@ def save_name_cache(cache: dict):
         print('save cache success')
 
 
-def embedding(input: str) -> List[float]:
-    words = input.split('/')
-    vec_sum = []
-    for w in words:
-        if w in embedding_word_list:
-            idx = embedding_word_list.index(w)
-            vec = embedding_word_vector[idx]
-            vec_sum.append(vec)
+def glove_embedding() -> Callable[[str], List[float]]:
+    embedding_word_list = np.load('./data/glove/wordsList.npy').tolist()
+    embedding_word_vector = np.load('./data/glove/wordVectors.npy')
 
-    return np.mean(np.array(vec_sum), axis=0).tolist()
+    def glove(input: str) -> List[float]:
+        words = input.split('/')
+        vec_sum = []
+        for w in words:
+            if w in embedding_word_list:
+                idx = embedding_word_list.index(w)
+                vec = embedding_word_vector[idx]
+                vec_sum.append(vec)
+
+        return np.mean(np.array(vec_sum), axis=0).tolist()
+
+    return glove
+
+
+def bert_embedding() -> Callable[[str], List[float]]:
+    model_name = 'bert-base-uncased'
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_name, do_lower_case=True, cache_dir='./data/cache')
+
+    def bert(input: str) -> List[float]:
+        encoded = tokenizer(
+            input, padding='max_length', max_length=100)
+
+        return encoded['input_ids']
+
+    return bert
 
 
 def z_score(x: float, mean: float, std: float) -> float:
@@ -649,14 +688,14 @@ def min_max(x: float, min: float, max: float) -> float:
     return (x - min) / (max - min)
 
 
-def task(ns, idx) -> dict:
+def task(ns, idx, divide_word: bool = True) -> dict:
     span_data = ns.sl[idx]
     current = current_process()
     pos = current._identity[0]-1
     graph_map = {}
     for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID]), desc="processing #{:0>2d}".format(idx), position=pos):
         trace = [Span(raw_span) for idx, raw_span in trace_data.iterrows()]
-        graph = build_graph(trace_process(trace), normalize)
+        graph = build_graph(trace_process(trace, divide_word), normalize)
         if graph == None:
             continue
         graph_map[trace_id] = graph
@@ -670,21 +709,55 @@ def main():
     is_wechat = args.wechat
     use_request = args.use_request
 
+    if is_wechat:
+        global cache, mmapis, service_url, operation_url, sn
+        cache = load_name_cache()
+        if use_request:
+            mmapis = get_mmapi()
+            service_url = mmapis['api']['getApps']
+            operation_url = mmapis['api']['getModuleInterface']
+            sn = mmapis['sn']
+
     print(f"parallel processing number: {args.cores}")
 
     # load all span
     raw_spans = load_span()
 
+    if is_wechat and use_request:
+        save_name_cache(cache)
+
     # concat all span data in one list
     span_data = pd.concat(raw_spans, axis=0, ignore_index=True)
-    # duration_mean = span_data[ITEM.DURATION].mean()
-    # duration_std = span_data[ITEM.DURATION].std()
-    duration_max = span_data[ITEM.DURATION].max()
-    duration_min = span_data[ITEM.DURATION].min()
+    global normalize
+    if args.normalize == 'minmax':
+        max_duration = span_data[ITEM.DURATION].max()
+        min_duration = span_data[ITEM.DURATION].min()
+
+        def normalize(x): return min_max(
+            x, max_duration, min_duration)
+
+    elif args.normalize == 'zscore':
+        mean_duration = span_data[ITEM.DURATION].mean()
+        std_duration = span_data[ITEM.DURATION].std()
+
+        def normalize(x): return z_score(
+            x, mean_duration, std_duration)
+
+    else:
+        print(f"invalid normalize method name: {args.embedding}")
+        exit()
     del span_data
 
-    global normalize
-    def normalize(x): return min_max(x, duration_min, duration_max)
+    global embedding
+    if args.embedding == 'glove':
+        embedding = glove_embedding()
+        enable_word_division = True
+    elif args.embedding == 'bert':
+        embedding = bert_embedding()
+        enable_word_division = False
+    else:
+        print(f"invalid embedding method name: {args.embedding}")
+        exit()
 
     result_map = {}
 
@@ -694,13 +767,13 @@ def main():
         ns.sl = raw_spans
         with ProcessPoolExecutor(args.cores) as exe:
             data_size = len(raw_spans)
-            fs = [exe.submit(task, ns, idx)
+            fs = [exe.submit(task, ns, idx, enable_word_division)
                   for idx in range(data_size)]
             for fu in as_completed(fs):
                 result_map = utils.mergeDict(result_map, fu.result())
 
     print("saving data..., map size: {}".format(getsizeof(result_map)))
-    save_data(result_map)
+    save_data(result_map, args.embedding)
 
 
 if __name__ == '__main__':

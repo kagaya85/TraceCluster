@@ -27,5 +27,10 @@ Dataset：
 ####
 
 - [x] dbscan
-- [ ] 预处理并行
-- [ ] 微信数据适配
+- [x] 预处理并行
+- [x] 微信数据适配
+
+
+### 11.18
+
+- [ ] embedding与build graph并行
