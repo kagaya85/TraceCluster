@@ -137,7 +137,8 @@ mm_data_path_list = [
     # 'data/raw/wechat/5-18/finer_data2.json',
     # 'data/raw/wechat/8-2/data.json',
     # 'data/raw/wechat/8-3/data.json',
-    'data/raw/wechat/11-9/data.json',
+    # 'data/raw/wechat/11-9/data.json',
+    'data/raw/wecaht/11-18/call_graph_2021-11-18_61266.csv'
 ]
 
 time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
@@ -241,62 +242,68 @@ def load_span() -> List[DataFrame]:
         # wechat data
         for filepath in mm_data_path_list:
             print(f"load wechat span data from {filepath}")
-            with open(filepath, 'r') as f:
-                raw_data = json.load(f)
+            if filepath.endswith('.json'):
+                with open(filepath, 'r') as f:
+                    raw_data = json.load(f)
                 mmspans = raw_data['data']
-                spans = {
-                    ITEM.SPAN_ID: [],
-                    ITEM.PARENT_SPAN_ID: [],
-                    ITEM.TRACE_ID: [],
-                    ITEM.SPAN_TYPE: [],
-                    ITEM.START_TIME: [],
-                    ITEM.DURATION: [],
-                    ITEM.SERVICE: [],
-                    ITEM.PEER: [],
-                    ITEM.OPERATION: [],
-                    ITEM.IS_ERROR: [],
-                    ITEM.CODE: [],
-                }
+            elif filepath.endswith('.csv'):
+                raw_data = pd.read_csv(filepath).drop_duplicates().dropna()
+                mmspans = raw_data.iterrows()
+            else:
+                print(f'invalid file type: {filepath}')
+                continue
 
-                # convert to dataframe
-                for s in tqdm(mmspans):
-                    spans[ITEM.SPAN_ID].append(str(s['CalleeNodeID']))
-                    spans[ITEM.PARENT_SPAN_ID].append(str(s['CallerNodeID']))
-                    spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
-                    spans[ITEM.SPAN_TYPE].append('EntrySpan')
-                    st = datetime.strptime(s['TimeStamp'], '%Y-%m-%d %H:%M:%S')
-                    spans[ITEM.START_TIME].append(int(datetime.timestamp(st)))
-                    spans[ITEM.DURATION].append(int(s['CostTime']))
+            spans = {
+                ITEM.SPAN_ID: [],
+                ITEM.PARENT_SPAN_ID: [],
+                ITEM.TRACE_ID: [],
+                ITEM.SPAN_TYPE: [],
+                ITEM.START_TIME: [],
+                ITEM.DURATION: [],
+                ITEM.SERVICE: [],
+                ITEM.PEER: [],
+                ITEM.OPERATION: [],
+                ITEM.IS_ERROR: [],
+                ITEM.CODE: [],
+            }
 
-                    # 尝试替换id为name
-                    service_name = get_service_name(s['CalleeOssID'])
-                    if service_name == "":
-                        spans[ITEM.SERVICE].append(str(s['CalleeOssID']))
-                    else:
-                        spans[ITEM.SERVICE].append(service_name)
+            # convert to dataframe
+            for s in tqdm(mmspans):
+                spans[ITEM.SPAN_ID].append(str(s['CalleeNodeID']))
+                spans[ITEM.PARENT_SPAN_ID].append(str(s['CallerNodeID']))
+                spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
+                spans[ITEM.SPAN_TYPE].append('EntrySpan')
+                st = datetime.strptime(s['TimeStamp'], '%Y-%m-%d %H:%M:%S')
+                spans[ITEM.START_TIME].append(int(datetime.timestamp(st)))
+                spans[ITEM.DURATION].append(int(s['CostTime']))
 
-                    spans[ITEM.OPERATION].append(
-                        get_operation_name(s['CalleeCmdID'], service_name))
+                # 尝试替换id为name
+                service_name = get_service_name(s['CalleeOssID'])
+                if service_name == "":
+                    spans[ITEM.SERVICE].append(str(s['CalleeOssID']))
+                else:
+                    spans[ITEM.SERVICE].append(service_name)
 
-                    peer_service_name = get_service_name(s['CallerOssID'])
-                    peer_cmd_name = get_operation_name(
-                        s['CallerCmdID'], peer_service_name)
+                spans[ITEM.OPERATION].append(
+                    get_operation_name(s['CalleeCmdID'], service_name))
 
-                    if peer_service_name == "":
-                        spans[ITEM.PEER].append(
-                            '/'.join([str(s['CallerOssID']), peer_cmd_name]))
-                    else:
-                        spans[ITEM.PEER].append(
-                            '/'.join([peer_service_name, peer_cmd_name]))
+                peer_service_name = get_service_name(s['CallerOssID'])
+                peer_cmd_name = get_operation_name(
+                    s['CallerCmdID'], peer_service_name)
 
-                    error_code = s['NetworkRet'] if s['NetworkRet'] != 0 else s['ServiceRet']
-                    spans[ITEM.IS_ERROR].append(utils.int2Bool(error_code))
-                    spans[ITEM.CODE].append(str(error_code))
+                if peer_service_name == "":
+                    spans[ITEM.PEER].append(
+                        '/'.join([str(s['CallerOssID']), peer_cmd_name]))
+                else:
+                    spans[ITEM.PEER].append(
+                        '/'.join([peer_service_name, peer_cmd_name]))
 
-                df = DataFrame(spans)
-                raw_spans.extend(data_partition(df))
+                error_code = s['NetworkRet'] if s['NetworkRet'] != 0 else s['ServiceRet']
+                spans[ITEM.IS_ERROR].append(utils.int2Bool(error_code))
+                spans[ITEM.CODE].append(str(error_code))
 
-        save_name_cache(cache)
+            df = DataFrame(spans)
+            raw_spans.extend(data_partition(df))
 
     else:
         # skywalking data
@@ -312,6 +319,9 @@ def load_span() -> List[DataFrame]:
             raw_spans.extend(data_partition(spans))
 
     return raw_spans
+
+
+def convert
 
 
 def data_partition(data: DataFrame, size: int = 1024) -> List[DataFrame]:
@@ -712,6 +722,9 @@ def main():
 
     # load all span
     raw_spans = load_span()
+
+    if is_wechat and use_request:
+        save_name_cache(cache)
 
     # concat all span data in one list
     span_data = pd.concat(raw_spans, axis=0, ignore_index=True)
