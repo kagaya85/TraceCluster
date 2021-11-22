@@ -2,7 +2,7 @@ from py2neo import Node, Relationship, Graph, Subgraph
 from tqdm import tqdm
 import json
 
-preprocessed_file = 'data/preprocessed/wechat/2021-11-19_15-37-28.json'
+preprocessed_file = 'data/preprocessed/wechat/bert_2021-11-22_15-18-44.json'
 
 node_label = 'Operation'
 edge_label = 'Call'

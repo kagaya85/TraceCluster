@@ -138,7 +138,7 @@ mm_data_path_list = [
     # 'data/raw/wechat/8-2/data.json',
     # 'data/raw/wechat/8-3/data.json',
     # 'data/raw/wechat/11-9/data.json',
-    'data/raw/wecaht/11-18/call_graph_2021-11-18_61266.csv'
+    'data/raw/wechat/11-18/call_graph_2021-11-18_61266.csv'
 ]
 
 time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
@@ -247,7 +247,7 @@ def load_span() -> List[DataFrame]:
                     raw_data = json.load(f)
                 mmspans = raw_data['data']
             elif filepath.endswith('.csv'):
-                raw_data = pd.read_csv(filepath).drop_duplicates().dropna()
+                raw_data = pd.read_csv(filepath).drop_duplicates()
                 mmspans = raw_data.iterrows()
             else:
                 print(f'invalid file type: {filepath}')
@@ -268,7 +268,7 @@ def load_span() -> List[DataFrame]:
             }
 
             # convert to dataframe
-            for s in tqdm(mmspans):
+            for i, s in tqdm(mmspans):
                 spans[ITEM.SPAN_ID].append(str(s['CalleeNodeID']))
                 spans[ITEM.PARENT_SPAN_ID].append(str(s['CallerNodeID']))
                 spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
@@ -319,9 +319,6 @@ def load_span() -> List[DataFrame]:
             raw_spans.extend(data_partition(spans))
 
     return raw_spans
-
-
-def convert
 
 
 def data_partition(data: DataFrame, size: int = 1024) -> List[DataFrame]:
@@ -514,7 +511,6 @@ def save_data(graphs: Dict, embedding: str):
     else:
         filename = os.path.join(os.getcwd(), 'data',
                                 'preprocessed', name)
-    print(f'prepare saving to {filename}')
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 
     with open(filename, 'w', encoding='utf-8') as fd:

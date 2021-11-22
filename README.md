@@ -20,10 +20,22 @@ python preprocess.py
 
 # use wechat data
 python preprocess.py --wechat
+
+# use globe embedding (default bert)
+python preprocess.py --embedding glove
+
+# use z-score normalize (default minmax)
+python preprocess.py --normalize zscore
 ```
 
 ### Train model
 
 ```python
 python train.py
+```
+
+### Cluster
+
+```shell
+python cluster_method_name.py
 ```

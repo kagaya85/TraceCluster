@@ -111,7 +111,6 @@ def evaluate_embedding(embeddings, labels, search=True):
 
 def main():
     args = arguments()
-    print('----------------------')
 
     # accuracies = {'val': [], 'test': []}
     epochs = args.epochs
@@ -128,10 +127,17 @@ def main():
         root=dataroot, aug=args.aug).shuffle()
     dataset_eval = TraceClusterDataset(
         root=dataroot, aug='none').shuffle()
+
+    print('----------------------')
     print("dataset size:", len(dataset))
+    print("feature number:", dataset.get_num_feature())
+    print('batch_size: {}'.format(batch_size))
+    print('lr: {}'.format(lr))
+    print('hidden_dim: {}'.format(args.hidden_dim))
+    print('num_gc_layers: {}'.format(args.num_gc_layers))
+    print('----------------------')
 
     # get feature dim
-    print("feature number:", dataset.get_num_feature())
     try:
         dataset_num_features = dataset.get_num_feature()
     except:
@@ -147,12 +153,6 @@ def main():
                    args.prior, dataset_num_features).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-
-    print('batch_size: {}'.format(batch_size))
-    print('lr: {}'.format(lr))
-    print('hidden_dim: {}'.format(args.hidden_dim))
-    print('num_gc_layers: {}'.format(args.num_gc_layers))
-    print('----------------------')
 
     # model.eval()
     # emb, y = model.encoder.get_embeddings(dataloader_eval)
