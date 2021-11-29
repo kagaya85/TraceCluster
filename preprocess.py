@@ -138,7 +138,13 @@ mm_data_path_list = [
     # 'data/raw/wechat/8-2/data.json',
     # 'data/raw/wechat/8-3/data.json',
     # 'data/raw/wechat/11-9/data.json',
-    'data/raw/wechat/11-18/call_graph_2021-11-18_61266.csv'
+    # 'data/raw/wechat/11-18/call_graph_2021-11-18_61266.csv'
+    # 'data/raw/wechat/11-22/call_graph_2021-11-22_23629.csv'
+    'data/raw/wechat/11-22/call_graph_2021-11-29_23629.csv',
+]
+
+mm_trace_root_list = [
+    'data/raw/wechat/11-22/click_stream_2021-11-29_23629.csv'
 ]
 
 time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
@@ -159,6 +165,7 @@ def embedding(input: str) -> List[float]:
 # load name cache
 cache = {}
 mmapis = {}
+mm_root_map = {}
 service_url = ""
 operation_url = ""
 sn = ""
@@ -240,6 +247,19 @@ def load_span() -> List[DataFrame]:
 
     if is_wechat:
         # wechat data
+
+        # load root info
+        global mm_root_map
+        for path in mm_trace_root_list:
+            clickstreams = pd.read_csv(path)
+            for _, root in clickstreams.iterrows():
+                mm_root_map[root['GraphIdBase64']] = {
+                    'ossid': root['CallerOssID'],
+                    'code': root['RetCode'],
+                    'start_time': root['TimeStamp'],
+                }
+
+        # load trace info
         for filepath in mm_data_path_list:
             print(f"load wechat span data from {filepath}")
             if filepath.endswith('.json'):
@@ -406,14 +426,23 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
 
 
 def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> dict:
-    vertexs = {0: embedding('start')}
+    traceID = trace[0].traceId
+    root_ossid = mm_root_map[traceID]['ossid']
+    root_code = mm_root_map[traceID]['code']
+    root_start_time = mm_root_map[traceID]['start_time']
+    root_service_name = get_service_name(root_ossid)
+    if root_service_name == "":
+        root_service_name = root_ossid
+    root_peer = '{}/{}'.format(root_service_name, root_code)
+
+    vertexs = {0: embedding(root_peer)}
     edges = {0: []}
+
+    parentCount = [0]
 
     spanIdMap = {}
     spanIdCounter = 1
 
-    is_error = False
-    tot_duration = 0
     for span in trace:
         """
         (raph object contains Vertexs and Edges
@@ -423,10 +452,12 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
 
         if span.parentSpanId not in spanIdMap.keys():
             spanIdMap[span.parentSpanId] = spanIdCounter
+            parentCount[spanIdCounter] = 0
             spanIdCounter += 1
 
         if span.spanId not in spanIdMap.keys():
             spanIdMap[span.spanId] = spanIdCounter
+            parentCount[spanIdCounter] = 0
             spanIdCounter += 1
 
         spanId, parentSpanId = spanIdMap[span.spanId], spanIdMap[span.parentSpanId]
@@ -439,38 +470,41 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
         if parentSpanId not in edges.keys():
             edges[parentSpanId] = []
 
-        # statistics
-        if span.isError:
-            is_error = True
-        tot_duration = tot_duration + span.duration
-
+        parentCount[spanId] = parentCount[spanId] + 1
         edges[parentSpanId].append({
             'vertexId': spanId,
             'parentSpanId': span.parentSpanId,
             'spanId': span.spanId,
             'startTime': span.startTime,
             'duration': time_normolize(span.duration),
+            'originalDuration': span.duration,
             'service': span.service,
             'operation': span.operation,
             'peer': span.peer,
             'isError': span.isError,
         })
 
-    # graph check，如果图是连通的，edge的起始点中应该只有一个不存在在vertexs集合里
-    isolate_point_id = 0
-    ipc = 0
-    for id in edges:
-        if id not in vertexs.keys():
-            isolate_point_id = id
-            ipc = ipc + 1
-            # service = e['peer']
-            # operation = cache['cmd_name'][service][e['parentSpanId']]
-            # vertexs[id] = embedding('/'.join([service, operation, '0']))
+    # add root info
+    for vid, count in parentCount:
+        # add edge
+        if count == 0:
+            root_duration = 0
+            for _, e in edges[vid]:
+                root_duration = root_duration + int(e['originalDuration'])
 
-    # if ipc != 1:
-    #     return None
-
-    edges[0] = edges.pop(isolate_point_id)
+            sid = edges[vid][0]['parentSpanId']
+            edges[0].append({
+                'vertexId': vid,
+                'parentSpanId': -1,
+                'spanId': sid,
+                'startTime': root_start_time,
+                'duration': time_normolize(root_duration),
+                'originalDuration': root_duration,
+                'service': root_service_name,
+                'operation': 'null',
+                'peer': root_peer,
+                'isError': utils.boolStr2Bool(root_code),
+            })
 
     graph = {
         'vertexs': vertexs,
@@ -689,6 +723,7 @@ def task(ns, idx, divide_word: bool = True) -> dict:
     current = current_process()
     pos = current._identity[0]-1
     graph_map = {}
+
     for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID]), desc="processing #{:0>2d}".format(idx), position=pos):
         trace = [Span(raw_span) for idx, raw_span in trace_data.iterrows()]
         graph = build_graph(trace_process(trace, divide_word), normalize)
