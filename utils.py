@@ -3,14 +3,14 @@ from typing import List
 
 
 def boolStr2Int(str: str) -> int:
-    if str in ['FALSE', 'False', 'false', '0']:
+    if str in ['FALSE', 'False', 'false', '0', 0]:
         return 0
     else:
         return 1
 
 
-def boolStr2Bool(str: str) -> bool:
-    if str in ['FALSE', 'False', 'false', '0']:
+def any2bool(x) -> bool:
+    if x in ['FALSE', 'False', 'false', '0', 0]:
         return False
     else:
         return True

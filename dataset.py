@@ -34,7 +34,7 @@ class TraceClusterDataset(Dataset):
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
         # file_list = ['2021-11-08_19-21-29.json']
-        file_list = ['bert_2021-11-19_16-12-59.json']
+        file_list = ['wechat/bert_2021-11-30_21-52-13.json']
         # file_list = ['1.json']
 
         path_list = []

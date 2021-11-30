@@ -1,5 +1,6 @@
 # Kagaya kagaya85@outlook.com
 import json
+from re import I
 import yaml
 import os
 from sys import getsizeof
@@ -140,11 +141,11 @@ mm_data_path_list = [
     # 'data/raw/wechat/11-9/data.json',
     # 'data/raw/wechat/11-18/call_graph_2021-11-18_61266.csv'
     # 'data/raw/wechat/11-22/call_graph_2021-11-22_23629.csv'
-    'data/raw/wechat/11-22/call_graph_2021-11-29_23629.csv',
+    'data/raw/wechat/11-29/call_graph_2021-11-29_23629.csv',
 ]
 
 mm_trace_root_list = [
-    'data/raw/wechat/11-22/click_stream_2021-11-29_23629.csv'
+    'data/raw/wechat/11-29/click_stream_2021-11-29_23629.csv'
 ]
 
 time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
@@ -219,7 +220,7 @@ class Span:
             self.operation = raw_span[ITEM.OPERATION]
             if ITEM.IS_ERROR in raw_span.keys():
                 self.code = str(utils.boolStr2Int(raw_span[ITEM.IS_ERROR]))
-                self.isError = utils.boolStr2Bool(raw_span[ITEM.IS_ERROR])
+                self.isError = utils.any2bool(raw_span[ITEM.IS_ERROR])
             if ITEM.CODE in raw_span.keys():
                 self.code = str(raw_span[ITEM.CODE])
 
@@ -426,84 +427,91 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
 
 
 def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> dict:
-    traceID = trace[0].traceId
-    root_ossid = mm_root_map[traceID]['ossid']
-    root_code = mm_root_map[traceID]['code']
-    root_start_time = mm_root_map[traceID]['start_time']
-    root_service_name = get_service_name(root_ossid)
-    if root_service_name == "":
-        root_service_name = root_ossid
-    root_peer = '{}/{}'.format(root_service_name, root_code)
+    traceId = trace[0].traceId
 
-    vertexs = {0: embedding(root_peer)}
-    edges = {0: []}
-
-    parentCount = [0]
-
-    spanIdMap = {}
-    spanIdCounter = 1
+    spanId2Idx = {}
+    tailIdx = 0
+    parentNum = {}
+    graph = []
+    vertexs = {}
+    edges = {}
 
     for span in trace:
-        """
-        (raph object contains Vertexs and Edges
-        Edge: [(from, to, duration), ...]
-        Vertex: [(id, nodestr), ...]
-        """
+        if span.parentSpanId not in spanId2Idx.keys():
+            spanId2Idx[span.parentSpanId] = tailIdx
+            graph.append([])
+            tailIdx = tailIdx + 1
+            parentNum[span.parentSpanId] = 0
 
-        if span.parentSpanId not in spanIdMap.keys():
-            spanIdMap[span.parentSpanId] = spanIdCounter
-            parentCount[spanIdCounter] = 0
-            spanIdCounter += 1
+        graph[spanId2Idx[span.parentSpanId]].append(span)
 
-        if span.spanId not in spanIdMap.keys():
-            spanIdMap[span.spanId] = spanIdCounter
-            parentCount[spanIdCounter] = 0
-            spanIdCounter += 1
+        if span.spanId not in spanId2Idx.keys():
+            spanId2Idx[span.spanId] = tailIdx
+            graph.append([])
+            tailIdx = tailIdx + 1
+            parentNum[span.spanId] = 0
 
-        spanId, parentSpanId = spanIdMap[span.spanId], spanIdMap[span.parentSpanId]
+        parentNum[span.spanId] = parentNum[span.spanId] + 1
 
-        # span id should be unique
-        if spanId not in vertexs.keys():
-            vertexs[spanId] = embedding('/'.join(
-                [span.service, span.operation, span.code]))
+    # add root node
+    if traceId in mm_root_map.keys():
+        root_span_id = '0'
+        root_ossid = mm_root_map[traceId]['ossid']
+        root_code = mm_root_map[traceId]['code']
+        root_start_time = mm_root_map[traceId]['start_time']
+        root_service_name = get_service_name(root_ossid)
+        if root_service_name == "":
+            root_service_name = root_ossid
+        root_peer = '{}/{}'.format(root_service_name, root_code)
 
-        if parentSpanId not in edges.keys():
-            edges[parentSpanId] = []
+        # check root number
+        root_spans = []
+        for spanId, num in parentNum.items():
+            if num == 0:
+                root_spans.append(spanId)
 
-        parentCount[spanId] = parentCount[spanId] + 1
-        edges[parentSpanId].append({
-            'vertexId': spanId,
-            'parentSpanId': span.parentSpanId,
-            'spanId': span.spanId,
-            'startTime': span.startTime,
-            'duration': time_normolize(span.duration),
-            'originalDuration': span.duration,
-            'service': span.service,
-            'operation': span.operation,
-            'peer': span.peer,
-            'isError': span.isError,
-        })
+        if len(root_spans) > 1:
+            # add root info
+            spanId2Idx[root_span_id] = tailIdx
+            graph.append([])
+            vertexs[tailIdx] = embedding("start")
+            for spanId in root_spans:
+                # add edge
+                root_duration = 0
+                for span in graph[spanId2Idx[spanId]]:
+                    root_duration = root_duration + span.duration
 
-    # add root info
-    for vid, count in parentCount:
-        # add edge
-        if count == 0:
-            root_duration = 0
-            for _, e in edges[vid]:
-                root_duration = root_duration + int(e['originalDuration'])
+                graph[tailIdx].append(Span({
+                    ITEM.TRACE_ID: traceId,
+                    ITEM.SPAN_ID: spanId,
+                    ITEM.PARENT_SPAN_ID: root_span_id,
+                    ITEM.START_TIME: root_start_time,
+                    ITEM.DURATION: root_duration,
+                    ITEM.SERVICE: "",
+                    ITEM.OPERATION: "",
+                    ITEM.SPAN_TYPE: 'EntrySpan',
+                    ITEM.PEER: "{}/{}".format(root_service_name, "null"),
+                    ITEM.CODE: 0,
+                    ITEM.IS_ERROR: False,
+                }))
 
-            sid = edges[vid][0]['parentSpanId']
-            edges[0].append({
-                'vertexId': vid,
-                'parentSpanId': -1,
-                'spanId': sid,
-                'startTime': root_start_time,
-                'duration': time_normolize(root_duration),
-                'originalDuration': root_duration,
-                'service': root_service_name,
-                'operation': 'null',
-                'peer': root_peer,
-                'isError': utils.boolStr2Bool(root_code),
+    for idx, spans in enumerate(graph):
+        if len(spans) == 0:
+            continue
+
+        edges[idx] = []
+        for span in spans:
+            vertexs[spanId2Idx[span.spanId]] = embedding(span.peer)
+            edges[idx].append({
+                'vertexId': spanId2Idx[span.spanId],
+                'parentSpanId': span.parentSpanId,
+                'spanId': span.spanId,
+                'startTime': span.startTime,
+                'duration': time_normolize(span.duration),
+                'service': span.service,
+                'operation': span.operation,
+                'peer': span.peer,
+                'isError': utils.any2bool(root_code),
             })
 
     graph = {
