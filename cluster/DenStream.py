@@ -45,6 +45,8 @@ from DenStream_master.DenStream import DenStream
 
 
 import random
+
+
 def setup_seed(seed):
 
     torch.manual_seed(seed)
@@ -55,12 +57,12 @@ def setup_seed(seed):
 
 
 if __name__ == '__main__':
-    
+
     args = arguments()
     setup_seed(args.seed)
 
     batch_size = args.batch_size
-    
+
     path = osp.join(osp.dirname(osp.realpath(__file__)), '.', 'data')
 
     dataset = TraceClusterDataset(path, aug='none')    # 不要 shuffle，按照时间顺序
@@ -76,19 +78,18 @@ if __name__ == '__main__':
     dataloader = DataLoader(dataset, batch_size=batch_size)
     dataloader_eval = DataLoader(dataset_eval, batch_size=batch_size)
 
-
     # #############################################################################
     # Load the pre-trained model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = simclr(args.hidden_dim, args.num_gc_layers, args.prior, dataset_num_features).to(device)
-    model.load_state_dict(torch.load(args.save_path + '/' + 'model_weights_epoch20.pth'))    # 做一个软链接？映射？到 latest
+    model = simclr(args.hidden_dim, args.num_gc_layers,
+                   args.prior, dataset_num_features).to(device)
+    model.load_state_dict(torch.load(
+        args.save_path + '/' + 'model_weights_epoch20.pth'))    # 做一个软链接？映射？到 latest
     model.eval()
-
 
     # #############################################################################
     # Create cluster objects
     denstream = DenStream(eps=0.3, lambd=0.1, beta=0.5, mu=11)
-
 
     print('================')
     print('batch_size: {}'.format(batch_size))
@@ -97,7 +98,6 @@ if __name__ == '__main__':
     print('num_gc_layers: {}'.format(args.num_gc_layers))
     print('================')
 
-
     # #############################################################################
     # Online Stage
     count = 0
@@ -105,22 +105,17 @@ if __name__ == '__main__':
     # timestamp_list = []
     X_output_gnn = torch.Tensor([]).to(device)    # 需要改进
 
-    
-    
-    
     # x_test = []
-    
+
     # x_class0_0 = []
     # x_class0_1 = []
     # x_class0_2 = []
     # x_class0_3 = []
-    
+
     # x_class1_0 = []
     # x_class1_1 = []
     # x_class1_2 = []
     # x_class1_3 = []
-
-
 
     for data in tqdm(dataloader):
         # print('start')
@@ -128,22 +123,19 @@ if __name__ == '__main__':
         data = data.to(device)
 
         timestamp_list = []
-            
-        x = model(data.x, data.edge_index, data.edge_attr, data.batch)    # 每个图的特征均表示为一个 tensor
+
+        x = model(data.x, data.edge_index, data.edge_attr,
+                  data.batch)    # 每个图的特征均表示为一个 tensor
         if data.x.size(0) != data.batch.size(0):
             print("error: x and batch dim dismatch !")
-        
-        
+
         X_output_gnn = torch.cat((X_output_gnn, x), 0)
 
         for idx in range(x.size(0)):
             traceid_index[str(count*batch_size+idx)] = data['trace_id'][idx]
-            
 
-
-            
             # if data['trace_id'][idx] == '1e3c47720fe24523938fff342ebe6c0d.35.16288656971030003':    # abnormal
-            #     x_test = x[idx]    
+            #     x_test = x[idx]
             # if data['trace_id'][idx] == '1e3c47720fe24523938fff342ebe6c0d.35.16288657098040005':    # class 0
             #     x_class0_0 = x[idx]
             # if data['trace_id'][idx] == '1e3c47720fe24523938fff342ebe6c0d.35.16288658127040021':    # class 0
@@ -162,21 +154,15 @@ if __name__ == '__main__':
             # if data['trace_id'][idx] == '3dcc96ad77fe45dfae8436f31379e7ad.38.16294252307460683':    # class 1
             #     x_class1_3 = x[idx]
 
-
-
-
             timestamp_list.append(data['time_stamp'][idx])
-        
-        
+
         X_DS_Input = copy(x).detach().cpu().numpy()
         denstream.partial_fit(X_DS_Input, timestamp_list)
         # print(f"Number of p_micro_clusters is {len(denstream.p_micro_clusters)}")
         # print(f"Number of o_micro_clusters is {len(denstream.o_micro_clusters)}")
 
-
         count += 1
-    
-    
+
     # # compute distance
     # # class 0
     # dist = euclidean_distances(x_test.detach().cpu().numpy().reshape(1, -1), x_class0_0.detach().cpu().numpy().reshape(1, -1))
@@ -197,31 +183,30 @@ if __name__ == '__main__':
     # dist = euclidean_distances(x_test.detach().cpu().numpy().reshape(1, -1), x_class1_3.detach().cpu().numpy().reshape(1, -1))
     # print("Distance between x_test and x_class1_3 is: {}".format(dist))
 
-
-    
-    
-    X_input_db = X_output_gnn.detach().cpu().numpy()    # tensor --> list  X_input: (num_samples, num_features_graph)
+    # tensor --> list  X_input: (num_samples, num_features_graph)
+    X_input_db = X_output_gnn.detach().cpu().numpy()
 
     if len(X_input_db) != len(dataset):
-        print("error: sample miss! len(X_input_db) is {} but len(dataset) is {} !".format(len(X_input_db), len(dataset)))
-    
+        print("error: sample miss! len(X_input_db) is {} but len(dataset) is {} !".format(
+            len(X_input_db), len(dataset)))
+
     print('================')
     print('num_samples: {}'.format(len(X_input_db)))    # 数据集中样本个数
-    print('num_features: {}'.format(len(X_input_db[0])))    # 每个图表示特征维数 hidden-dim*num-gc-layers
+    # 每个图表示特征维数 hidden-dim*num-gc-layers
+    print('num_features: {}'.format(len(X_input_db[0])))
     print('================')
-
-
 
     # #############################################################################
     # Data preprocessing
     # 降维 TSNE
-    X_embedded = TSNE(n_components=2, init='pca', random_state=0).fit_transform(X_input_db)
+    X_embedded = TSNE(n_components=2, init='pca',
+                      random_state=0).fit_transform(X_input_db)
     for idx in range(X_embedded.shape[0]):
-        plt.plot(X_embedded[idx][0], X_embedded[idx][1], 'o', markeredgecolor='k', markersize=6)
+        plt.plot(X_embedded[idx][0], X_embedded[idx][1],
+                 'o', markeredgecolor='k', markersize=6)
     plt.title("t-SNE embedding of the digits")
     plt.savefig('./TSNE_res.jpg')
     plt.show()
-
 
     # #############################################################################
     # Offline stage
@@ -233,7 +218,6 @@ if __name__ == '__main__':
     min_samples 表示核心点阈值
     '''
     labels = denstream.predict(X_input_db)
-
 
     # core_samples_mask = np.zeros_like(db.labels_, dtype=bool)    # (num_samples, )
     # core_samples_mask[db.core_sample_indices_] = True    # 核心对象对应的位置为 True
@@ -256,25 +240,21 @@ if __name__ == '__main__':
                 #     print("############################################################################################################")
         print('\n')
 
-    print('\n')    
+    print('\n')
     print('Estimated number of noise points: %d' % n_noise_)
     print("Noise:")
     for sample_idx in range(len(dataset)):
         if labels[sample_idx] == -1:
             print("Trace_id: {}".format(traceid_index[str(sample_idx)]))
 
-
     #print("Homogeneity: %0.3f" % metrics.homogeneity_score(labels_true, labels))
     #print("Completeness: %0.3f" % metrics.completeness_score(labels_true, labels))
     #print("V-measure: %0.3f" % metrics.v_measure_score(labels_true, labels))
-    #print("Adjusted Rand Index: %0.3f"
+    # print("Adjusted Rand Index: %0.3f"
     #      % metrics.adjusted_rand_score(labels_true, labels))
-    #print("Adjusted Mutual Information: %0.3f"
+    # print("Adjusted Mutual Information: %0.3f"
     #      % metrics.adjusted_mutual_info_score(labels_true, labels))
     #print("Silhouette Coefficient: %0.3f" % metrics.silhouette_score(X_input, labels))
-
-
-
 
     # #############################################################################
     # Plot result

@@ -474,7 +474,7 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
             # add root info
             spanId2Idx[root_span_id] = tailIdx
             graph.append([])
-            vertexs[tailIdx] = embedding("start")
+            rspanId = root_span_id
             for spanId in root_spans:
                 # add edge
                 root_duration = 0
@@ -494,6 +494,10 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
                     ITEM.CODE: 0,
                     ITEM.IS_ERROR: False,
                 }))
+        else:
+            rspanId = root_spans[0]
+
+    vertexs[spanId2Idx[rspanId]] = embedding(root_service_name)
 
     for idx, spans in enumerate(graph):
         if len(spans) == 0:
