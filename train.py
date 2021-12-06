@@ -14,6 +14,8 @@ from sklearn.svm import SVC, LinearSVC
 from sklearn import preprocessing
 from sklearn.metrics import accuracy_score
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def arguments():
     parser = argparse.ArgumentParser(description="GNN Argumentes.")
@@ -148,7 +150,6 @@ def main():
     # dataloader_eval = DataLoader(dataset_eval, batch_size=batch_size)
 
     # set device
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = simclr(args.hidden_dim, args.num_gc_layers,
                    args.prior, dataset_num_features).to(device)
 

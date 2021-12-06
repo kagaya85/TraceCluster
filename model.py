@@ -8,6 +8,12 @@ from torch_geometric.nn import TransformerConv, global_add_pool, global_mean_poo
 from losses import local_global_loss
 
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cpu')
+
+count = 0
+
+
 class Encoder(torch.nn.Module):
     def __init__(self, num_features, dim, num_gc_layers):
         super(Encoder, self).__init__()
@@ -15,7 +21,7 @@ class Encoder(torch.nn.Module):
         self.num_gc_layers = num_gc_layers
         self.convs = torch.nn.ModuleList()
         self.bns = torch.nn.ModuleList()
-        
+
         '''
         for i in range(num_gc_layers):
             if i:
@@ -29,11 +35,13 @@ class Encoder(torch.nn.Module):
             self.convs.append(conv)
             self.bns.append(bn)
         '''
-        
+
         # GNN
         # TransformerConv
-        conv_0 = TransformerConv(in_channels = num_features, out_channels = dim*4, edge_dim = 1)
-        conv_1 = TransformerConv(in_channels = dim*4, out_channels = dim, edge_dim = 1)
+        conv_0 = TransformerConv(
+            in_channels=num_features, out_channels=dim*4, edge_dim=1)
+        conv_1 = TransformerConv(
+            in_channels=dim*4, out_channels=dim, edge_dim=1)
         # GATConv
         # conv_0 = GATConv(in_channels = num_features, out_channels = dim*4, edge_dim = 1)
         # conv_1 = GATConv(in_channels = dim*4, out_channels = dim, edge_dim = 1)
@@ -41,24 +49,18 @@ class Encoder(torch.nn.Module):
         # conv_0 = GENConv(in_channels = num_features, out_channels = dim*4, edge_dim = 1)
         # conv_1 = GENConv(in_channels = dim*4, out_channels = dim, edge_dim = 1)
 
-
         self.convs.append(conv_0)
         self.convs.append(conv_1)
-            
 
         # conv = GINConv(nn)
-            
+
         # BN
         bn_0 = torch.nn.BatchNorm1d(dim*4)
         bn_1 = torch.nn.BatchNorm1d(dim)
         self.bns.append(bn_0)
         self.bns.append(bn_1)
-        
-        
-        
 
     def forward(self, x, edge_index, edge_attr, batch):
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         if x is None:
             x = torch.ones((batch.shape[0], 1)).to(device)
 
@@ -67,20 +69,19 @@ class Encoder(torch.nn.Module):
 
             # x = F.relu(self.convs[i](x, edge_index, edge_attr))
             x = self.convs[i](x, edge_index, edge_attr)    # --> prelu
-            
+
             x = self.bns[i](x)
             xs.append(x)
 
         # xpool = [global_add_pool(x, batch) for x in xs]
         xpool = [global_mean_pool(x, batch) for x in xs]
-        
+
         x = torch.cat(xpool, 1)
         # x = xpool[-1]
 
         return x, torch.cat(xs, 1)
 
     def get_embeddings(self, loader):
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         ret = []
         y = []
 
@@ -102,7 +103,6 @@ class Encoder(torch.nn.Module):
         return ret, y
 
     def get_embeddings_v(self, loader):
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         ret = []
         y = []
 
@@ -155,7 +155,6 @@ class GcnInfomax(nn.Module):
                     m.bias.data.fill_(0.0)
 
     def forward(self, x, edge_index, edge_attr, batch):
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         # batch_size = data.num_graphs
         if x is None:
             x = torch.ones(batch.shape[0]).to(device)
@@ -193,7 +192,7 @@ class simclr(torch.nn.Module):
         # self.embedding_dim = mi_units = hidden_dim * num_gc_layers
         self.embedding_dim = hidden_dim + hidden_dim * 4
         #self.embedding_dim = hidden_dim
-    
+
         self.encoder = Encoder(dataset_num_features, hidden_dim, num_gc_layers)
 
         self.proj_head = nn.Sequential(nn.Linear(self.embedding_dim, self.embedding_dim),
@@ -211,7 +210,6 @@ class simclr(torch.nn.Module):
                     m.bias.data.fill_(0.0)
 
     def forward(self, x, edge_index, edge_attr, batch):
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         # batch_size = data.num_graphs
         if x is None:
             x = torch.ones(batch.shape[0]).to(device)

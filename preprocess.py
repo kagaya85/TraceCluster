@@ -141,11 +141,15 @@ mm_data_path_list = [
     # 'data/raw/wechat/11-9/data.json',
     # 'data/raw/wechat/11-18/call_graph_2021-11-18_61266.csv'
     # 'data/raw/wechat/11-22/call_graph_2021-11-22_23629.csv'
-    'data/raw/wechat/11-29/call_graph_2021-11-29_23629.csv',
+    # 'data/raw/wechat/11-29/call_graph_2021-11-29_23629.csv',
+    # 'data/raw/wechat/12-3/call_graph_2021-12-03_24486.csv'
+    'data/raw/wechat/12-3/call_graph_2021-12-03_23629.csv'
 ]
 
 mm_trace_root_list = [
-    'data/raw/wechat/11-29/click_stream_2021-11-29_23629.csv'
+    # 'data/raw/wechat/11-29/click_stream_2021-11-29_23629.csv',
+    # 'data/raw/wechat/12-3/click_stream_2021-12-03_24486.csv'
+    'data/raw/wechat/12-3/click_stream_2021-12-03_23629.csv'
 ]
 
 time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
@@ -215,9 +219,9 @@ class Span:
             self.spanType = raw_span[ITEM.SPAN_TYPE]
             self.startTime = raw_span[ITEM.START_TIME]
             self.duration = raw_span[ITEM.DURATION]
-            self.service = raw_span[ITEM.SERVICE]
-            self.peer = raw_span[ITEM.PEER]
-            self.operation = raw_span[ITEM.OPERATION]
+            self.service = str(raw_span[ITEM.SERVICE])
+            self.peer = str(raw_span[ITEM.PEER])
+            self.operation = str(raw_span[ITEM.OPERATION])
             if ITEM.IS_ERROR in raw_span.keys():
                 self.code = str(utils.boolStr2Int(raw_span[ITEM.IS_ERROR]))
                 self.isError = utils.any2bool(raw_span[ITEM.IS_ERROR])
@@ -461,8 +465,7 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
         root_start_time = mm_root_map[traceId]['start_time']
         root_service_name = get_service_name(root_ossid)
         if root_service_name == "":
-            root_service_name = root_ossid
-        root_peer = '{}/{}'.format(root_service_name, root_code)
+            root_service_name = str(root_ossid)
 
         # check root number
         root_spans = []
@@ -637,10 +640,10 @@ def get_operation_name(cmdid: int, module_name: str) -> str:
                 if len(datas) > 0:
                     name = datas[0]['name']
                     cache['cmd_name'][module_name][cmdid] = name
-                    return name
+                    return str(name)
                 # not found
                 cache['cmd_name'][module_name][cmdid] = str(cmdid)
-                return str(cmdid)
+                return cmdid
             print(f'cant get operation name, code:', rsp.status_code)
 
     return str(cmdid)
@@ -650,7 +653,7 @@ def get_service_name(ossid: int) -> str:
     global cache
 
     if ossid in cache['oss_name'].keys():
-        return cache['oss_name'][ossid]
+        return str(cache['oss_name'][ossid])
 
     if use_request:
         params = {
@@ -667,7 +670,7 @@ def get_service_name(ossid: int) -> str:
             if rsp.ok:
                 datas = rsp.json()['data']
                 if len(datas) > 0:
-                    name = datas[0]['module_name']
+                    name = str(datas[0]['module_name'])
                     cache['oss_name'][ossid] = name
                     return name
                 # not found
