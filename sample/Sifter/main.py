@@ -1,4 +1,5 @@
 import json
+import ijson
 import random
 import matplotlib.pyplot as plt
 from collections import deque
@@ -12,8 +13,27 @@ def read_json(file):
     return dic
 
 
+def read_ijson(file):
+    with open(file, 'r', encoding='utf8')as fp:
+        # dic = json.load(fp)
+        dic = {}
+        for k, v in ijson.kvitems(fp, ''):
+            dic[k] = v
+        print("====")
+    return dic
+
+
+def rand(alpha):
+    print("alpha:{}".format(alpha))
+    r = random.randint(0, 100) / 100
+    print("random:{}".format(r))
+    if r < alpha:
+        return True
+    return False
+
+
 if __name__ == '__main__':
-    file_name = "../data/preprocessed/2021-10-13_16-57-51.json"
+    file_name = "/home/kagaya/work/cluster/data/preprocessed/2021-10-13_16-57-51.json"
     print("Reading...")
     traces = read_json(file_name)
     print(len(traces))
@@ -39,13 +59,17 @@ if __name__ == '__main__':
     loss_y = []
     alpha_y = []
     for trace_id, trace in traces.items():
+        print("id:{}".format(trace_id))
         # Get the slide windows of trace and split them into contexts + targets
         data = subsequence(trace, window_size)
+        alpha = 0.01  # Sampling rate
         if len(data) == 0:
             # print(id)
             # print("==========================")
+            if rand(alpha):
+                ids.append(trace_id)
+            print("==========================")
             continue
-        print("id:{}".format(trace_id))
         context, target = split(data)
 
         # Forward to get the loss and backward to train the model
@@ -54,17 +78,13 @@ if __name__ == '__main__':
         print("loss:{}".format(loss))
 
         # Calculate sampling probability
-        alpha = 0.01  # Sampling rate
         losses = list(window)
         min_loss = min(losses)
         weight = [loss - min_loss for loss in losses]
         total_weight = sum(weight)
         if total_weight != 0:
             alpha = (weight[-1] / total_weight) * len(weight) * alpha
-        print("alpha:{}".format(alpha))
-        r = random.randint(0, 100) / 100
-        print("random:{}".format(r))
-        if r < alpha:
+        if rand(alpha):
             ids.append(trace_id)
         print("==========================")
         # For picture
