@@ -1,0 +1,4 @@
+package collect
+
+func main() {
+}
