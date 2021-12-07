@@ -11,3 +11,4 @@ weights
 weights_DIM
 secrets
 *.jpg
+!img/*
