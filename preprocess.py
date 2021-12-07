@@ -294,12 +294,13 @@ def load_span() -> List[DataFrame]:
 
             # convert to dataframe
             for i, s in tqdm(mmspans):
-                spans[ITEM.SPAN_ID].append(str(s['CalleeNodeID']))
-                spans[ITEM.PARENT_SPAN_ID].append(str(s['CallerNodeID']))
+                spans[ITEM.SPAN_ID].append(
+                    str(s['CalleeNodeID'])+str(['CalleeOssID'])+str(['CalleeCmdID']))
+                spans[ITEM.PARENT_SPAN_ID].append(
+                    str(s['CallerNodeID'])+str(s['CallerOssID'])+str(s['CallerCmdID']))
                 spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
                 spans[ITEM.SPAN_TYPE].append('EntrySpan')
-                st = datetime.strptime(s['TimeStamp'], '%Y-%m-%d %H:%M:%S')
-                spans[ITEM.START_TIME].append(int(datetime.timestamp(st)))
+                spans[ITEM.START_TIME].append(s['TimeStamp'])
                 spans[ITEM.DURATION].append(int(s['CostTime']))
 
                 # 尝试替换id为name

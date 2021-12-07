@@ -2,7 +2,7 @@
 This code is adapdated from the source code of moa, that can be found in the following address
 https://github.com/Waikato/moa/blob/master/moa/src/main/java/moa/clusterers/clustream/WithKmeans.java
 """
-from clustream_py_master.Kernel import Kernel
+from CluStream_master.Kernel import Kernel
 import numpy as np
 import itertools
 from sklearn.cluster import KMeans

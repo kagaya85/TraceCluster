@@ -44,7 +44,7 @@ from itertools import cycle, islice
 import matplotlib.pyplot as plt
 from matplotlib.colors import hsv_to_rgb
 
-from CEDAS_master.CEDAS import CEDAS, distance
+from cluster.CEDAS_master.CEDAS import CEDAS, distance
 
 import random
 def setup_seed(seed):
