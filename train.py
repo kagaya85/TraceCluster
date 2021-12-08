@@ -18,8 +18,10 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def arguments():
-    parser = argparse.ArgumentParser(description="GNN Argumentes.")
-    parser.add_argument('--dataset', dest='dataset', help='Dataset')
+    parser = argparse.ArgumentParser(description="gnn argumentes")
+    parser.add_argument('--wechat', dest='wechat',
+                        help='use wechat data', action='store_true')
+    parser.add_argument('--dataset', dest='dataset', help='dataset file path')
     parser.add_argument('--local', dest='local', action='store_const',
                         const=True, default=False)
     parser.add_argument('--glob', dest='glob', action='store_const',
@@ -27,22 +29,22 @@ def arguments():
     parser.add_argument('--prior', dest='prior', action='store_const',
                         const=True, default=False)
     parser.add_argument('--lr', dest='lr', type=float, default=0.001,
-                        help='Learning rate.')
+                        help='learning rate, default 0.001')
     parser.add_argument('--num-gc-layers', dest='num_gc_layers', type=int, default=2,
-                        help='Number of graph convolution layers before each pooling')
+                        help='number of graph convolution layers before each pooling')
     parser.add_argument('--hidden-dim', dest='hidden_dim', type=int, default=16,    # 32
-                        help='')
+                        help='hidden dim number, default 16')
     parser.add_argument('--aug', type=str, default='random3')
     parser.add_argument('--seed', type=int, default=0)
 
     parser.add_argument('--save-to', dest='save_path',
-                        default='./weights', help='Save path.')
+                        default='./weights', help='weights save path')
     parser.add_argument('--epochs', dest='epochs', type=int, default=20,
                         help='')
     parser.add_argument('--log-interval', dest='log_interval', type=int, default=1,
-                        help='Log interval.')
+                        help='log interval.')
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=64,
-                        help='Batch size.')    # 128
+                        help='batch size')    # 128
 
     return parser.parse_args()
 
@@ -126,9 +128,9 @@ def main():
 
     # init dataset
     dataset = TraceClusterDataset(
-        root=dataroot, aug=args.aug).shuffle()
+        root=dataroot, aug=args.aug, args=args).shuffle()
     dataset_eval = TraceClusterDataset(
-        root=dataroot, aug='none').shuffle()
+        root=dataroot, aug='none', args=args).shuffle()
 
     print('----------------------')
     print("dataset size:", len(dataset))

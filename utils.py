@@ -1,4 +1,5 @@
 import re
+import os
 from typing import List
 
 
@@ -59,3 +60,19 @@ def wordSplit(s: str, words: List[str]) -> List[str]:
 
 def mergeDict(x: dict, y: dict):
     return {**x, **y}
+
+
+def getNewfile(dirpath: str) -> str:
+    list = os.listdir(dirpath)
+    filelist = []
+    for x in list:
+        if not os.path.isdir(x):
+            filelist.append(x)
+
+    filelist.sort(key=lambda filename: os.path.getmtime(
+        os.path.join(dirpath, filename)))
+
+    if len(filelist) > 0:
+        return os.path.join(dirpath, filelist[-1])
+
+    return ""

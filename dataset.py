@@ -7,19 +7,21 @@ from tqdm import tqdm
 import json
 import os
 import os.path as osp
+import utils
 
 from typing import List, Tuple, Union
-from itertools import repeat
 from copy import deepcopy
 
 
 class TraceClusterDataset(Dataset):
-    def __init__(self, root, transform=None, pre_transform=None, pre_filter=None, aug=None):
-        super(TraceClusterDataset, self).__init__(
-            root, transform, pre_transform, pre_filter)
+    def __init__(self, root, transform=None, pre_transform=None, pre_filter=None, aug=None, args=None):
 
         # self.data, self.slices = torch.load(self.processed_paths[0])
         self.aug = aug
+        self.args = args
+
+        super(TraceClusterDataset, self).__init__(
+            root, transform, pre_transform, pre_filter)
 
     @property
     def raw_dir(self):
@@ -33,15 +35,25 @@ class TraceClusterDataset(Dataset):
 
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
-        # file_list = ['2021-11-08_19-21-29.json']
-        file_list = ['wechat/bert_2021-12-07_16-44-38.json']
-        # file_list = ['1.json']
+        file_list = []
 
-        path_list = []
-        for file in file_list:
-            path_list.append(osp.join(self.raw_dir, file))
+        if self.args != None and self.args.dataset is not None:
+            file_list.append(self.aug)
+        else:
+            if self.args != None and self.args.wechat == True:
+                newfile = utils.getNewfile(osp.join(self.raw_dir, 'wechat'))
+                if newfile != "":
+                    file_list.append(newfile)
+            else:
+                newfile = utils.getNewfile(osp.join(self.raw_dir))
+                if newfile != "":
+                    file_list.append(newfile)
 
-        return path_list
+        if len(file_list) == 0:
+            print("no such dataset file, please check dataset path")
+            exit(-1)
+
+        return file_list
 
     @property
     def processed_file_names(self) -> Union[str, List[str], Tuple]:
@@ -59,8 +71,8 @@ class TraceClusterDataset(Dataset):
 
     def process(self):
         idx = 0
-        data_list = []
 
+        print('load preprocessed data file:', self.raw_file_names[0])
         with open(self.raw_file_names[0], "r") as f:    # file name not list
             raw_data = json.load(f)
 

@@ -34,3 +34,9 @@ Dataset：
 ### 11.18
 
 - [ ] embedding与build graph并行
+- [x] 重构目录结构
+
+### 12.7
+
+- [ ] 优化输入输出
+- [ ] 完善Readme

@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
 
-read -r -p "Remove processed pt file? [Y/n] " input
+ProcessedPath='data/processed/*'
+WeightsPath='weights/*'
+
+read -r -p "Remove processed pt file? ($ProcessedPath) [Y/n] " input
 
 case $input in
 	[yY][eE][sS]|[yY])
-		rm -rf data/processed/*
+		rm -rf $ProcessedPath
 		;;
 	*)
 		echo "Skip"
 		;;
+esac
 
-read -r -p "Remove weights file? [Y/n] " input 
+read -r -p "Remove weights file? ($WeightsPath) [Y/n] " input 
 
 case $input in
 	[yY][eE][sS]|[yY])
-		rm -rf weights/*
+		rm -rf $WeightsPath
 		;;
 	*)
 		echo "Skip"
 		;;
+esac
