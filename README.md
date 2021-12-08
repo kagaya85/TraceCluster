@@ -10,57 +10,67 @@ please check [requirements.txt](./requirements.txt)
 
 ### Preprocess
 
-edit file path variant `data_path_list` in preprocess.py
+Edit file path variant `data_path_list` in preprocess.py
 
-run script:
+**Notice:** for wechat dataset, need to edit the `mm_data_path_list` for call graph file and `mm_trace_root_list` for click stream file
+
+Run script:
 
 ```shell
 # use skywalking data
 python preprocess.py
 ```
 
-arguments:
+Arguments:
 ```
---wechat
-use wechat data
-
 --embedding glove
-use globe embedding (default bert)
+use globe embedding, default bert
 
 --normalize zscore
-use z-score normalize (default minmax)
+use z-score normalize, default minmax
+
+--cores [number]
+config parallel processing core numbers, default depends on the mechine
+
+--wechat
+use wechat dataset, default skywalking dataset
+
+	--use-request
+	use request to replace the ossid/cmdid to ossname/cmdname by querying cmdb, only avalibale for `--wechat`
 ```
 
 ### Training
 
-run script:
+`TraceClusterDataset` will check the `data/preprocessed` directory automatically and use the newest changed file
+
+Run script:
 ```python
-# use the newest raw preprocessed datafile
+# use the newest raw preprocessed data file
 python train.py
 ```
 
-arguments:
+Arguments:
 ```
 --wechat
 use the newest wechat raw preprocessed datafile
 
---dataset filename
+--dataset [filename]
 use other data file of filename
 ```
-please check the source code file(train.py), to see other training auguments
+Please check the source code file(train.py), to see other training auguments
 
 ### Cluster
 
-run script:
+Run script:
 ```shell
 # run cluster methof of TraceClusterDataset
 # support DBSCAN/CEDAS/DenStream/CluStream.py
-python cluster_method_name.py
+python [cluster_method_name].py
 ```
 
-### CleanUp
+### Clean Up
 
-run commands:
+Run commands:
 ```shell
 # use this command when first use
 chmod u+x ./tool/cleanup.sh
