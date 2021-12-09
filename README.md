@@ -4,7 +4,7 @@ A mircoservice trace cluster tool based on Graph Neural Network
 
 ## Dependencies
 
-please check [requirements.txt](./requirements.txt)
+Please check [requirements.txt](./requirements.txt)
 
 ## How to use
 
@@ -17,7 +17,7 @@ Edit file path variant `data_path_list` in preprocess.py
 Run script:
 
 ```shell
-# use skywalking data
+# use defalut skywalking dataset
 python preprocess.py
 ```
 
@@ -30,7 +30,7 @@ use globe embedding, default bert
 use z-score normalize, default minmax
 
 --cores [number]
-config parallel processing core numbers, default depends on the mechine
+config parallel processing core numbers, default depends on the mechine cores
 
 --wechat
 use wechat dataset, default skywalking dataset
@@ -38,6 +38,8 @@ use wechat dataset, default skywalking dataset
 	--use-request
 	use request to replace the ossid/cmdid to ossname/cmdname by querying cmdb, only avalibale for `--wechat`
 ```
+
+When use wechat dataset, also need to add a `secrets` directory to includes `api.yaml` for cmdb api URL and `cache.json` for service name local cache file, cache file will be updated when using `--use-request` arguments.
 
 ### Training
 
@@ -63,7 +65,7 @@ Please check the source code file(train.py), to see other training auguments
 
 Run script:
 ```shell
-# run cluster methof of TraceClusterDataset
+# run cluster method on TraceClusterDataset
 # support DBSCAN/CEDAS/DenStream/CluStream.py
 python [cluster_method_name].py
 ```
@@ -75,6 +77,6 @@ Run commands:
 # use this command when first use
 chmod u+x ./tool/cleanup.sh
 
-# and use this script
+# and use this script to clean up processed data and weights files
 ./tool/cleanup.sh
 ```
