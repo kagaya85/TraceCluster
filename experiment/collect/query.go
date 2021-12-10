@@ -12,7 +12,26 @@ import (
 
 type urlKey struct{}
 
-func QueryTraces(ctx context.Context, condition *api.TraceQueryCondition) (api.TraceBrief, error) {
+func QueryTrace(ctx context.Context, traceID string) (api.Trace, error) {
+	var rsp map[string]api.Trace
+
+	req := graphql.NewRequest(assets.Read("graphql/Trace.graphql"))
+	req.Var("traceId", traceID)
+	err := Execute(ctx, req, rsp)
+
+	return rsp["result"], err
+}
+
+func QueryTraces(ctx context.Context, traceIDs []string) ([]api.Trace, error) {
+	// req := graphql.NewRequest(assets.Read("graphql/Trace.graphql"))
+
+	// for traceID := range traceIDs {
+
+	// }
+	return nil, nil
+}
+
+func QueryBasicTraces(ctx context.Context, condition *api.TraceQueryCondition) (api.TraceBrief, error) {
 	var rsp map[string]api.TraceBrief
 
 	req := graphql.NewRequest(assets.Read("graphql/Traces.graphql"))
