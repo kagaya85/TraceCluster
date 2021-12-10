@@ -10,9 +10,9 @@ Please check [requirements.txt](./requirements.txt)
 
 ### Preprocess
 
-Edit file path variant `data_path_list` in preprocess.py
+Data preprocess phase will output preprocessed file under `data/preprocessed` directory.
 
-**Notice:** for wechat dataset, need to edit the `mm_data_path_list` for call graph file and `mm_trace_root_list` for click stream file
+**Notice:** Edit `preprocess.py` file and add raw data path in variant `data_path_list`. For wechat dataset, you need to edit the `mm_data_path_list` for call graph file and `mm_trace_root_list` for click stream file
 
 Run script:
 
@@ -43,7 +43,7 @@ When use wechat dataset, also need to add a `secrets` directory to includes `api
 
 ### Training
 
-`TraceClusterDataset` will check the `data/preprocessed` directory automatically and use the newest changed file
+Training phase, `TraceClusterDataset` will check the `data/preprocessed` directory automatically and use the newest changed file. Before training model, it will save processed file under `data/processed` as pytorch `pt` file, you may need to check [this](#clean-up) to know how to clean up when change dataset.
 
 Run script:
 ```python
@@ -63,6 +63,8 @@ Please check the source code file(train.py), to see other training auguments
 
 ### Cluster
 
+Cluster phase can use multiple cluster methods on `TraceClusterDataset`, it will output a T-SNE image under `img`.
+
 Run script:
 ```shell
 # run cluster method on TraceClusterDataset
@@ -71,6 +73,8 @@ python [cluster_method_name].py
 ```
 
 ### Clean Up
+
+Use script to clean up processed data
 
 Run commands:
 ```shell

@@ -238,6 +238,7 @@ def main():
             # save model
             filename = os.path.join(
                 args.save_path, 'model_weights_epoch{}.pth'.format(epoch))
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
             torch.save(model.state_dict(), filename)
             print(f"Saving model to {filename}")
 
