@@ -101,11 +101,10 @@ if __name__ == '__main__':
 
     # #############################################################################
     # Online Stage
-    count = 0
     traceid_index = {}    # 需要改进
     timestamp_list = []
     X_output_gnn = torch.Tensor([]).to(device)    # 需要改进
-    for data in tqdm(dataloader):
+    for i, data in tqdm(enumerate(dataloader)):
         # print('start')
         data = data[0]
         data = data.to(device)
@@ -120,22 +119,20 @@ if __name__ == '__main__':
         X_output_gnn = torch.cat((X_output_gnn, x), 0)
 
         for idx in range(x.size(0)):
-            traceid_index[str(count*batch_size+idx)] = data['trace_id'][idx]
+            traceid_index[str(i*batch_size+idx)] = data['trace_id'][idx]
             timestamp_list.append(data['time_stamp'][idx])
 
-        if count == 0:
-            clustream.initial(X_output_gnn.detach().cpu().numpy(), torch.Tensor(
-                timestamp_list).view(-1, 1).detach().cpu().numpy())
+        if i == 0:
+            clustream.initial(X_output_gnn.detach().cpu().numpy(), torch.Tensor(timestamp_list).view(-1, 1).detach().cpu().numpy())
+            # clear content
             X_output_gnn = torch.Tensor([]).to(device)
             traceid_index.clear()
             timestamp_list.clear()
         else:
-            for x, timestamp in tqdm(zip(X_output_gnn.detach().cpu().numpy(), torch.Tensor(timestamp_list).view(-1, 1).detach().cpu().numpy())):
-                # for x, timestamp in tqdm(zip(X_output_gnn.detach().cpu(), torch.Tensor(timestamp_list).view(-1, 1).detach().cpu())):
-                clustream.partial_fit(x, timestamp)
-                print("Number of micro_clusters is {}".format(
-                    len(clustream.micro_clusters)))
-
+            for x_item, timestamp_item in tqdm(zip(X_output_gnn.detach().cpu().numpy(), torch.Tensor(timestamp_list).view(-1, 1).detach().cpu().numpy())):
+                clustream.partial_fit(x_item, timestamp_item)
+                print("Number of micro_clusters is {}".format(len(clustream.micro_clusters)))
+            
             # timestamp = data['time_stamp'][idx].detach().cpu().numpy()
             # X_CS_Input = x[idx].detach().cpu().numpy()
 
@@ -144,19 +141,8 @@ if __name__ == '__main__':
 
             # clustream.offline_cluster(X_CS_Input, timestamp)
             # print(f"Number of micro_clusters is {len(clustream.micro_clusters)}")
-
-        count += 1
-
-    # tensor --> list  X_input: (num_samples, num_features_graph)
-    X_input_db = X_output_gnn.detach().cpu().numpy()
-
-    # clustream.initial(X_input_initial, timestamp_list)
-
-    '''
-    for x, timestamp in tqdm(zip(X_input_db, timestamp_list)):
-        clustream.partial_fit(x, timestamp)
-        print(f"Number of micro_clusters is {len(clustream.micro_clusters)}")
-    '''
+    
+    X_input_db = X_output_gnn.detach().cpu().numpy()    # tensor --> list  X_input: (num_samples, num_features_graph)
 
     if len(X_input_db) != len(dataset):
         print("error: sample miss! len(X_input_db) is {} but len(dataset) is {} !".format(
@@ -182,9 +168,8 @@ if __name__ == '__main__':
 
     # #############################################################################
     # Offline stage
-    # Compute DenStream
+    # Compute CluStream
     # default eps=0.3 min_samples=10
-    # db = DBSCAN(eps=0.3, min_samples=10, metric='euclidean', metric_params=None).fit(X_input_db)    # eps 和 min_samples 两个超参如何设置
     '''
     eps 表示邻域半径
     min_samples 表示核心点阈值
