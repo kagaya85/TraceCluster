@@ -561,10 +561,7 @@ def save_data(graphs: Dict, idx: str = ''):
     save graph data to json file
     """
 
-    if idx == '':
-        name = embedding_name + '_' + time_now_str+'.json'
-    else:
-        name = embedding_name + '_' + time_now_str+'/'+idx+'.json'
+    name = embedding_name + '_' + time_now_str+'/'+idx+'.json'
 
     if is_wechat:
         filename = os.path.join(os.getcwd(), 'data',
@@ -839,11 +836,7 @@ def main():
                     result_map = {}
 
     if len(result_map) > 0:
-        if file_idx == 0:
-            # only one file
-            save_data(result_map)
-        else:
-            save_data(result_map, str(file_idx))
+        save_data(result_map, str(file_idx))
 
     print('preprocess finished :)')
 
