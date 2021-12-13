@@ -24,13 +24,16 @@ python preprocess.py
 Arguments:
 ```
 --embedding glove
-use globe embedding, default bert
+use glove embedding, default bert
 
 --normalize zscore
 use z-score normalize, default minmax
 
 --cores [number]
 config parallel processing core numbers, default depends on the mechine cores
+
+--max-num [number]
+set max saved trace number per-file to control the preprocessed file size, default number 10240
 
 --wechat
 use wechat dataset, default skywalking dataset

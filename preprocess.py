@@ -158,6 +158,7 @@ time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
 is_wechat = False
 use_request = False
 cache_file = './secrets/cache.json'
+embedding_name = ''
 
 
 def normalize(x): return x
@@ -241,6 +242,8 @@ def arguments():
                         help='normarlize method [zscore/minmax]', default='minmax')
     parser.add_argument('--embedding', dest='embedding',
                         help='word embedding method [bert/glove]', default='bert')
+    parser.add_argument('--max-num', dest='max_num',
+                        default=10240, help='max trace number in saved file')
     return parser.parse_args()
 
 
@@ -548,21 +551,25 @@ def load_name_cache() -> dict:
     return cache
 
 
-def save_data(graphs: Dict, embedding: str):
+def save_data(graphs: Dict, idx: str = ''):
     """
     save graph data to json file
     """
 
-    name = embedding + '_' + time_now_str+'.json'
+    if idx == '':
+        name = embedding_name + '_' + time_now_str+'.json'
+    else:
+        name = embedding_name + '_' + time_now_str+'/'+idx+'.json'
 
     if is_wechat:
         filename = os.path.join(os.getcwd(), 'data',
                                 'preprocessed', 'wechat', name)
     else:
         filename = os.path.join(os.getcwd(), 'data',
-                                'preprocessed', name)
+                                'preprocessed', 'trainticket', name)
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 
+    print("saving data..., map size: {}".format(getsizeof(graphs)))
     with open(filename, 'w', encoding='utf-8') as fd:
         json.dump(graphs, fd, ensure_ascii=False)
 
@@ -752,9 +759,10 @@ def task(ns, idx, divide_word: bool = True) -> dict:
 
 def main():
     args = arguments()
-    global is_wechat, use_request
+    global is_wechat, use_request, embedding_name
     is_wechat = args.wechat
     use_request = args.use_request
+    embedding_name = args.embedding
 
     if is_wechat:
         global cache, mmapis, service_url, operation_url, sn
@@ -791,23 +799,24 @@ def main():
             x, mean_duration, std_duration)
 
     else:
-        print(f"invalid normalize method name: {args.embedding}")
+        print(f"invalid normalize method name: {embedding_name}")
         exit()
     del span_data
 
     global embedding
-    if args.embedding == 'glove':
+    if embedding_name == 'glove':
         embedding = glove_embedding()
         enable_word_division = True
-    elif args.embedding == 'bert':
+    elif embedding_name == 'bert':
         embedding = bert_embedding()
         enable_word_division = False
     else:
-        print(f"invalid embedding method name: {args.embedding}")
+        print(f"invalid embedding method name: {embedding_name}")
         exit()
 
     result_map = {}
 
+    file_idx = 0
     # With shared memory
     with Manager() as m:
         ns = m.Namespace()
@@ -818,9 +827,20 @@ def main():
                   for idx in range(data_size)]
             for fu in as_completed(fs):
                 result_map = utils.mergeDict(result_map, fu.result())
+                # control the data size
+                if len(result_map) > args.max_num:
+                    save_data(result_map, str(file_idx))
+                    file_idx = file_idx + 1
+                    result_map = {}
 
-    print("saving data..., map size: {}".format(getsizeof(result_map)))
-    save_data(result_map, args.embedding)
+    if len(result_map) > 0:
+        if file_idx == 0:
+            # only one file
+            save_data(result_map)
+        else:
+            save_data(result_map, str(file_idx))
+            
+    print('preprocess finished :)')
 
 
 if __name__ == '__main__':
