@@ -368,7 +368,7 @@ def data_partition(data: DataFrame, size: int = 1024) -> List[DataFrame]:
     return res
 
 
-def build_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> tuple(dict, set):
+def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     """
     build trace graph from span list
     """
@@ -384,7 +384,7 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> 
     return graph, str_set
 
 
-def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> tuple(dict, set):
+def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     vertexs = {0: 'start'}
     edges = {}
     str_set = set()
@@ -445,7 +445,7 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
     return graph, str_set
 
 
-def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> tuple(dict, set):
+def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     traceId = trace[0].traceId
 
     str_set = set()
@@ -758,7 +758,7 @@ def min_max(x: float, min: float, max: float) -> float:
     return (x - min) / (max - min)
 
 
-def task(ns, idx, divide_word: bool = True) -> tuple(dict, set):
+def task(ns, idx, divide_word: bool = True):
     span_data = ns.sl[idx]
     current = current_process()
     pos = current._identity[0]-1
@@ -773,7 +773,7 @@ def task(ns, idx, divide_word: bool = True) -> tuple(dict, set):
         graph_map[trace_id] = graph
         str_set = set.union(str_set, sset)
 
-    return graph_map, str_set
+    return (graph_map, str_set)
 
 
 def main():
@@ -845,7 +845,7 @@ def main():
             fs = [exe.submit(task, ns, idx, enable_word_division)
                   for idx in range(data_size)]
             for fu in as_completed(fs):
-                graphs, sset = fu.result()
+                (graphs, sset) = fu.result()
                 result_map = utils.mergeDict(result_map, graphs)
                 name_set = set.union(name_set, sset)
                 # control the data size
@@ -864,7 +864,7 @@ def main():
 
     embd_filepath = generate_save_filepath('embedding')
     with open(embd_filepath, 'w', encoding='utf-8') as fd:
-        json.dump(graphs, fd, ensure_ascii=False)
+        json.dump(name_dict, fd, ensure_ascii=False)
 
     print(f'embedding data saved in {embd_filepath}')
     print('preprocess finished :)')
