@@ -38,8 +38,8 @@ Dataset：
 
 ### 12.7
 
-- [ ] 优化输入输出
-- [ ] 完善Readme
+- [x] 优化输入输出
+- [x] 完善Readme
 
 ### 12.13
-- [ ] 提取embedding到单独的文件中
+- [x] 提取embedding到单独的文件中
