@@ -33,7 +33,7 @@ use z-score normalize, default minmax
 config parallel processing core numbers, default depends on the mechine cores
 
 --max-num [number]
-set max saved trace number per-file to control the preprocessed file size, default number 10240
+set max saved trace number per-file to control the preprocessed file size, default number 100000
 
 --wechat
 use wechat dataset, default skywalking dataset
