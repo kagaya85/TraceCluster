@@ -26,7 +26,7 @@ spec:
       containers:
         - name: ts-admin-basic-info-service
           image: codewisdom/ts-admin-basic-info-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -89,7 +89,7 @@ spec:
       containers:
         - name: ts-admin-order-service
           image: codewisdom/ts-admin-order-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -151,7 +151,7 @@ spec:
       containers:
         - name: ts-admin-route-service
           image: codewisdom/ts-admin-route-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -213,7 +213,7 @@ spec:
       containers:
         - name: ts-admin-travel-service
           image: codewisdom/ts-admin-travel-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -275,7 +275,7 @@ spec:
       containers:
         - name: ts-admin-user-service
           image: codewisdom/ts-admin-user-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -337,7 +337,7 @@ spec:
       containers:
         - name: ts-assurance-service
           image: codewisdom/ts-assurance-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -399,7 +399,7 @@ spec:
       containers:
         - name: ts-basic-service
           image: codewisdom/ts-basic-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -461,7 +461,7 @@ spec:
       containers:
         - name: ts-cancel-service
           image: codewisdom/ts-cancel-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -523,7 +523,7 @@ spec:
       containers:
         - name: ts-config-service
           image: codewisdom/ts-config-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -585,7 +585,7 @@ spec:
       containers:
         - name: ts-consign-price-service
           image: codewisdom/ts-consign-price-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -647,7 +647,7 @@ spec:
       containers:
         - name: ts-consign-service
           image: codewisdom/ts-consign-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -709,7 +709,7 @@ spec:
       containers:
         - name: ts-contacts-service
           image: codewisdom/ts-contacts-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -771,7 +771,7 @@ spec:
       containers:
         - name: ts-execute-service
           image: codewisdom/ts-execute-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -833,7 +833,7 @@ spec:
       containers:
         - name: ts-food-map-service
           image: codewisdom/ts-food-map-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -895,7 +895,7 @@ spec:
       containers:
         - name: ts-food-service
           image: codewisdom/ts-food-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -961,7 +961,7 @@ spec:
       containers:
         - name: ts-inside-payment-service
           image: codewisdom/ts-inside-payment-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1023,7 +1023,7 @@ spec:
       containers:
         - name: ts-auth-service
           image: codewisdom/ts-auth-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1085,7 +1085,7 @@ spec:
       containers:
         - name: ts-news-service
           image: codewisdom/ts-news-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1158,7 +1158,7 @@ spec:
       containers:
         - name: ts-notification-service
           image: codewisdom/ts-notification-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1228,7 +1228,7 @@ spec:
       containers:
         - name: ts-order-other-service
           image: codewisdom/ts-order-other-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1290,7 +1290,7 @@ spec:
       containers:
         - name: ts-order-service
           image: codewisdom/ts-order-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1352,7 +1352,7 @@ spec:
       containers:
         - name: ts-payment-service
           image: codewisdom/ts-payment-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1414,7 +1414,7 @@ spec:
       containers:
         - name: ts-preserve-other-service
           image: codewisdom/ts-preserve-other-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1480,7 +1480,7 @@ spec:
       containers:
         - name: ts-preserve-service
           image: codewisdom/ts-preserve-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1546,7 +1546,7 @@ spec:
       containers:
         - name: ts-price-service
           image: codewisdom/ts-price-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1608,7 +1608,7 @@ spec:
       containers:
         - name: ts-rebook-service
           image: codewisdom/ts-rebook-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1670,7 +1670,7 @@ spec:
       containers:
         - name: ts-route-plan-service
           image: codewisdom/ts-route-plan-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1732,7 +1732,7 @@ spec:
       containers:
         - name: ts-route-service
           image: codewisdom/ts-route-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1794,7 +1794,7 @@ spec:
       containers:
         - name: ts-seat-service
           image: codewisdom/ts-seat-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1856,7 +1856,7 @@ spec:
       containers:
         - name: ts-security-service
           image: codewisdom/ts-security-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1918,7 +1918,7 @@ spec:
       containers:
         - name: ts-user-service
           image: codewisdom/ts-user-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -1980,7 +1980,7 @@ spec:
       containers:
         - name: ts-station-service
           image: codewisdom/ts-station-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -2042,7 +2042,7 @@ spec:
       containers:
         - name: ts-ticket-office-service
           image: codewisdom/ts-ticket-office-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -2104,7 +2104,7 @@ spec:
       containers:
         - name: ts-ticketinfo-service
           image: codewisdom/ts-ticketinfo-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -2166,7 +2166,7 @@ spec:
       containers:
         - name: ts-train-service
           image: codewisdom/ts-train-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -2228,7 +2228,7 @@ spec:
       containers:
         - name: ts-travel2-service
           image: codewisdom/ts-travel2-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -2290,7 +2290,7 @@ spec:
       containers:
         - name: ts-travel-plan-service
           image: codewisdom/ts-travel-plan-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -2351,8 +2351,8 @@ spec:
           args: [ "-c", "cp -R /skywalking/agent /agent/" ]
       containers:
         - name: ts-travel-service
-          image: registry.cn-shanghai.aliyuncs.com/xywu/ts-travel-service:parallel
-          imagePullPolicy: Always
+          image: codewisdom/ts-travel-service:0.2.1
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -2414,7 +2414,7 @@ spec:
       containers:
         - name: ts-delivery-service
           image: codewisdom/ts-delivery-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -2481,7 +2481,7 @@ spec:
       containers:
         - name: ts-verification-code-service
           image: codewisdom/ts-verification-code-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -2543,7 +2543,7 @@ spec:
       containers:
         - name: ts-voucher-service
           image: codewisdom/ts-voucher-service:0.2.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: skywalking-agent
               mountPath: /skywalking
@@ -2575,6 +2575,43 @@ spec:
             initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 5
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ts-avatar-service
+spec:
+  selector:
+    matchLabels:
+      app: ts-avatar-service
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ts-avatar-service
+    spec:
+      containers:
+      - name: ts-avatar-service
+        image: codewisdom/ts-avatar-service:0.2.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 17001
+        resources:
+          requests:
+            cpu: 50m
+            memory: 200Mi
+          limits:
+            cpu: 200m
+            memory: 500Mi
+        readinessProbe:
+          tcpSocket:
+            port: 17001
+          initialDelaySeconds: 160
+          periodSeconds: 10
+          timeoutSeconds: 5
+
 ---
 apiVersion: v1
 kind: Service
@@ -3110,3 +3147,15 @@ spec:
   selector:
     app: ts-voucher-service
 
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ts-avatar-service
+spec:
+  ports:
+    - name: http
+      port: 17001
+  selector:
+   app: ts-avatar-service
