@@ -435,7 +435,7 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]):
         })
 
     if rootSpan == None:
-        return None
+        return None, str_set
 
     graph = {
         'vertexs': vertexs,
