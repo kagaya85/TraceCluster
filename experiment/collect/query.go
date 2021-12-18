@@ -1,4 +1,4 @@
-package collect
+package main
 
 import (
 	"collect/assets"
@@ -17,7 +17,7 @@ func QueryTrace(ctx context.Context, traceID string) (api.Trace, error) {
 
 	req := graphql.NewRequest(assets.Read("graphql/Trace.graphql"))
 	req.Var("traceId", traceID)
-	err := Execute(ctx, req, rsp)
+	err := Execute(ctx, req, &rsp)
 
 	return rsp["result"], err
 }

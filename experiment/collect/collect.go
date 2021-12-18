@@ -1,4 +1,4 @@
-package collect
+package main
 
 import (
 	"context"
@@ -9,41 +9,70 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"time"
 
 	api "skywalking.apache.org/repo/goapi/query"
 )
 
 var (
-	rootpath string
+	rootpath     string
+	intervalStr  string
+	startTimeStr string
+	timezone     string
+	url          string
+)
+
+const (
+	swTimeLayout = "2006-01-02 150405"
 )
 
 type Config struct {
-	startTime int
-	endTime   int
-	date      string
+	startTime string
+	endTime   string
 	url       string
 }
 
 func init() {
-	flag.StringVar(&rootpath, "root", "./raw", "root directory path where preprocessed data saved.")
+	flag.StringVar(&startTimeStr, "startTime", "2021-12-17 00:00:00", "collect start time")
+	flag.StringVar(&intervalStr, "interval", "24h", "collect interval duration")
+	flag.StringVar(&timezone, "timezone", "Asia/Shanghai", "time zone")
+	flag.StringVar(&rootpath, "root", "./raw", "root directory path where preprocessed data saved")
+	flag.StringVar(&url, "url", "http://175.27.169.178:8080/graphql", "skywalking graphql server url")
 	flag.Parse()
 }
 
 func main() {
-	cfg := &Config{
-		date: "2021-12-10",
-		url:  "47.103.205.96:8080",
+	tz, err := time.LoadLocation(timezone)
+	if err != nil {
+		log.Fatalln("load time zone error:", err)
 	}
 
-	ctx := context.WithValue(context.Background(), urlKey{}, cfg.url)
+	startTime, err := time.ParseInLocation("2006-01-02 15:04:05", startTimeStr, tz)
+	if err != nil {
+		log.Fatalln("parse time string error:", err)
+	}
 
+	interval, err := time.ParseDuration(intervalStr)
+	if err != nil {
+		log.Fatalln("parse interval duration error:", err)
+	}
+
+	cfg := &Config{
+		startTime: startTime.Format(swTimeLayout),
+		endTime:   startTime.Add(interval).Format(swTimeLayout),
+		url:       url,
+	}
+
+	log.Printf("start collect span data from %s to %s", cfg.startTime, cfg.endTime)
+
+	ctx := context.WithValue(context.Background(), urlKey{}, cfg.url)
 	pageNum := 1
 	needTotal := true
 
 	condition := &api.TraceQueryCondition{
 		QueryDuration: &api.Duration{
-			Start: strconv.Itoa(cfg.startTime),
-			End:   strconv.Itoa(cfg.endTime),
+			Start: cfg.startTime,
+			End:   cfg.endTime,
 			Step:  api.StepSecond,
 		},
 		TraceState: api.TraceStateAll,
