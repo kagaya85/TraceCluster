@@ -12,4 +12,3 @@ weights_DIM
 secrets
 *.jpg
 !img/*
-bin

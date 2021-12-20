@@ -12,10 +12,12 @@ import (
 	api "skywalking.apache.org/repo/goapi/query"
 )
 
-type urlKey struct{}
-type usernameKey struct{}
-type passwordKey struct{}
-type authKey struct{}
+type (
+	urlKey      struct{}
+	usernameKey struct{}
+	passwordKey struct{}
+	authKey     struct{}
+)
 
 func QueryTrace(ctx context.Context, traceID string) (api.Trace, error) {
 	var rsp map[string]api.Trace
