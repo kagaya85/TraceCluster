@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	api "skywalking.apache.org/repo/goapi/query"
@@ -35,10 +36,10 @@ type Config struct {
 }
 
 func init() {
-	flag.StringVar(&startTimeStr, "startTime", "2021-12-20 00:00:00", "collect start time")
+	flag.StringVar(&startTimeStr, "start-time", "2021-12-20 00:00:00", "collect start time")
 	flag.StringVar(&intervalStr, "interval", "24h", "collect interval duration")
 	flag.StringVar(&timezone, "timezone", "Asia/Shanghai", "time zone")
-	flag.StringVar(&rootpath, "root", "./raw", "root directory path where preprocessed data saved")
+	flag.StringVar(&rootpath, "save-path", "./raw", "directory path where preprocessed data saved")
 	flag.StringVar(&url, "url", "http://175.27.169.178:8080/graphql", "skywalking graphql server url")
 	flag.Parse()
 }
@@ -104,7 +105,8 @@ func main() {
 	traces := QueryTraces(ctx, traceIDs)
 
 	if len(traces) != 0 {
-		if err := SaveCSV(traces, "traces"); err != nil {
+		timeNow := time.Now().Format("2006-01-02_15-04-05")
+		if err := SaveCSV(traces, fmt.Sprintf("%s_%s", timeNow, "traces.csv")); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -141,6 +143,26 @@ func SaveCSV(traces []api.Trace, filename string) error {
 
 	for _, trace := range traces {
 		for _, span := range trace.Spans {
+			var peer string
+			if span.Type == "Exit" {
+				peer = strings.Split(*span.Peer, ":")[0]
+			} else {
+				peer = span.ServiceCode
+			}
+
+			var parentSpanID string
+			if span.ParentSpanID == -1 {
+				if len(span.Refs) > 0 {
+					s := span.Refs[0]
+					parentSpanID = fmt.Sprintf("%s.%d", s.ParentSegmentID, s.ParentSpanID)
+				} else {
+					parentSpanID = "-1"
+				}
+			} else {
+				parentSpanID = fmt.Sprintf("%s.%d", span.SegmentID, span.ParentSpanID)
+			}
+
+			// "StartTime", "EndTime", "URL", "SpanType", "Service", "SpanId", "TraceId", "Peer", "ParentSpan", "Component", "IsError
 			records = append(records, []string{
 				strconv.Itoa(int(span.StartTime)),
 				strconv.Itoa(int(span.EndTime)),
@@ -149,8 +171,8 @@ func SaveCSV(traces []api.Trace, filename string) error {
 				span.ServiceCode,
 				fmt.Sprintf("%s.%d", span.SegmentID, span.SpanID),
 				span.TraceID,
-				*span.Peer,
-				fmt.Sprintf("%d", span.ParentSpanID), // TODO use segmentid.spanid
+				peer,
+				parentSpanID,
 				*span.Component,
 				strconv.FormatBool(*span.IsError),
 			})

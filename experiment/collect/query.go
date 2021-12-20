@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/machinebox/graphql"
+	"github.com/schollz/progressbar/v3"
 
 	api "skywalking.apache.org/repo/goapi/query"
 )
@@ -32,16 +33,18 @@ func QueryTraces(ctx context.Context, traceIDs []string) []api.Trace {
 	client := NewClient(ctx.Value(urlKey{}).(string))
 
 	traces := make([]api.Trace, 0, len(traceIDs))
+	bar := progressbar.Default(int64(len(traceIDs)), "trace collecting")
 	for _, traceID := range traceIDs {
 		var rsp map[string]api.Trace
 
 		req.Var("traceId", traceID)
-		if err := client.Run(ctx, req, rsp); err != nil {
+		if err := client.Run(ctx, req, &rsp); err != nil {
 			log.Printf("graphql execute error: %s", err)
 			continue
 		}
 
 		traces = append(traces, rsp["result"])
+		bar.Add(1)
 	}
 
 	return traces
