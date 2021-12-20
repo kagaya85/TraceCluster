@@ -3,6 +3,7 @@ package main
 import (
 	"collect/assets"
 	"context"
+	"encoding/base64"
 	"log"
 
 	"github.com/machinebox/graphql"
@@ -11,6 +12,9 @@ import (
 )
 
 type urlKey struct{}
+type usernameKey struct{}
+type passwordKey struct{}
+type authKey struct{}
 
 func QueryTrace(ctx context.Context, traceID string) (api.Trace, error) {
 	var rsp map[string]api.Trace
@@ -24,10 +28,11 @@ func QueryTrace(ctx context.Context, traceID string) (api.Trace, error) {
 
 func QueryTraces(ctx context.Context, traceIDs []string) []api.Trace {
 	req := graphql.NewRequest(assets.Read("graphql/Trace.graphql"))
+	setAuthorization(ctx, req)
 	client := NewClient(ctx.Value(urlKey{}).(string))
 
 	traces := make([]api.Trace, 0, len(traceIDs))
-	for traceID := range traceIDs {
+	for _, traceID := range traceIDs {
 		var rsp map[string]api.Trace
 
 		req.Var("traceId", traceID)
@@ -54,15 +59,29 @@ func QueryBasicTraces(ctx context.Context, condition *api.TraceQueryCondition) (
 
 func NewClient(url string) *graphql.Client {
 	client := graphql.NewClient(url)
-	client.Log = func(message string) {
-		log.Print(message)
-	}
+	// client.Log = func(message string) {
+	// 	log.Print(message)
+	// }
 
 	return client
 }
 
 func Execute(ctx context.Context, req *graphql.Request, resp interface{}) error {
+	setAuthorization(ctx, req)
 	client := NewClient(ctx.Value(urlKey{}).(string))
-
 	return client.Run(ctx, req, resp)
+}
+
+func setAuthorization(ctx context.Context, req *graphql.Request) {
+	username := ctx.Value(usernameKey{}).(string)
+	password := ctx.Value(passwordKey{}).(string)
+	authorization := ctx.Value(authKey{}).(string)
+
+	if authorization == "" && username != "" && password != "" {
+		authorization = "Basic " + base64.StdEncoding.EncodeToString([]byte(username+":"+password))
+	}
+
+	if authorization != "" {
+		req.Header.Set("Authorization", authorization)
+	}
 }

@@ -30,10 +30,12 @@ type Config struct {
 	startTime string
 	endTime   string
 	url       string
+	username  string
+	password  string
 }
 
 func init() {
-	flag.StringVar(&startTimeStr, "startTime", "2021-12-17 00:00:00", "collect start time")
+	flag.StringVar(&startTimeStr, "startTime", "2021-12-20 00:00:00", "collect start time")
 	flag.StringVar(&intervalStr, "interval", "24h", "collect interval duration")
 	flag.StringVar(&timezone, "timezone", "Asia/Shanghai", "time zone")
 	flag.StringVar(&rootpath, "root", "./raw", "root directory path where preprocessed data saved")
@@ -61,11 +63,18 @@ func main() {
 		startTime: startTime.Format(swTimeLayout),
 		endTime:   startTime.Add(interval).Format(swTimeLayout),
 		url:       url,
+		username:  "basic-auth-username",
+		password:  "basic-auth-password",
 	}
 
-	log.Printf("start collect span data from %s to %s", cfg.startTime, cfg.endTime)
+	log.Printf("start collect span data from %q to %q", cfg.startTime, cfg.endTime)
 
-	ctx := context.WithValue(context.Background(), urlKey{}, cfg.url)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, urlKey{}, cfg.url)
+	ctx = context.WithValue(ctx, usernameKey{}, cfg.username)
+	ctx = context.WithValue(ctx, passwordKey{}, cfg.password)
+	ctx = context.WithValue(ctx, authKey{}, "")
+
 	pageNum := 1
 	needTotal := true
 
@@ -93,17 +102,25 @@ func main() {
 		traceIDs = append(traceIDs, trace.TraceIds...)
 	}
 	traces := QueryTraces(ctx, traceIDs)
-	if err := SaveCSV(traces, "traces"); err != nil {
-		log.Fatal(err)
+
+	if len(traces) != 0 {
+		if err := SaveCSV(traces, "traces"); err != nil {
+			log.Fatal(err)
+		}
 	}
-	log.Print("collect end")
+
+	log.Println("collect end, get trace numbers:", len(traces))
 }
 
 func SaveCSV(traces []api.Trace, filename string) error {
 	header := []string{"StartTime", "EndTime", "URL", "SpanType", "Service", "SpanId", "TraceId", "Peer", "ParentSpan", "Component", "IsError"}
-	filepath := path.Join(rootpath, filename)
 	var records [][]string
 
+	if _, err := os.Stat(rootpath); os.IsNotExist(err) {
+		os.MkdirAll(rootpath, os.ModePerm)
+	}
+
+	filepath := path.Join(rootpath, filename)
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		records = make([][]string, 0, len(traces)+1)
 		records = append(records, header)
