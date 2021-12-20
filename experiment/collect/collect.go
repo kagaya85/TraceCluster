@@ -98,25 +98,24 @@ func main() {
 	if err != nil {
 		log.Fatalf("query trace faild: %s", err)
 	}
+
 	traceIDs := make([]string, 0, traceBrief.Total)
 	for _, trace := range traceBrief.Traces {
 		traceIDs = append(traceIDs, trace.TraceIds...)
 	}
-	traces := QueryTraces(ctx, traceIDs)
 
-	if len(traces) != 0 {
-		timeNow := time.Now().Format("2006-01-02_15-04-05")
-		if err := SaveCSV(traces, fmt.Sprintf("%s_%s", timeNow, "traces.csv")); err != nil {
-			log.Fatal(err)
-		}
+	traceC := QueryTraces(ctx, traceIDs)
+
+	timeNow := time.Now().Format("2006-01-02_15-04-05")
+	if err := SaveCSV(traceC, fmt.Sprintf("%s_%s", timeNow, "traces.csv")); err != nil {
+		log.Fatal(err)
 	}
-
-	log.Println("collect end, get trace numbers:", len(traces))
 }
 
-func SaveCSV(traces []api.Trace, filename string) error {
+func SaveCSV(traceC <-chan api.Trace, filename string) error {
 	header := []string{"StartTime", "EndTime", "URL", "SpanType", "Service", "SpanId", "TraceId", "Peer", "ParentSpan", "Component", "IsError"}
-	var records [][]string
+	bufsize := 1000
+	records := make([][]string, 0, bufsize)
 
 	if _, err := os.Stat(rootpath); os.IsNotExist(err) {
 		os.MkdirAll(rootpath, os.ModePerm)
@@ -124,10 +123,7 @@ func SaveCSV(traces []api.Trace, filename string) error {
 
 	filepath := path.Join(rootpath, filename)
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
-		records = make([][]string, 0, len(traces)+1)
 		records = append(records, header)
-	} else {
-		records = make([][]string, 0, len(traces))
 	}
 
 	f, err := os.OpenFile(filepath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -141,7 +137,8 @@ func SaveCSV(traces []api.Trace, filename string) error {
 		}
 	}()
 
-	for _, trace := range traces {
+	w := csv.NewWriter(f)
+	for trace := range traceC {
 		for _, span := range trace.Spans {
 			var peer string
 			if span.Type == "Exit" {
@@ -176,10 +173,14 @@ func SaveCSV(traces []api.Trace, filename string) error {
 				*span.Component,
 				strconv.FormatBool(*span.IsError),
 			})
+
+			if len(records) > bufsize {
+				w.WriteAll(records)
+				records = records[:0]
+			}
 		}
 	}
 
-	w := csv.NewWriter(f)
 	w.WriteAll(records)
 
 	return w.Error()

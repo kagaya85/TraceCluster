@@ -27,27 +27,32 @@ func QueryTrace(ctx context.Context, traceID string) (api.Trace, error) {
 	return rsp["result"], err
 }
 
-func QueryTraces(ctx context.Context, traceIDs []string) []api.Trace {
-	req := graphql.NewRequest(assets.Read("graphql/Trace.graphql"))
-	setAuthorization(ctx, req)
-	client := NewClient(ctx.Value(urlKey{}).(string))
+func QueryTraces(ctx context.Context, traceIDs []string) <-chan api.Trace {
+	traceC := make(chan api.Trace, 10)
 
-	traces := make([]api.Trace, 0, len(traceIDs))
-	bar := progressbar.Default(int64(len(traceIDs)), "trace collecting")
-	for _, traceID := range traceIDs {
-		var rsp map[string]api.Trace
+	go func() {
+		req := graphql.NewRequest(assets.Read("graphql/Trace.graphql"))
+		setAuthorization(ctx, req)
+		client := NewClient(ctx.Value(urlKey{}).(string))
+		bar := progressbar.Default(int64(len(traceIDs)), "trace collecting")
 
-		req.Var("traceId", traceID)
-		if err := client.Run(ctx, req, &rsp); err != nil {
-			log.Printf("graphql execute error: %s", err)
-			continue
+		for _, traceID := range traceIDs {
+			var rsp map[string]api.Trace
+
+			req.Var("traceId", traceID)
+			if err := client.Run(ctx, req, &rsp); err != nil {
+				log.Printf("graphql execute error: %s", err)
+				continue
+			}
+
+			traceC <- rsp["result"]
+			bar.Add(1)
 		}
 
-		traces = append(traces, rsp["result"])
-		bar.Add(1)
-	}
+		close(traceC)
+	}()
 
-	return traces
+	return traceC
 }
 
 func QueryBasicTraces(ctx context.Context, condition *api.TraceQueryCondition) (api.TraceBrief, error) {
