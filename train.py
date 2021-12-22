@@ -21,7 +21,8 @@ def arguments():
     parser = argparse.ArgumentParser(description="gnn argumentes")
     parser.add_argument('--wechat', dest='wechat',
                         help='use wechat data', action='store_true')
-    parser.add_argument('--dataset', dest='dataset', help='dataset file path')
+    parser.add_argument('--dataset', dest='dataset',
+                        help='use other preprocessed data dirpath, eg. /data/TraceCluster/preprocessed')
     parser.add_argument('--local', dest='local', action='store_const',
                         const=True, default=False)
     parser.add_argument('--glob', dest='glob', action='store_const',

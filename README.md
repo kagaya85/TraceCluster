@@ -59,8 +59,8 @@ Arguments:
 --wechat
 use the newest wechat raw preprocessed datafile
 
---dataset [filename]
-use other data file of filename
+--dataset [dirpath]
+use other preprocessed data dirpath, eg. /data/TraceCluster/preprocessed
 ```
 Please check the source code file(train.py), to see other training auguments
 

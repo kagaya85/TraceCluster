@@ -38,16 +38,18 @@ class TraceClusterDataset(Dataset):
         file_list = []
 
         if self.args != None and self.args.dataset is not None:
-            file_list.append(self.aug)
+            datapath = self.args.dataset
         else:
             if self.args != None and self.args.wechat == True:
-                newfile = utils.getNewfile(osp.join(self.raw_dir, 'wechat'))
-                if newfile != "":
-                    file_list.append(newfile)
+                datapath = osp.join(self.raw_dir, 'wechat')
             else:
-                newfile = utils.getNewfile(osp.join(self.raw_dir))
-                if newfile != "":
-                    file_list.append(newfile)
+                datapath = osp.join(self.raw_dir, 'trainticket')
+
+        datadir = utils.getNewDir(datapath)
+        if datadir != "":
+            with open(osp.join(datadir, 'embedding.json'), 'r') as f:
+                self.embedding = json.load(f)
+            file_list = utils.getDatafiles(datadir)
 
         if len(file_list) == 0:
             print("no such dataset file, please check dataset path")
@@ -70,57 +72,46 @@ class TraceClusterDataset(Dataset):
         pass
 
     def process(self):
+        print('load preprocessed data file number:', len(self.raw_file_names))
+
         idx = 0
 
-        print('load preprocessed data file:', self.raw_file_names[0])
-        with open(self.raw_file_names[0], "r") as f:    # file name not list
-            raw_data = json.load(f)
+        for file in self.raw_file_names:
+            with open(file, "r") as f:
+                raw_data = json.load(f)
 
-        for trace_id, trace in tqdm(raw_data.items()):
-            node_feats = self._get_node_features(trace)
-            edge_feats = self._get_edge_features(trace)
-            edge_index = self._get_adjacency_info(trace)
+            for trace_id, trace in tqdm(raw_data.items()):
+                node_feats = self._get_node_features(trace)
+                edge_feats = self._get_edge_features(trace)
+                edge_index = self._get_adjacency_info(trace)
 
-            # dim check
-            num_nodes_node_feats, _ = node_feats.size()
-            num_nodes_edge_index = edge_index.max()+1    # 包括 0
-            if num_nodes_node_feats != num_nodes_edge_index:
-                print("Feature dismatch! num_nodes_node_feats: {}, num_nodes_edge_index: {}, trace_id: {}".format(
-                    num_nodes_node_feats, num_nodes_edge_index, trace_id))
+                # dim check
+                num_nodes_node_feats, _ = node_feats.size()
+                num_nodes_edge_index = edge_index.max()+1    # 包括 0
+                if num_nodes_node_feats != num_nodes_edge_index:
+                    print("Feature dismatch! num_nodes_node_feats: {}, num_nodes_edge_index: {}, trace_id: {}".format(
+                        num_nodes_node_feats, num_nodes_edge_index, trace_id))
 
-            num_edges_edge_feats, _ = edge_feats.size()
-            _, num_edges_edge_index = edge_index.size()
-            if num_edges_edge_feats != num_edges_edge_index:
-                print("Feature dismatch! num_edges_edge_feats: {}, num_edges_edge_index: {}, trace_id: {}".format(
-                    num_edges_edge_feats, num_edges_edge_index, trace_id))
+                num_edges_edge_feats, _ = edge_feats.size()
+                _, num_edges_edge_index = edge_index.size()
+                if num_edges_edge_feats != num_edges_edge_index:
+                    print("Feature dismatch! num_edges_edge_feats: {}, num_edges_edge_index: {}, trace_id: {}".format(
+                        num_edges_edge_feats, num_edges_edge_index, trace_id))
 
-            data = Data(
-                x=node_feats,
-                edge_index=edge_index,
-                edge_attr=edge_feats,
-                trace_id=trace_id,    # add trace_id for cluster
-                # add time_stamp for DenStream
-                time_stamp=trace["edges"]["0"][0]["startTime"],
-                # time_stamp=list(trace["edges"].items())[0][1][0]["startTime"],
-            )
+                data = Data(
+                    x=node_feats,
+                    edge_index=edge_index,
+                    edge_attr=edge_feats,
+                    trace_id=trace_id,    # add trace_id for cluster
+                    # add time_stamp for DenStream
+                    time_stamp=trace["edges"]["0"][0]["startTime"],
+                    # time_stamp=list(trace["edges"].items())[0][1][0]["startTime"],
+                )
 
-            # test
-            # if data.trace_id == '1e3c47720fe24523938fff342ebe6c0d.35.16288656971030003':
-            #    data.edge_attr = data.edge_attr * 1000
-
-            filename = osp.join(self.processed_dir, 'data_{}.pt'.format(idx))
-            torch.save(data, filename)
-            idx += 1
-            # data_list.append(data)
-
-        # if self.pre_filter is not None:
-        #     data_list = [data for data in data_list if self.pre_filter(data)]
-
-        # if self.pre_transform is not None:
-        #     data_list = [self.pre_transform(data) for data in data_list]
-
-        # datas, slices = self.collate(data_list)
-        # torch.save((datas, slices), self.processed_paths[0])
+                filename = osp.join(self.processed_dir,
+                                    'data_{}.pt'.format(idx))
+                torch.save(data, filename)
+                idx += 1
 
     def _get_node_features(self, trace):
         """ 
@@ -129,7 +120,15 @@ class TraceClusterDataset(Dataset):
         [Number of Nodes, Node Feature size]
         """
         node_feats = []
-        for span_id, attr in trace["vertexs"].items():
+        for span_id, attrs in trace["vertexs"].items():
+            # use operation name
+            if isinstance(attrs, list):
+                attr = attrs[1]
+            else:
+                attr = attrs
+            # replace with embedding attribute
+            if self.embedding != None:
+                attr = self.embedding[attr]
             node_feats.append(attr)
 
         node_feats = np.asarray(node_feats)
