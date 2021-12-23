@@ -22,7 +22,7 @@ def arguments():
     parser.add_argument('--wechat', dest='wechat',
                         help='use wechat data', action='store_true')
     parser.add_argument('--dataset', dest='dataset',
-                        help='use other preprocessed data dirpath, eg. /data/TraceCluster/preprocessed')
+                        help='use other preprocessed data dirpath, eg. /data/TraceCluster/preprocessed/trainticket')
     parser.add_argument('--local', dest='local', action='store_const',
                         const=True, default=False)
     parser.add_argument('--glob', dest='glob', action='store_const',

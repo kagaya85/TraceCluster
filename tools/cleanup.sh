@@ -8,6 +8,7 @@ read -r -p "Remove processed pt file? ($ProcessedPath) [Y/n] " input
 case $input in
 	[yY][eE][sS]|[yY])
 		rm -rf $ProcessedPath
+		echo "Removed"
 		;;
 	*)
 		echo "Skip"
@@ -19,6 +20,7 @@ read -r -p "Remove weights file? ($WeightsPath) [Y/n] " input
 case $input in
 	[yY][eE][sS]|[yY])
 		rm -rf $WeightsPath
+		echo "Removed"
 		;;
 	*)
 		echo "Skip"

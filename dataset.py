@@ -47,6 +47,7 @@ class TraceClusterDataset(Dataset):
 
         datadir = utils.getNewDir(datapath)
         if datadir != "":
+            print(f"load preproceessed dataset from {datadir}")
             with open(osp.join(datadir, 'embedding.json'), 'r') as f:
                 self.embedding = json.load(f)
             file_list = utils.getDatafiles(datadir)
@@ -72,7 +73,7 @@ class TraceClusterDataset(Dataset):
         pass
 
     def process(self):
-        print('load preprocessed data file number:', len(self.raw_file_names))
+        print('load file number:', len(self.raw_file_names))
 
         idx = 0
 
