@@ -1,6 +1,5 @@
 # Kagaya kagaya85@outlook.com
 import json
-from re import I
 import yaml
 import os
 from sys import getsizeof
@@ -17,7 +16,8 @@ from multiprocessing import cpu_count, Manager, current_process
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import requests
 import wordninja
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoConfig, AutoModel
+import torch
 
 data_root = '/data/TraceCluster/raw'
 
@@ -733,13 +733,20 @@ def glove_embedding() -> Callable[[str], List[float]]:
 def bert_embedding() -> Callable[[str], List[float]]:
     model_name = 'bert-base-uncased'
     tokenizer = AutoTokenizer.from_pretrained(
-        model_name, do_lower_case=True, cache_dir='./data/cache')
+        model_name, do_lower_case=True, cache_dir='./data/cache'
+    )
+
+    model = AutoModel.from_pretrained(
+        model_name, output_hidden_states=True, cache_dir='./data/cache'
+    )
 
     def bert(input: str) -> List[float]:
-        encoded = tokenizer(
-            input, padding='max_length', max_length=100)
+        inputs = tokenizer(
+            input, padding='max_length', max_length=100, return_tensors="pt")
 
-        return encoded['input_ids']
+        outputs = model(**inputs)
+
+        return outputs.pooler_output.tolist()[0]
 
     return bert
 
