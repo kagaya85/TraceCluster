@@ -2,6 +2,10 @@ import re
 import os
 from typing import List
 
+from torch_geometric import data
+
+embedding_filename = "embedding.json"
+
 
 def boolStr2Int(str: str) -> int:
     if str in ['FALSE', 'False', 'false', '0', 0]:
@@ -62,7 +66,7 @@ def mergeDict(x: dict, y: dict):
     return {**x, **y}
 
 
-def getNewfile(dirpath: str) -> str:
+def getNewFile(dirpath: str) -> List[str]:
     list = os.listdir(dirpath)
     filelist = []
     for x in list:
@@ -74,5 +78,36 @@ def getNewfile(dirpath: str) -> str:
 
     if len(filelist) > 0:
         return os.path.join(dirpath, filelist[-1])
+
+    return ""
+
+
+def getDatafiles(dirpath: str) -> List[str]:
+    list = os.listdir(dirpath)
+    datafiles = []
+    for name in list:
+        if name == embedding_filename:
+            continue
+
+        filename = os.path.join(dirpath, name)
+        if not os.path.isdir(filename):
+            datafiles.append(filename)
+
+    return datafiles
+
+
+def getNewDir(datapath: str) -> str:
+    list = os.listdir(datapath)
+    dirlist = []
+
+    for name in list:
+        dirname = os.path.join(datapath, name)
+        if os.path.isdir(dirname):
+            dirlist.append(dirname)
+
+    dirlist.sort(key=lambda dirname: os.path.getmtime(dirname))
+
+    if len(dirlist) > 0:
+        return os.path.join(datapath, dirlist[-1])
 
     return ""

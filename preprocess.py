@@ -1,6 +1,5 @@
 # Kagaya kagaya85@outlook.com
 import json
-from re import I
 import yaml
 import os
 from sys import getsizeof
@@ -17,7 +16,8 @@ from multiprocessing import cpu_count, Manager, current_process
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import requests
 import wordninja
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoConfig, AutoModel
+import torch
 
 data_root = '/data/TraceCluster/raw'
 
@@ -245,7 +245,7 @@ def arguments():
     parser.add_argument('--embedding', dest='embedding',
                         help='word embedding method [bert/glove]', default='bert')
     parser.add_argument('--max-num', dest='max_num',
-                        default=10240, help='max trace number in saved file')
+                        default=100000, help='max trace number in saved file')
     return parser.parse_args()
 
 
@@ -368,7 +368,7 @@ def data_partition(data: DataFrame, size: int = 1024) -> List[DataFrame]:
     return res
 
 
-def build_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> dict:
+def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     """
     build trace graph from span list
     """
@@ -376,14 +376,18 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> 
     trace.sort(key=lambda s: s.startTime)
 
     if is_wechat:
-        return build_mm_graph(trace, time_normolize)
+        graph, str_set = build_mm_graph(trace, time_normolize)
+    else:
+        graph, str_set = build_sw_graph(trace, time_normolize)
 
-    return build_sw_graph(trace, time_normolize)
+    str_set.add('start')
+    return graph, str_set
 
 
-def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> dict:
-    vertexs = {0: embedding('start')}
+def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]):
+    vertexs = {0: 'start'}
     edges = {}
+    str_set = set()
 
     spanIdMap = {'-1': 0}
     spanIdCounter = 1
@@ -410,8 +414,10 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
 
         # span id should be unique
         if spanId not in vertexs.keys():
-            vertexs[spanId] = embedding('/'.join(
-                [span.service, span.operation, span.code]))
+            opname = '/'.join([span.service, span.operation, span.code])
+            vertexs[spanId] = [span.service, opname]
+            str_set.add(span.service)
+            str_set.add(opname)
 
         if parentSpanId not in edges.keys():
             edges[parentSpanId] = []
@@ -429,19 +435,20 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
         })
 
     if rootSpan == None:
-        return None
+        return None, str_set
 
     graph = {
         'vertexs': vertexs,
         'edges': edges,
     }
 
-    return graph
+    return graph, str_set
 
 
-def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) -> dict:
+def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     traceId = trace[0].traceId
 
+    str_set = set()
     spanId2Idx = {}
     tailIdx = 0
     parentNum = {}
@@ -499,17 +506,18 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
                     ITEM.PARENT_SPAN_ID: root_span_id,
                     ITEM.START_TIME: root_start_time,
                     ITEM.DURATION: root_duration,
-                    ITEM.SERVICE: "",
-                    ITEM.OPERATION: "",
+                    ITEM.SERVICE: "root",
+                    ITEM.OPERATION: "start",
                     ITEM.SPAN_TYPE: 'EntrySpan',
-                    ITEM.PEER: "{}/{}".format(root_service_name, "null"),
+                    ITEM.PEER: "{}/{}".format(root_service_name, "start"),
                     ITEM.CODE: 0,
                     ITEM.IS_ERROR: False,
                 }))
         else:
             rspanId = root_spans[0]
 
-    vertexs[spanId2Idx[rspanId]] = embedding(root_service_name)
+    vertexs[spanId2Idx[rspanId]] = [root_service_name, "start"]
+    str_set.add(root_service_name)
 
     for idx, spans in enumerate(graph):
         if len(spans) == 0:
@@ -517,7 +525,9 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
 
         edges[idx] = []
         for span in spans:
-            vertexs[spanId2Idx[span.spanId]] = embedding(span.peer)
+            vertexs[spanId2Idx[span.spanId]] = [span.service, span.peer]
+            str_set.add(span.service)
+            str_set.add(span.peer)
             edges[idx].append({
                 'vertexId': spanId2Idx[span.spanId],
                 'parentSpanId': span.parentSpanId,
@@ -535,7 +545,7 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]) 
         'edges': edges,
     }
 
-    return graph
+    return graph, str_set
 
 
 def get_mmapi() -> dict:
@@ -560,22 +570,27 @@ def save_data(graphs: Dict, idx: str = ''):
     """
     save graph data to json file
     """
-
-    name = embedding_name + '_' + time_now_str+'/'+idx+'.json'
-
-    if is_wechat:
-        filename = os.path.join(os.getcwd(), 'data',
-                                'preprocessed', 'wechat', name)
-    else:
-        filename = os.path.join(os.getcwd(), 'data',
-                                'preprocessed', 'trainticket', name)
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    filepath = generate_save_filepath(idx)
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
     print("saving data..., map size: {}".format(getsizeof(graphs)))
-    with open(filename, 'w', encoding='utf-8') as fd:
+    with open(filepath, 'w', encoding='utf-8') as fd:
         json.dump(graphs, fd, ensure_ascii=False)
 
-    print(f"data saved in {filename}")
+    print(f"data saved in {filepath}")
+
+
+def generate_save_filepath(name: str) -> str:
+    filename = embedding_name + '_' + time_now_str+'/'+name+'.json'
+
+    if is_wechat:
+        filepath = os.path.join(os.getcwd(), 'data',
+                                'preprocessed', 'wechat', filename)
+    else:
+        filepath = os.path.join(os.getcwd(), 'data',
+                                'preprocessed', 'trainticket', filename)
+
+    return filepath
 
 
 def divide_word(s: str, sep: str = "/") -> str:
@@ -718,13 +733,20 @@ def glove_embedding() -> Callable[[str], List[float]]:
 def bert_embedding() -> Callable[[str], List[float]]:
     model_name = 'bert-base-uncased'
     tokenizer = AutoTokenizer.from_pretrained(
-        model_name, do_lower_case=True, cache_dir='./data/cache')
+        model_name, do_lower_case=True, cache_dir='./data/cache'
+    )
+
+    model = AutoModel.from_pretrained(
+        model_name, output_hidden_states=True, cache_dir='./data/cache'
+    )
 
     def bert(input: str) -> List[float]:
-        encoded = tokenizer(
-            input, padding='max_length', max_length=100)
+        inputs = tokenizer(
+            input, padding='max_length', max_length=100, return_tensors="pt")
 
-        return encoded['input_ids']
+        outputs = model(**inputs)
+
+        return outputs.pooler_output.tolist()[0]
 
     return bert
 
@@ -743,20 +765,22 @@ def min_max(x: float, min: float, max: float) -> float:
     return (x - min) / (max - min)
 
 
-def task(ns, idx, divide_word: bool = True) -> dict:
+def task(ns, idx, divide_word: bool = True):
     span_data = ns.sl[idx]
     current = current_process()
     pos = current._identity[0]-1
     graph_map = {}
+    str_set = set()
 
     for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID]), desc="processing #{:0>2d}".format(idx), position=pos):
         trace = [Span(raw_span) for idx, raw_span in trace_data.iterrows()]
-        graph = build_graph(trace_process(trace, divide_word), normalize)
+        graph, sset = build_graph(trace_process(trace, divide_word), normalize)
         if graph == None:
             continue
         graph_map[trace_id] = graph
+        str_set = set.union(str_set, sset)
 
-    return graph_map
+    return (graph_map, str_set)
 
 
 def main():
@@ -817,7 +841,7 @@ def main():
         exit()
 
     result_map = {}
-
+    name_set = set()
     file_idx = 0
     # With shared memory
     with Manager() as m:
@@ -828,7 +852,9 @@ def main():
             fs = [exe.submit(task, ns, idx, enable_word_division)
                   for idx in range(data_size)]
             for fu in as_completed(fs):
-                result_map = utils.mergeDict(result_map, fu.result())
+                (graphs, sset) = fu.result()
+                result_map = utils.mergeDict(result_map, graphs)
+                name_set = set.union(name_set, sset)
                 # control the data size
                 if len(result_map) > args.max_num:
                     save_data(result_map, str(file_idx))
@@ -838,6 +864,16 @@ def main():
     if len(result_map) > 0:
         save_data(result_map, str(file_idx))
 
+    print('start generate embedding file')
+    name_dict = {}
+    for name in tqdm(name_set):
+        name_dict[name] = embedding(name)
+
+    embd_filepath = generate_save_filepath('embedding')
+    with open(embd_filepath, 'w', encoding='utf-8') as fd:
+        json.dump(name_dict, fd, ensure_ascii=False)
+
+    print(f'embedding data saved in {embd_filepath}')
     print('preprocess finished :)')
 
 
