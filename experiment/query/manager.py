@@ -58,9 +58,12 @@ def constant_query(timeout: int = 24*hour):
     return
 
 
-def random_query(q: Query, weights: dict, count: int):
+def random_query(q: Query, weights: dict, count: int, inteval: int = random.randint(1, 10)):
     """
     登陆一个用户并按权重随机发起请求
+    :param weights: 权重dict
+    :param count: 请求次数
+    :param inteval: 请求间隔
     """
     if not q.login():
         logger.error('login failed')
@@ -74,7 +77,7 @@ def random_query(q: Query, weights: dict, count: int):
         except Exception:
             logger.exception(f'query {func.__name__} got an exception')
 
-        time.sleep(random.randint(1, 10))
+        time.sleep(inteval)
 
 
 def run(task: Callable, timeout: int):
@@ -85,56 +88,345 @@ def run(task: Callable, timeout: int):
     return
 
 
+def query_travel(timeout: int = 1*hour):
+    q = Query(url)
+
+    def preserve_scenario():
+        query_and_preserve(q)
+
+    query_weights = {
+        q.query_high_speed_ticket: 10,
+        q.query_high_speed_ticket_parallel: 10,
+        q.query_min_station: 10,
+        q.query_cheapest: 10,
+        q.query_quickest: 10,
+        preserve_scenario: 50,
+    }
+
+    def task():
+        random_query(q, query_weights, random.randint(2, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_ticketinfo(timeout: int = 1*hour):
+    q = Query(url)
+
+    def preserve_scenario():
+        query_and_preserve(q)
+
+    query_weights = {
+        q.query_high_speed_ticket: 10,
+        q.query_high_speed_ticket_parallel: 10,
+        q.query_min_station: 10,
+        q.query_cheapest: 10,
+        q.query_quickest: 10,
+        preserve_scenario: 50,
+    }
+
+    def task():
+        random_query(q, query_weights, random.randint(2, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_route(timeout: int = 1*hour):
+    q = Query(url)
+
+    def preserve_scenario():
+        query_and_preserve(q)
+
+    query_weights = {
+        q.query_high_speed_ticket: 10,
+        q.query_min_station: 10,
+        q.query_cheapest: 10,
+        q.query_quickest: 10,
+        preserve_scenario: 50,
+    }
+
+    def task():
+        random_query(q, query_weights, random.randint(2, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_order(timeout: int = 1*hour):
+    q = Query(url)
+
+    def payment_scenario():
+        query_and_pay(q)
+
+    def cancel_scenario():
+        query_and_cancel(q)
+
+    def collect_scenario():
+        query_and_collect(q)
+
+    query_weights = {
+        q.query_high_speed_ticket: 10,
+        q.query_min_station: 10,
+        q.query_cheapest: 10,
+        q.query_quickest: 10,
+        q.query_orders: 20,
+        payment_scenario: 50,
+        cancel_scenario: 50,
+        collect_scenario: 50,
+    }
+
+    def task():
+        random_query(q, query_weights, random.randint(2, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_basic(timeout: int = 1*hour):
+    q = Query(url)
+
+    query_weights = {
+        q.query_high_speed_ticket: 10,
+        q.query_min_station: 10,
+        q.query_cheapest: 10,
+        q.query_quickest: 10,
+    }
+
+    def task():
+        random_query(q, query_weights, random.randint(2, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_travel_plan(timeout: int = 1*hour):
+    q = Query(url)
+
+    query_weights = {
+        q.query_min_station: 10,
+        q.query_cheapest: 10,
+        q.query_quickest: 10,
+    }
+
+    def task():
+        random_query(q, query_weights, random.randint(2, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_station(timeout: int = 1*hour):
+    q = Query(url)
+
+    query_weights = {
+        q.query_high_speed_ticket: 10,
+        q.query_high_speed_ticket_parallel: 10,
+        q.query_min_station: 10,
+        q.query_cheapest: 10,
+        q.query_quickest: 10,
+        q.query_orders: 20,
+        q.query_other_orders: 20,
+    }
+
+    def task():
+        random_query(q, query_weights, random.randint(2, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_seat(timeout: int = 1*hour):
+    q = Query(url)
+
+    def preserve_scenario():
+        query_and_preserve(q)
+
+    query_weights = {
+        q.query_min_station: 10,
+        q.query_cheapest: 10,
+        q.query_quickest: 10,
+        preserve_scenario: 20,
+    }
+
+    def task():
+        random_query(q, query_weights, random.randint(2, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_config(timeout: int = 1*hour):
+    q = Query(url)
+
+    query_weights = {
+        q.query_min_station: 10,
+        q.query_cheapest: 10,
+        q.query_quickest: 10,
+    }
+
+    def task():
+        random_query(q, query_weights, random.randint(2, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_inside_payment(timeout: int = 1*hour):
+    q = Query(url)
+
+    def payment_scenario():
+        query_and_pay(q)
+
+    query_weights = {
+        payment_scenario: 100,
+    }
+
+    def task():
+        random_query(q, query_weights,
+                     random.randint(2, 10), random.randint(3, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_cancel(timeout: int = 1*hour):
+    q = Query(url)
+
+    def cancel_scenario():
+        query_and_cancel(q)
+
+    query_weights = {
+        cancel_scenario: 100,
+    }
+
+    def task():
+        random_query(q, query_weights,
+                     random.randint(2, 10), random.randint(3, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_contacts(timeout: int = 1*hour):
+    q = Query(url)
+
+    def preserve_scenario():
+        query_and_preserve(q)
+
+    query_weights = {
+        q.query_contacts: 10,
+        preserve_scenario: 10,
+    }
+
+    def task():
+        random_query(q, query_weights, random.randint(2, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_consign(timeout: int = 1*hour):
+    q = Query(url)
+
+    def consign_scenario():
+        query_and_consign(q)
+
+    query_weights = {
+        consign_scenario: 100,
+    }
+
+    def task():
+        random_query(q, query_weights,
+                     random.randint(2, 10), random.randint(3, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_auth(timeout: int = 1*hour):
+    q = Query(url)
+
+    query_weights = {
+        q.query_high_speed_ticket: 10,
+        q.query_high_speed_ticket_parallel: 10,
+        q.query_min_station: 10,
+        q.query_cheapest: 10,
+        q.query_quickest: 10,
+    }
+
+    def task():
+        random_query(q, query_weights,
+                     random.randint(1, 3), random.randint(2, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_execute(timeout: int = 1*hour):
+    q = Query(url)
+
+    def collect_scenario():
+        query_and_collect(q)
+
+    def execute_scenario():
+        query_and_execute(q)
+
+    query_weights = {
+        collect_scenario: 10,
+        execute_scenario: 10,
+    }
+
+    def task():
+        random_query(q, query_weights,
+                     random.randint(1, 2), random.randint(5, 10))
+
+    run(task, timeout)
+    return
+
+
+def query_preserve(timeout: int = 1*hour):
+    q = Query(url)
+
+    def preserve_scenario():
+        query_and_preserve(q)
+
+    query_weights = {
+        preserve_scenario: 100,
+    }
+
+    def task():
+        random_query(q, query_weights,
+                     random.randint(1, 2), random.randint(5, 10))
+
+    run(task, timeout)
+    return
+
+
 def select_task(idx: int) -> Callable:
-    def query_travel(timeout: int = 1*hour):
-        q = Query(url)
 
-        def preserve_scenario():
-            query_and_preserve(q)
-
-        query_weights = {
-            q.query_high_speed_ticket: 10,
-            q.query_high_speed_ticket_parallel: 10,
-            q.query_min_station: 10,
-            q.query_cheapest: 10,
-            q.query_quickest: 10,
-            preserve_scenario: 50,
-        }
-
-        def task():
-            random_query(q, query_weights, random.randint(2, 10))
-
-        run(task, timeout)
-        return
-
-    def query_ticketinfo(timeout: int = 1*hour):
-        q = Query(url)
-
-        def preserve_scenario():
-            query_and_preserve(q)
-
-        query_weights = {
-            q.query_high_speed_ticket: 10,
-            q.query_high_speed_ticket_parallel: 10,
-            q.query_min_station: 10,
-            q.query_cheapest: 10,
-            q.query_quickest: 10,
-            preserve_scenario: 50,
-        }
-
-        def task():
-            random_query(q, query_weights, random.randint(2, 10))
-
-        run(task, timeout)
-        return
-
-    def query_route(timeout: int = 1*hour):
-
-        return
-
+    # task for each hour
     tasks = {
         0: query_travel,
         1: query_ticketinfo,
+        2: query_route,
+        3: query_order,
+        4: query_basic,
+        5: query_basic,
+        6: query_travel_plan,
+        7: query_station,
+        8: query_seat,
+        9: query_config,
+        10: query_inside_payment,
+        11: query_cancel,
+        12: query_contacts,
+        13: query_consign,
+        14: query_consign,
+        15: query_auth,
+        16: query_execute,
+        17: query_preserve,
+        18: query_cancel,
+        19: query_cancel,
     }
 
     if idx not in tasks.keys():
@@ -148,6 +440,9 @@ def workflow(timeout: int = 24*hour, task_timeout: int = 1*hour):
     p = Pool(4)
     last_hour = -1
 
+    logger.info('start constant query')
+    p.apply_async(constant_query, args=(timeout,))
+
     while time.time() - start < timeout:
         current_hour = time.localtime().tm_hour
         task = select_task(current_hour)
@@ -156,8 +451,8 @@ def workflow(timeout: int = 24*hour, task_timeout: int = 1*hour):
             continue
 
         if current_hour != last_hour:
-            logger.info(f'execute task {task.__name__}')
-            p.apply_async(task, args=(task_timeout))
+            logger.info(f'execute task: {task.__name__}')
+            p.apply_async(task, args=(task_timeout,))
             last_hour = current_hour
 
         time.sleep(1*minute)
@@ -177,10 +472,7 @@ def arguments():
 def main():
     args = arguments()
     duration = args.duration * hour
-    logger.info('start auto-query manager')
-    p = Process(traget=constant_query, args=(duration))
-    logger.info('start constant query')
-    p.start()
+    logger.info(f'start auto-query manager for {duration//hour} hour(s)')
 
     logger.info('start query workflow')
     workflow(duration)
