@@ -106,8 +106,8 @@ func main() {
 
 	traceC := QueryTraces(ctx, traceIDs)
 
-	timeNow := time.Now().Format("2006-01-02_15-04-05")
-	if err := SaveCSV(traceC, fmt.Sprintf("%s_%s", timeNow, "traces.csv")); err != nil {
+	start := startTime.Format("2006-01-02_15-04-05")
+	if err := SaveCSV(traceC, fmt.Sprintf("%s_%s_%s", start, intervalStr, "traces.csv")); err != nil {
 		log.Fatal(err)
 	}
 }
