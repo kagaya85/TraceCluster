@@ -7,7 +7,7 @@
 
 1. Add and commit your change: 
 	```bash
-	git add . & git commit -m "some message"
+	git add . && git commit -m "some message"
 	```
 
 1. Push local new branch to remote repository and set to trach the remote
