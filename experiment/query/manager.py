@@ -471,7 +471,7 @@ def arguments():
 
 def main():
     args = arguments()
-    duration = args.duration * hour
+    duration = int(args.duration) * hour
     logger.info(f'start auto-query manager for {duration//hour} hour(s)')
 
     logger.info('start query workflow')

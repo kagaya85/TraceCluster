@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"log"
+	"time"
 
 	"github.com/machinebox/graphql"
 	"github.com/schollz/progressbar/v3"
@@ -55,6 +56,48 @@ func QueryTraces(ctx context.Context, traceIDs []string) <-chan api.Trace {
 	}()
 
 	return traceC
+}
+
+func QueryTraceIDs(ctx context.Context, startTime time.Time, endTime time.Time) []string {
+	interval := 15 * time.Minute
+	pageNum := 1
+	needTotal := true
+
+	traceIDs := []string{}
+
+	for startTime.Before(endTime) && startTime.Before(time.Now()) {
+		start := startTime.Format(swTimeLayout)
+		end := startTime.Add(interval).Format(swTimeLayout)
+
+		condition := &api.TraceQueryCondition{
+			QueryDuration: &api.Duration{
+				Start: start,
+				End:   end,
+				Step:  api.StepSecond,
+			},
+			TraceState: api.TraceStateAll,
+			QueryOrder: api.QueryOrderByDuration,
+			Paging: &api.Pagination{
+				PageNum:   &pageNum,
+				PageSize:  10000,
+				NeedTotal: &needTotal,
+			},
+		}
+
+		traceBrief, err := QueryBasicTraces(ctx, condition)
+		if err != nil {
+			log.Fatalf("query trace id faild: %s", err)
+		}
+		if traceBrief.Total > 0 {
+			log.Printf("get %d traceIDs from %q to %q", traceBrief.Total, startTime, startTime.Add(interval))
+		}
+		for _, trace := range traceBrief.Traces {
+			traceIDs = append(traceIDs, trace.TraceIds...)
+		}
+		startTime = startTime.Add(interval)
+	}
+
+	return traceIDs
 }
 
 func QueryBasicTraces(ctx context.Context, condition *api.TraceQueryCondition) (api.TraceBrief, error) {
