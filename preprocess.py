@@ -378,7 +378,7 @@ def data_partition(data: DataFrame, size: int = 1024) -> List[DataFrame]:
     return res
 
 
-def build_graph(trace: List[Span], time_normolize: Callable[[float], float], operation_map: dict):
+def build_graph(trace: List[Span], time_normolize: Callable[[float], float, operation_map: dict]):
     """
     build trace graph from span list
     """
@@ -388,7 +388,7 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float], ope
     if is_wechat:
         graph, str_set = build_mm_graph(trace, time_normolize)
     else:
-        graph, str_set, operation_map = build_sw_graph(trace, time_normolize, operation_map)
+        graph, str_set = build_sw_graph(trace, time_normolize, operation_map)
 
     str_set.add('start')
     return graph, str_set, operation_map
@@ -423,10 +423,6 @@ def getSubspanInfo(span: Span, children_span: list[Span]):
     if time_spans[-1]["end"] == span.startTime + span.duration:
         subspanNum -= 1
     return span.duration - total_duration, subspanNum, is_Parallel
-
-
-def getStartTime(span: Span):
-    return span.startTime
 
 
 def calculate_edge_features(current_span: Span, trace_duration: dict, spanChildrenMap: dict):
@@ -588,7 +584,7 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
         'edges': edges,
     }
 
-    return graph, str_set, operation_map
+    return graph, str_set
 
 
 def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
@@ -917,11 +913,11 @@ def task(operation_map, ns, idx, divide_word: bool = True):
     pos = current._identity[0] - 1
     graph_map = {}
     str_set = set()
-
+    operation_map = {}
     for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID]), desc="processing #{:0>2d}".format(idx),
                                      position=pos):
         trace = [Span(raw_span) for idx, raw_span in trace_data.iterrows()]
-        graph, sset, operation_map = build_graph(trace_process(trace, divide_word), normalize, operation_map)
+        graph, sset = build_graph(trace_process(trace, divide_word), normalize, operation_map)
         if graph == None:
             continue
         graph_map[trace_id] = graph
