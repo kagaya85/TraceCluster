@@ -44,7 +44,6 @@ def constant_query(timeout: int = 24*hour):
         new_login = random_from_weighted({True: 70, False: 30})
         if new_login or q.token == "":
             while not q.login():
-                logger.error('login failed')
                 time.sleep(10)
                 continue
 
@@ -85,7 +84,6 @@ def random_query(q: Query, weights: dict, count: int = random.randint(1, 3), int
     :param inteval: 请求间隔
     """
     if not q.login():
-        logger.error('login failed')
         return
 
     for _ in range(0, count):
@@ -481,11 +479,15 @@ def arguments():
     parser = argparse.ArgumentParser(description="query manager arguments")
     parser.add_argument(
         '--duration', help='query constant duration (hour)', default=100)
+    parser.add_argument('--url', help='train ticket server url',
+                        default='http://175.27.169.178:32677')
     return parser.parse_args()
 
 
 def main():
     args = arguments()
+    global url
+    url = args.url
     duration = int(args.duration) * hour
     logger.info(f'start auto-query manager for {duration//hour} hour(s)')
 
