@@ -24,12 +24,26 @@ def constant_query(timeout: int = 24*hour):
     start = time.time()
     q = Query(url)
 
+    def preserve_scenario():
+        query_and_preserve(q)
+
+    def payment_scenario():
+        query_and_pay(q)
+
+    def cancel_scenario():
+        query_and_cancel(q)
+
+    def collect_scenario():
+        query_and_collect(q)
+
+    def execute_scenario():
+        query_and_execute(q)
+
     while time.time()-start < timeout:
-        query_num = random.randint(2, 20)
+        query_num = random.randint(2, 10)
         new_login = random_from_weighted({True: 70, False: 30})
         if new_login or q.token == "":
-            if not q.login():
-                logger.error('login failed')
+            while not q.login():
                 time.sleep(10)
                 continue
 
@@ -41,8 +55,12 @@ def constant_query(timeout: int = 24*hour):
             q.query_contacts: 10,
             q.query_min_station: 20,
             q.query_quickest: 20,
-            # q.query_route: 10,
             q.query_high_speed_ticket_parallel: 10,
+            preserve_scenario: 30,
+            payment_scenario: 20,
+            cancel_scenario: 20,
+            collect_scenario: 20,
+            execute_scenario: 20,
         }
 
         for i in range(0, query_num):
@@ -53,12 +71,12 @@ def constant_query(timeout: int = 24*hour):
             except Exception:
                 logger.exception(f'query {func.__name__} got an exception')
 
-            time.sleep(random.randint(5, 30))
+            time.sleep(random.randint(5, 10))
 
     return
 
 
-def random_query(q: Query, weights: dict, count: int, inteval: int = random.randint(1, 10)):
+def random_query(q: Query, weights: dict, count: int = random.randint(1, 3), inteval: int = random.randint(10, 20)):
     """
     登陆一个用户并按权重随机发起请求
     :param weights: 权重dict
@@ -66,7 +84,6 @@ def random_query(q: Query, weights: dict, count: int, inteval: int = random.rand
     :param inteval: 请求间隔
     """
     if not q.login():
-        logger.error('login failed')
         return
 
     for _ in range(0, count):
@@ -78,6 +95,8 @@ def random_query(q: Query, weights: dict, count: int, inteval: int = random.rand
             logger.exception(f'query {func.__name__} got an exception')
 
         time.sleep(inteval)
+
+    return
 
 
 def run(task: Callable, timeout: int):
@@ -104,7 +123,7 @@ def query_travel(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights, random.randint(2, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -126,7 +145,7 @@ def query_ticketinfo(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights, random.randint(2, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -147,7 +166,7 @@ def query_route(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights, random.randint(2, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -177,7 +196,7 @@ def query_order(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights, random.randint(2, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -194,7 +213,7 @@ def query_basic(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights, random.randint(2, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -210,7 +229,7 @@ def query_travel_plan(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights, random.randint(2, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -230,7 +249,7 @@ def query_station(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights, random.randint(2, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -250,7 +269,7 @@ def query_seat(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights, random.randint(2, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -266,7 +285,7 @@ def query_config(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights, random.randint(2, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -283,8 +302,7 @@ def query_inside_payment(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights,
-                     random.randint(2, 10), random.randint(3, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -301,8 +319,7 @@ def query_cancel(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights,
-                     random.randint(2, 10), random.randint(3, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -320,7 +337,7 @@ def query_contacts(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights, random.randint(2, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -337,8 +354,7 @@ def query_consign(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights,
-                     random.randint(2, 10), random.randint(3, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -356,8 +372,7 @@ def query_auth(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights,
-                     random.randint(1, 3), random.randint(2, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -378,8 +393,7 @@ def query_execute(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights,
-                     random.randint(1, 2), random.randint(5, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -396,8 +410,7 @@ def query_preserve(timeout: int = 1*hour):
     }
 
     def task():
-        random_query(q, query_weights,
-                     random.randint(1, 2), random.randint(5, 10))
+        random_query(q, query_weights)
 
     run(task, timeout)
     return
@@ -465,13 +478,17 @@ def workflow(timeout: int = 24*hour, task_timeout: int = 1*hour):
 def arguments():
     parser = argparse.ArgumentParser(description="query manager arguments")
     parser.add_argument(
-        '--duration', help='query constant duration (hour)', default=24)
+        '--duration', help='query constant duration (hour)', default=100)
+    parser.add_argument('--url', help='train ticket server url',
+                        default='http://175.27.169.178:32677')
     return parser.parse_args()
 
 
 def main():
     args = arguments()
-    duration = args.duration * hour
+    global url
+    url = args.url
+    duration = int(args.duration) * hour
     logger.info(f'start auto-query manager for {duration//hour} hour(s)')
 
     logger.info('start query workflow')
