@@ -378,7 +378,7 @@ def data_partition(data: DataFrame, size: int = 1024) -> List[DataFrame]:
     return res
 
 
-def build_graph(trace: List[Span], time_normolize: Callable[[float], float, operation_map: dict]):
+def build_graph(trace: List[Span], time_normolize: Callable[[float], float], operation_map: dict):
     """
     build trace graph from span list
     """
@@ -391,7 +391,7 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float, oper
         graph, str_set = build_sw_graph(trace, time_normolize, operation_map)
 
     str_set.add('start')
-    return graph, str_set, operation_map
+    return graph, str_set
 
 
 def getSubspanInfo(span: Span, children_span: list[Span]):
@@ -907,7 +907,7 @@ def min_max(x: float, min: float, max: float) -> float:
     return (x - min) / (max - min)
 
 
-def task(operation_map, ns, idx, divide_word: bool = True):
+def task(ns, idx, divide_word: bool = True):
     span_data = ns.sl[idx]
     current = current_process()
     pos = current._identity[0] - 1
@@ -1001,11 +1001,12 @@ def main():
         ns.sl = raw_spans
         with ProcessPoolExecutor(args.cores) as exe:
             data_size = len(raw_spans)
-            fs = [exe.submit(task, operation_map, ns, idx, enable_word_division)
+            fs = [exe.submit(task, ns, idx, enable_word_division)
                   for idx in range(data_size)]
             for fu in as_completed(fs):
-                (graphs, sset, operation_map) = fu.result()
+                (graphs, sset, temp_operation_map) = fu.result()
                 result_map = utils.mergeDict(result_map, graphs)
+                operation_map = utils.mergeOperation(temp_operation_map, operation_map)
                 name_set = set.union(name_set, sset)
                 # control the data size
                 if len(result_map) > args.max_num:
