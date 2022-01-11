@@ -394,7 +394,10 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float], ope
     return graph, str_set
 
 
-def getSubspanInfo(span: Span, children_span: list[Span]):
+def getSubspanInfo(span: Span, children_span: list[Span]) -> int, int, bool:
+	"""
+	返回子span的总执行时间，子span数量，是否是并发请求
+	"""
     if len(children_span) == 0:
         return 0, 0
     total_duration = 0
