@@ -1,5 +1,7 @@
 # Kagaya kagaya85@outlook.com
 import json
+from posixpath import isabs
+from requests.api import get
 import yaml
 import os
 import sys
@@ -251,7 +253,7 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float], ope
     return graph, str_set
 
 
-def getSubspanInfo(span: Span, children_span: list[Span]) -> Tuple(int, int, int):
+def subspan_info(span: Span, children_span: list[Span]) -> Tuple(int, int, int):
     """
     returns subspan duration, subspan number, is_parallel (0-not parallel, 1-is parallel)
     """
@@ -349,7 +351,7 @@ def calculate_edge_features(current_span: Span, trace_duration: dict, spanChildr
                     trace_duration["end"] = grandChild.startTime + \
                         grandChild.duration
 
-    subspan_duration, subspan_num, is_parallel = getSubspanInfo(
+    subspan_duration, subspan_num, is_parallel = subspan_info(
         current_span, children_span)
 
     features["callType"] = 0 if current_span.spanType == "Entry" else 1
@@ -359,12 +361,21 @@ def calculate_edge_features(current_span: Span, trace_duration: dict, spanChildr
     features["requestDuration"] = request_duration
     features["responseDuration"] = response_duration
     features["requestAndResponseDuration"] = request_and_response_duration
-    features["netDuration"] = current_span.duration - subspan_duration
+    features["workDuration"] = current_span.duration - subspan_duration
     features["subspanNum"] = subspan_num
     features["timeScale"] = round(
         (current_span.duration / (trace_duration["end"] - trace_duration["start"])), 4)
 
     return features
+
+
+def check_abnormal_span(span: Span) -> bool:
+    start_hour = time.localtime(span.startTime).tm_hour
+
+    if start_hour in chaos_dict.keys() and span.service.startswith(chaos_dict.get(start_hour)):
+        return True
+
+    return False
 
 
 def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], operation_map: dict):
@@ -401,6 +412,7 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
                 child.parentSpanId = local_span_parent.spanId
                 spanChildrenMap[local_span_parent.spanId].append(child)
 
+    is_abnormal = 0
     # process other span
     for span in trace:
         """
@@ -412,6 +424,9 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
         # skip client span
         if span.spanType in ['Exit', 'Producer', 'Local']:
             continue
+
+        if check_abnormal_span(span):
+            is_abnormal = 1
 
         # get the parent server span id
         if span.parentSpanId == '-1':
@@ -446,7 +461,7 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
 
         # get features of the edge directed to current span
         operation_select_keys = ['childrenSpanNum', 'requestDuration', 'responseDuration',
-                                 'requestAndResponseDuration', 'netDuration', 'subspanNum',
+                                 'requestAndResponseDuration', 'workDuration', 'subspanNum',
                                  'duration', 'rawDuration', 'timeScale']
 
         feats = calculate_edge_features(
@@ -467,7 +482,7 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
         return None, str_set
 
     graph = {
-        'abnormal': 0,  # TODO
+        'abnormal': is_abnormal,
         'vertexs': vertexs,
         'edges': edges,
     }
