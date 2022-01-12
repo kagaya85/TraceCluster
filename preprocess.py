@@ -3,7 +3,6 @@ import json
 import yaml
 import os
 import sys
-from sys import getsizeof
 import time
 import pandas as pd
 from pandas.core.frame import DataFrame
@@ -724,7 +723,7 @@ def save_data(graphs: Dict, idx: str = ''):
     filepath = generate_save_filepath(idx)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
-    print("saving data..., map size: {}".format(getsizeof(graphs)))
+    print("saving data..., map size: {}".format(sys.getsizeof(graphs)))
     with open(filepath, 'w', encoding='utf-8') as fd:
         json.dump(graphs, fd, ensure_ascii=False)
 
