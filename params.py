@@ -1,6 +1,6 @@
 # preprocess global parameters
 
-data_path_list = [
+old_data_list = [
     # Normal
     'normal/normal0822_01/SUCCESS_SpanData2021-08-22_15-43-01.csv',
     'normal/normal0822_02/SUCCESS2_SpanData2021-08-22_22-04-35.csv',
@@ -114,6 +114,17 @@ data_path_list = [
     "F25-03/ERROR_SpanData2021-08-16_12-20-59.csv",
 ]
 
+new_data_list = [
+    # New Data
+    "2022-01-10_16-00-00_5h_traces.csv",
+]
+
+data_path_list = [
+    # *old_data_list,
+    *new_data_list,
+]
+
+
 mm_data_path_list = [
     # '5-18/finer_data.json',
     # '5-18/finer_data2.json',
@@ -133,7 +144,7 @@ mm_trace_root_list = [
     '12-3/click_stream_2021-12-03_23629.csv'
 ]
 
-chaos_list = {
+chaos_dict = {
     0: 'ts-travel-service',
     1: 'ts-ticketinfo-service',
     2: 'ts-route-service',

@@ -4,7 +4,7 @@ from typing import List
 
 from torch_geometric import data
 
-embedding_filename = "embedding.json"
+embedding_filename = "embedding"
 
 
 def boolStr2Int(str: str) -> int:
@@ -86,7 +86,7 @@ def getDatafiles(dirpath: str) -> List[str]:
     list = os.listdir(dirpath)
     datafiles = []
     for name in list:
-        if name == embedding_filename:
+        if name == embedding_filename + '.json':
             continue
 
         filename = os.path.join(dirpath, name)
