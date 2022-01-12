@@ -119,12 +119,13 @@ new_data_list = [
     "2022-01-10_16-00-00_5h_traces.csv",
 ]
 
+# skywalking data list
 data_path_list = [
     # *old_data_list,
     *new_data_list,
 ]
 
-
+# wechat data list
 mm_data_path_list = [
     # '5-18/finer_data.json',
     # '5-18/finer_data2.json',
@@ -138,12 +139,14 @@ mm_data_path_list = [
     '12-3/call_graph_2021-12-03_23629.csv'
 ]
 
+# wechat trace root data list
 mm_trace_root_list = [
     # '11-29/click_stream_2021-11-29_23629.csv',
     # '12-3/click_stream_2021-12-03_24486.csv'
     '12-3/click_stream_2021-12-03_23629.csv'
 ]
 
+# see https://openmsg.yuque.com/openmsg/wechat/smhizg#1Gpq
 chaos_dict = {
     0: 'ts-travel-service',
     1: 'ts-ticketinfo-service',
