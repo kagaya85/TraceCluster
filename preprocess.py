@@ -1,7 +1,5 @@
 # Kagaya kagaya85@outlook.com
 import json
-from posixpath import isabs
-from requests.api import get
 import yaml
 import os
 import sys
@@ -80,7 +78,7 @@ class Span:
         self.service = ''
         self.peer = ''
         self.operation = ''
-        self.code = ''
+        self.code = '0'
         self.isError = False
 
         if raw_span is not None:
