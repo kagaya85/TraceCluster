@@ -15,8 +15,7 @@ from multiprocessing import cpu_count, Manager, current_process
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import requests
 import wordninja
-from transformers import AutoTokenizer, AutoConfig, AutoModel
-from params import data_path_list, mm_data_path_list, mm_trace_root_list, chaos_dict
+from transformers import AutoTokenizer, AutoModel
 
 data_root = '/data/TraceCluster/raw'
 
@@ -613,7 +612,8 @@ def save_data(graphs: Dict, idx: str = ''):
     """
     save graph data to json file
     """
-    filepath = generate_save_filepath(idx)
+    filepath = utils.generate_save_filepath(
+        idx+'.json', time_now_str, is_wechat)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
     print("saving data..., map size: {}".format(sys.getsizeof(graphs)))
@@ -621,19 +621,6 @@ def save_data(graphs: Dict, idx: str = ''):
         json.dump(graphs, fd, ensure_ascii=False)
 
     print(f"{len(graphs)} traces data saved in {filepath}")
-
-
-def generate_save_filepath(name: str) -> str:
-    filename = embedding_name + '_' + time_now_str + '/' + name + '.json'
-
-    if is_wechat:
-        filepath = os.path.join(os.getcwd(), 'data',
-                                'preprocessed', 'wechat', filename)
-    else:
-        filepath = os.path.join(os.getcwd(), 'data',
-                                'preprocessed', 'trainticket', filename)
-
-    return filepath
 
 
 def divide_word(s: str, sep: str = "/") -> str:
@@ -920,12 +907,14 @@ def main():
     for name in tqdm(name_set):
         name_dict[name] = embedding(name)
 
-    embd_filepath = generate_save_filepath('embedding')
+    embd_filepath = utils.generate_save_filepath(
+        embedding_name+'_embedding.json', time_now_str, is_wechat)
     with open(embd_filepath, 'w', encoding='utf-8') as fd:
         json.dump(name_dict, fd, ensure_ascii=False)
     print(f'embedding data saved in {embd_filepath}')
 
-    operation_filepath = generate_save_filepath('operations')
+    operation_filepath = utils.generate_save_filepath(
+        'operations.json', time_now_str, is_wechat)
     with open(operation_filepath, 'w', encoding='utf-8') as fo:
         json.dump(operation_map, fo, ensure_ascii=False)
     print(f'operations data saved in {operation_filepath}')

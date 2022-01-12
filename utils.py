@@ -2,10 +2,6 @@ import re
 import os
 from typing import List
 
-from torch_geometric import data
-
-embedding_filename = "embedding"
-
 
 def boolStr2Int(str: str) -> int:
     if str in ['FALSE', 'False', 'false', '0', 0]:
@@ -86,7 +82,8 @@ def getDatafiles(dirpath: str) -> List[str]:
     list = os.listdir(dirpath)
     datafiles = []
     for name in list:
-        if name == embedding_filename + '.json':
+        if 'embedding' in name:
+            # exclude embedding files
             continue
 
         filename = os.path.join(dirpath, name)
@@ -111,3 +108,17 @@ def getNewDir(datapath: str) -> str:
         return os.path.join(datapath, dirlist[-1])
 
     return ""
+
+
+def generate_save_filepath(name: str, dirname: str = "", is_wechat: bool = False) -> str:
+    """
+    生成预处理文件的存储路径
+    """
+    if is_wechat:
+        filepath = os.path.join(os.getcwd(), 'data',
+                                'preprocessed', 'wechat', dirname, name)
+    else:
+        filepath = os.path.join(os.getcwd(), 'data',
+                                'preprocessed', 'trainticket', dirname, name)
+
+    return filepath
