@@ -1,8 +1,11 @@
 import json
-from os import error
+import random
+import re
+import sys
 import networkx as nx
 from gensim.models import Word2Vec
-import random
+sys.path.append(r'./deepwalk')
+import deepwalk
 
 
 class DeepWalker:
@@ -139,7 +142,7 @@ def make(dic):
     error_count = 0
     v_map = {}
     for v in vertices:
-        v_map[v] = count
+        v_map[v] = count                # key 为 api
         count += 1
     with open("./experiment/vertices_map.json", 'w', encoding='utf8')as fp:
         json.dump(v_map, fp)
@@ -152,11 +155,30 @@ def make(dic):
                 for ss in s.keys():
                     i1 = str(v_map[f])
                     i2 = str(v_map[ss])
-                    fp1.write(i1 + " " + i2 + "\n")
-                    fp2.write(i1 + " " + i2 + " " + str(s[ss]) + "\n")
+                    fp1.write(i1 + " " + i2 + "\n")                         # 不带权重(edge_1)
+                    fp2.write(i1 + " " + i2 + " " + str(s[ss]) + "\n")      # 带权重(edge_2)
+
+
+def processEmbeddingFileToJSONFile(node_filename, filename, output_filename):
+    nodeEmbedding = {}
+    mp = {}
+    result = {}
+    with open(node_filename, 'r') as nodef:
+        node = json.load(nodef)
+        for k, v in node.items():
+            mp[v] = k
+    with open(filename, 'r') as f:
+        f.readline()
+        for s in f.readlines():
+            tmp = re.split(' |\n', s)
+            result[mp[int(tmp[0])]] = [float(k) for k in tmp[1:-1]]
+    with open(output_filename, 'w') as of:
+        json.dump(result, of)
 
 
 if __name__ == "__main__":
+    # processEmbeddingFileToJSONFile("./experiment/vertices_map.json", "./experiment/embeddings", "./experiment/embeddings.json")
+    # sys.exit(0)
     # make()
     # exit(0)
     # edges = [['a', 'b', 3], ['c', 'd', 4], ['e', 'f', 5], ['a', 'c', 6]]
@@ -166,14 +188,17 @@ if __name__ == "__main__":
     #     G.add_edge(edge[0], edge[1], weight=edge[2])
     gra = build_graph()
     make(gra)
-    G = nx.read_edgelist('./experiment/edges_2.txt', create_using=nx.DiGraph(), nodetype=None,
-                         data=[('weight', int)])  # read graph
+    G = nx.read_edgelist('./experiment/edges_1.txt', create_using=nx.DiGraph(), nodetype=None)  # read graph
+    # 调用第三方库deepwalk生成结点embedding
+    deepwalk.process(input="./experiment/edges_1.txt", output="./experiment/embeddingss", format="edgelist", representation_size=20, number_walks=15, walk_length=20, window_size=5, undirected=False)
+    # 将deepwalk处理好的原始数据转为json文件，并对应相应api
+    processEmbeddingFileToJSONFile("./experiment/vertices_map.json", "./experiment/embeddingss", "./experiment/embeddingss.json")
 
-    deep_walk = DeepWalk(G, walk_length=10, num_walks=80)
-    deep_walk.train(embed_size=50, window_size=5)
-    embeddings = deep_walk.get_embeddings()
-    for key, value in embeddings.items():
-        embeddings[key] = value.tolist()
-    print(embeddings)
-    with open("./experiment/embedding_weighted.json", 'w', encoding='utf8')as fp:
-        json.dump(embeddings, fp)
+    # deep_walk = DeepWalk(G, walk_length=10, num_walks=80)
+    # deep_walk.train(embed_size=20, window_size=5)
+    # embeddings = deep_walk.get_embeddings()
+    # for key, value in embeddings.items():
+    #     embeddings[key] = value.tolist()
+    # print(embeddings)
+    # with open("./experiment/embedding.json", 'w', encoding='utf8')as fp:
+    #     json.dump(embeddings, fp)
