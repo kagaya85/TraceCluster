@@ -28,11 +28,9 @@ const (
 )
 
 type Config struct {
-	startTime string
-	endTime   string
-	url       string
-	username  string
-	password  string
+	url      string
+	username string
+	password string
 }
 
 func init() {
@@ -59,16 +57,15 @@ func main() {
 	if err != nil {
 		log.Fatalln("parse interval duration error:", err)
 	}
+	endTime := startTime.Add(interval)
 
 	cfg := &Config{
-		startTime: startTime.Format(swTimeLayout),
-		endTime:   startTime.Add(interval).Format(swTimeLayout),
-		url:       url,
-		username:  "basic-auth-username",
-		password:  "basic-auth-password",
+		url:      url,
+		username: "basic-auth-username",
+		password: "basic-auth-password",
 	}
 
-	log.Printf("start collect span data from %q to %q", cfg.startTime, cfg.endTime)
+	log.Printf("start collect span data from %q to %q", startTime, endTime)
 
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, urlKey{}, cfg.url)
@@ -76,38 +73,12 @@ func main() {
 	ctx = context.WithValue(ctx, passwordKey{}, cfg.password)
 	ctx = context.WithValue(ctx, authKey{}, "")
 
-	pageNum := 1
-	needTotal := true
-
-	condition := &api.TraceQueryCondition{
-		QueryDuration: &api.Duration{
-			Start: cfg.startTime,
-			End:   cfg.endTime,
-			Step:  api.StepSecond,
-		},
-		TraceState: api.TraceStateAll,
-		QueryOrder: api.QueryOrderByDuration,
-		Paging: &api.Pagination{
-			PageNum:   &pageNum,
-			PageSize:  10000,
-			NeedTotal: &needTotal,
-		},
-	}
-
-	traceBrief, err := QueryBasicTraces(ctx, condition)
-	if err != nil {
-		log.Fatalf("query trace faild: %s", err)
-	}
-
-	traceIDs := make([]string, 0, traceBrief.Total)
-	for _, trace := range traceBrief.Traces {
-		traceIDs = append(traceIDs, trace.TraceIds...)
-	}
+	traceIDs := QueryTraceIDs(ctx, startTime, endTime)
 
 	traceC := QueryTraces(ctx, traceIDs)
 
-	timeNow := time.Now().Format("2006-01-02_15-04-05")
-	if err := SaveCSV(traceC, fmt.Sprintf("%s_%s", timeNow, "traces.csv")); err != nil {
+	start := startTime.Format("2006-01-02_15-04-05")
+	if err := SaveCSV(traceC, fmt.Sprintf("%s_%s_%s", start, intervalStr, "traces.csv")); err != nil {
 		log.Fatal(err)
 	}
 }
