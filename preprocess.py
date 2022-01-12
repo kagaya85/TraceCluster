@@ -1,8 +1,5 @@
 # Kagaya kagaya85@outlook.com
 import json
-import re
-import operator
-from transformers.utils.dummy_pt_objects import OpenAIGPTDoubleHeadsModel
 import yaml
 import os
 import sys
@@ -10,7 +7,6 @@ from sys import getsizeof
 import time
 import pandas as pd
 from pandas.core.frame import DataFrame
-from datetime import datetime
 import numpy as np
 import argparse
 from tqdm import tqdm
@@ -394,10 +390,7 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float], ope
     return graph, str_set
 
 
-def getSubspanInfo(span: Span, children_span: list[Span]) -> int, int, bool:
-	"""
-	返回子span的总执行时间，子span数量，是否是并发请求
-	"""
+def getSubspanInfo(span: Span, children_span: list[Span]):
     if len(children_span) == 0:
         return 0, 0
     total_duration = 0
@@ -494,11 +487,25 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
     spanMap = {}
     spanChildrenMap = {}
     for span in trace:
+        if span.spanType == 'Local':
+            print(span)
         spanMap[span.spanId] = span
         if span.parentSpanId not in spanChildrenMap.keys():
             spanChildrenMap[span.parentSpanId] = []
         spanChildrenMap[span.parentSpanId].append(span)
-    # 构建
+    # process localspan
+    for span in trace:
+        if span.spanType == 'Local':
+            if spanMap.get(span.parentSpanId) is None:
+                return None, str_set
+            else:
+                local_span_children = spanChildrenMap[span.spanId]
+                local_span_parent = spanMap[span.parentSpanId]
+                spanChildrenMap[local_span_parent.spanId].remove(span)
+                for child in local_span_children:
+                    child.parentSpanId = local_span_parent.spanId
+                    spanChildrenMap[local_span_parent.spanId].append(child)
+
     for span in trace:
         """
         (raph object contains Vertexs and Edges
@@ -508,7 +515,6 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
         # skip client span
         if span.spanType in ['Exit', 'Producer', 'Local']:
             continue
-
         # get the parent server span id
         parentSpanId = '-1'
         if span.parentSpanId == '-1':
@@ -955,6 +961,7 @@ def main():
     # concat all span data in one list
     span_data = pd.concat(raw_spans, axis=0, ignore_index=True)
     # a = span_data.groupby([ITEM.TRACE_ID])
+    # span_data = span_data[span_data['TraceId']=='1e3c47720fe24523938fff342ebe6c0d.35.16288658055040019']
     # for k, v in a:
     #     b = a.get_group(k)["URL"]
     #     for c in b:
