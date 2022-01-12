@@ -2,11 +2,11 @@
 import json
 import yaml
 import os
-import sys
 from sys import getsizeof
 import time
 import pandas as pd
 from pandas.core.frame import DataFrame
+from datetime import datetime
 import numpy as np
 import argparse
 from tqdm import tqdm
@@ -157,7 +157,6 @@ mm_trace_root_list = [
 time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
 
 # wecath data flag
-trace_abnormal = {}
 is_wechat = False
 use_request = False
 cache_file = './secrets/cache.json'
@@ -303,9 +302,9 @@ def load_span() -> List[DataFrame]:
             # convert to dataframe
             for i, s in tqdm(mmspans):
                 spans[ITEM.SPAN_ID].append(
-                    str(s['CalleeNodeID']) + str(['CalleeOssID']) + str(['CalleeCmdID']))
+                    str(s['CalleeNodeID'])+str(['CalleeOssID'])+str(['CalleeCmdID']))
                 spans[ITEM.PARENT_SPAN_ID].append(
-                    str(s['CallerNodeID']) + str(s['CallerOssID']) + str(s['CallerCmdID']))
+                    str(s['CallerNodeID'])+str(s['CallerOssID'])+str(s['CallerCmdID']))
                 spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
                 spans[ITEM.SPAN_TYPE].append('EntrySpan')
                 spans[ITEM.START_TIME].append(s['TimeStamp'])
@@ -342,9 +341,6 @@ def load_span() -> List[DataFrame]:
     else:
         # skywalking data
         for filepath in data_path_list:
-            abnormal = 1
-            if "normal" in filepath:
-                abnormal = 0
             filepath = os.path.join(data_root, 'trainticket', filepath)
             print(f"load span data from {filepath}")
             data_type = {ITEM.START_TIME: np.uint64, ITEM.END_TIME: np.uint64}
@@ -352,10 +348,8 @@ def load_span() -> List[DataFrame]:
                 filepath, dtype=data_type
             ).drop_duplicates().dropna()
             spans[ITEM.DURATION] = spans[ITEM.END_TIME] - \
-                                   spans[ITEM.START_TIME]
-            traces = spans.groupby(ITEM.TRACE_ID)
-            for k in traces.groups.keys():
-                trace_abnormal[k] = abnormal
+                spans[ITEM.START_TIME]
+
             raw_spans.extend(data_partition(spans))
 
     return raw_spans
@@ -367,14 +361,14 @@ def data_partition(data: DataFrame, size: int = 1024) -> List[DataFrame]:
         return [data]
 
     res = []
-    for sub in [id_list[i:i + size] for i in range(0, len(id_list), size)]:
+    for sub in [id_list[i:i+size] for i in range(0, len(id_list), size)]:
         df = data[data[ITEM.TRACE_ID].isin(sub)]
         res.append(df)
 
     return res
 
 
-def build_graph(trace: List[Span], time_normolize: Callable[[float], float], operation_map: dict):
+def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     """
     build trace graph from span list
     """
@@ -384,127 +378,20 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float], ope
     if is_wechat:
         graph, str_set = build_mm_graph(trace, time_normolize)
     else:
-        graph, str_set = build_sw_graph(trace, time_normolize, operation_map)
+        graph, str_set = build_sw_graph(trace, time_normolize)
 
     str_set.add('start')
     return graph, str_set
 
 
-def getSubspanInfo(span: Span, children_span: list[Span]):
-    if len(children_span) == 0:
-        return 0, 0
-    total_duration = 0
-    is_Parallel = 0
-    time_spans = []
-    for child in children_span:
-        time_spans.append({"start": child.startTime, "end": child.startTime + child.duration})
-    time_spans.sort(key=lambda s: s["start"])
-    last_time_span = time_spans[0]
-    last_length = -1
-    while (len(time_spans) != last_length):
-        last_length = len(time_spans)
-        for time_span in time_spans:
-            if time_span["start"] < last_time_span["end"]:
-                if time_span != time_spans[0]:
-                    is_Parallel = 1
-                    time_span["start"] = last_time_span["start"]
-                    time_span["end"] = max(time_span["end"], last_time_span["end"])
-                    time_spans.remove(last_time_span)
-            last_time_span = time_span
-    subspanNum = len(time_spans) + 1
-    for time_span in time_spans:
-        total_duration += time_span["end"] - time_span["start"]
-    if time_spans[0]["start"] == span.startTime:
-        subspanNum -= 1
-    if time_spans[-1]["end"] == span.startTime + span.duration:
-        subspanNum -= 1
-    return span.duration - total_duration, subspanNum, is_Parallel
-
-
-def calculate_edge_features(current_span: Span, trace_duration: dict, spanChildrenMap: dict):
-    features = {}
-    if spanChildrenMap.get(current_span.spanId) is None:
-        features["childrenSpanNum"] = 0
-        features["requestDuration"] = 0
-        features["responseDuration"] = 0
-        features["subspanDuration"] = 0
-        features["timeScale"] = round((current_span.duration / (trace_duration["max"] - trace_duration["min"])), 4)
-        features["subspanNum"] = 0
-        features["requestAndResponseDuration"] = 0
-        features["isParallel"] = 0
-        features["callType"] = 0 if current_span.spanType == "Entry" else 1
-        features["statusCode"] = current_span.code
-        return features
-    children_span = spanChildrenMap[current_span.spanId]
-    request_and_response_duration = 0.0
-    request_duration = 0.0
-    response_duration = 0.0
-    children_duration = 0.0
-    subspan_duration = 0.0
-    subspan_num = 0.0
-    min_time = sys.maxsize - 1
-    max_time = -1
-    for child in children_span:
-        if child.startTime < min_time:
-            min_time = child.startTime
-        if child.startTime + child.duration > max_time:
-            max_time = child.startTime + child.duration
-        if child.spanType == "Exit":
-            if spanChildrenMap.get(child.spanId) is not None:
-                grandChild = spanChildrenMap[child.spanId][0]
-                children_duration += grandChild.duration
-                request_duration += (grandChild.startTime - child.startTime)
-                response_duration += (child.duration - request_duration - grandChild.duration)
-                request_and_response_duration += (child.duration - grandChild.duration)
-        if child.spanType == "Producer":
-            if spanChildrenMap.get(child.spanId) is not None:
-                grandChild = spanChildrenMap[child.spanId][0]
-                children_duration += grandChild.duration
-                if grandChild.startTime + grandChild.duration > trace_duration["max"]:
-                    trace_duration["max"] = grandChild.startTime + grandChild.duration
-    subspan_duration, subspan_num, is_parallel = getSubspanInfo(current_span, children_span)
-    features["callType"] = 0 if current_span.spanType == "Entry" else 1
-    features["isParallel"] = is_parallel
-    features["statusCode"] = current_span.code
-    features["childrenSpanNum"] = len(children_span)
-    features["requestDuration"] = request_duration
-    features["responseDuration"] = response_duration
-    features["requestAndResponseDuration"] = request_and_response_duration
-    features["subspanDuration"] = subspan_duration
-    features["subspanNum"] = subspan_num
-    features["timeScale"] = round((current_span.duration / (trace_duration["max"] - trace_duration["min"])), 4)
-    return features
-
-
-def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], operation_map: dict):
+def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     vertexs = {0: 'start'}
     edges = {}
     str_set = set()
-    trace_duration = {}
+
     spanIdMap = {'-1': 0}
     spanIdCounter = 1
     rootSpan = None
-    spanMap = {}
-    spanChildrenMap = {}
-    for span in trace:
-        if span.spanType == 'Local':
-            print(span)
-        spanMap[span.spanId] = span
-        if span.parentSpanId not in spanChildrenMap.keys():
-            spanChildrenMap[span.parentSpanId] = []
-        spanChildrenMap[span.parentSpanId].append(span)
-    # process localspan
-    for span in trace:
-        if span.spanType == 'Local':
-            if spanMap.get(span.parentSpanId) is None:
-                return None, str_set
-            else:
-                local_span_children = spanChildrenMap[span.spanId]
-                local_span_parent = spanMap[span.parentSpanId]
-                spanChildrenMap[local_span_parent.spanId].remove(span)
-                for child in local_span_children:
-                    child.parentSpanId = local_span_parent.spanId
-                    spanChildrenMap[local_span_parent.spanId].append(child)
 
     for span in trace:
         """
@@ -512,35 +399,22 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
         Edge: [(from, to, duration), ...]
         Vertex: [(id, nodestr), ...]
         """
-        # skip client span
-        if span.spanType in ['Exit', 'Producer', 'Local']:
-            continue
-        # get the parent server span id
-        parentSpanId = '-1'
         if span.parentSpanId == '-1':
             rootSpan = span
-            trace_duration["min"] = span.startTime
-            trace_duration["max"] = span.startTime + span.duration
-        else:
-            if spanMap.get(span.parentSpanId) is None:
-                print(span.traceId)
-                return None, str_set
-            else:
-                parentSpanId = spanMap[span.parentSpanId].parentSpanId
 
-        if parentSpanId not in spanIdMap.keys():
-            spanIdMap[parentSpanId] = spanIdCounter
+        if span.parentSpanId not in spanIdMap.keys():
+            spanIdMap[span.parentSpanId] = spanIdCounter
             spanIdCounter += 1
 
         if span.spanId not in spanIdMap.keys():
             spanIdMap[span.spanId] = spanIdCounter
             spanIdCounter += 1
 
-        spanId, parentSpanId = spanIdMap[span.spanId], spanIdMap[parentSpanId]
+        spanId, parentSpanId = spanIdMap[span.spanId], spanIdMap[span.parentSpanId]
 
         # span id should be unique
         if spanId not in vertexs.keys():
-            opname = '/'.join([span.service, span.operation])
+            opname = '/'.join([span.service, span.operation, span.code])
             vertexs[spanId] = [span.service, opname]
             str_set.add(span.service)
             str_set.add(opname)
@@ -548,36 +422,12 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
         if parentSpanId not in edges.keys():
             edges[parentSpanId] = []
 
-        # get features of the edge directed to current span
-        operation_select_keys = ['childrenSpanNum', 'requestDuration', 'responseDuration',
-                                 'requestAndResponseDuration', 'subspanDuration', 'subspanNum',
-                                 'duration', 'rawDuration', 'timeScale']
-        features = calculate_edge_features(span, trace_duration, spanChildrenMap)
-        features['duration'] = time_normolize(span.duration)
-        features['rawDuration'] = span.duration
-        if span.operation not in operation_map.keys():
-            operation_map[span.operation] = {}
-            for key in operation_select_keys:
-                operation_map[span.operation][key] = []
-        for key in operation_select_keys:
-            operation_map[span.operation][key].append(features[key])
         edges[parentSpanId].append({
-            "childrenSpanNum": features["childrenSpanNum"],
-            "requestDuration": features["requestDuration"],
-            "responseDuration": features["responseDuration"],
-            "requestAndResponseDuration": features["requestAndResponseDuration"],
-            "subspanDuration": features["subspanDuration"],
-            "subspanNum": features["subspanNum"],
-            'duration': features['duration'],
-            "rawDuration": features['rawDuration'],
-            "timeScale": features["timeScale"],
             'vertexId': spanId,
-            "isParallel": features["isParallel"],
             'spanId': span.spanId,
-            "callType": features["callType"],
-            "statusCode": features["statusCode"],
             'parentSpanId': span.parentSpanId,
             'startTime': span.startTime,
+            'duration': time_normolize(span.duration),
             'service': span.service,
             'operation': span.operation,
             'peer': span.peer,
@@ -588,7 +438,6 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
         return None, str_set
 
     graph = {
-        'abnormal': trace_abnormal[trace[0].traceId],
         'vertexs': vertexs,
         'edges': edges,
     }
@@ -732,7 +581,7 @@ def save_data(graphs: Dict, idx: str = ''):
 
 
 def generate_save_filepath(name: str) -> str:
-    filename = embedding_name + '_' + time_now_str + '/' + name + '.json'
+    filename = embedding_name + '_' + time_now_str+'/'+name+'.json'
 
     if is_wechat:
         filepath = os.path.join(os.getcwd(), 'data',
@@ -919,20 +768,19 @@ def min_max(x: float, min: float, max: float) -> float:
 def task(ns, idx, divide_word: bool = True):
     span_data = ns.sl[idx]
     current = current_process()
-    pos = current._identity[0] - 1
+    pos = current._identity[0]-1
     graph_map = {}
     str_set = set()
-    operation_map = {}
-    for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID]), desc="processing #{:0>2d}".format(idx),
-                                     position=pos):
+
+    for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID]), desc="processing #{:0>2d}".format(idx), position=pos):
         trace = [Span(raw_span) for idx, raw_span in trace_data.iterrows()]
-        graph, sset = build_graph(trace_process(trace, divide_word), normalize, operation_map)
+        graph, sset = build_graph(trace_process(trace, divide_word), normalize)
         if graph == None:
             continue
         graph_map[trace_id] = graph
         str_set = set.union(str_set, sset)
 
-    return (graph_map, str_set, operation_map)
+    return (graph_map, str_set)
 
 
 def main():
@@ -955,35 +803,26 @@ def main():
 
     # load all span
     raw_spans = load_span()
+
     if is_wechat and use_request:
         save_name_cache(cache)
 
     # concat all span data in one list
     span_data = pd.concat(raw_spans, axis=0, ignore_index=True)
-    # a = span_data.groupby([ITEM.TRACE_ID])
-    # span_data = span_data[span_data['TraceId']=='1e3c47720fe24523938fff342ebe6c0d.35.16288658055040019']
-    # for k, v in a:
-    #     b = a.get_group(k)["URL"]
-    #     for c in b:
-    #         if "SpringAsync" in c:
-    #             print(c)
-
     global normalize
     if args.normalize == 'minmax':
         max_duration = span_data[ITEM.DURATION].max()
         min_duration = span_data[ITEM.DURATION].min()
 
-        def normalize(x):
-            return min_max(
-                x, max_duration, min_duration)
+        def normalize(x): return min_max(
+            x, max_duration, min_duration)
 
     elif args.normalize == 'zscore':
         mean_duration = span_data[ITEM.DURATION].mean()
         std_duration = span_data[ITEM.DURATION].std()
 
-        def normalize(x):
-            return z_score(
-                x, mean_duration, std_duration)
+        def normalize(x): return z_score(
+            x, mean_duration, std_duration)
 
     else:
         print(f"invalid normalize method name: {embedding_name}")
@@ -1002,7 +841,6 @@ def main():
         exit()
 
     result_map = {}
-    operation_map = {}
     name_set = set()
     file_idx = 0
     # With shared memory
@@ -1014,9 +852,8 @@ def main():
             fs = [exe.submit(task, ns, idx, enable_word_division)
                   for idx in range(data_size)]
             for fu in as_completed(fs):
-                (graphs, sset, temp_operation_map) = fu.result()
+                (graphs, sset) = fu.result()
                 result_map = utils.mergeDict(result_map, graphs)
-                operation_map = utils.mergeOperation(temp_operation_map, operation_map)
                 name_set = set.union(name_set, sset)
                 # control the data size
                 if len(result_map) > args.max_num:
@@ -1035,11 +872,8 @@ def main():
     embd_filepath = generate_save_filepath('embedding')
     with open(embd_filepath, 'w', encoding='utf-8') as fd:
         json.dump(name_dict, fd, ensure_ascii=False)
-    operation_filepath = generate_save_filepath('operations')
+
     print(f'embedding data saved in {embd_filepath}')
-    with open(operation_filepath, 'w', encoding='utf-8') as fo:
-        json.dump(operation_map, fo, ensure_ascii=False)
-    print(f'operations data saved in {operation_filepath}')
     print('preprocess finished :)')
 
 
