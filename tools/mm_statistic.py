@@ -1,11 +1,11 @@
 import pandas as pd
 from tqdm import tqdm
 
-filename = 'data/raw/wechat/12-3/call_graph_2021-12-03_23629.csv'
+filepath = 'data/raw/wechat/12-3/call_graph_2021-12-03_23629.csv'
 
 
 def main():
-    df = pd.read_csv(filename)
+    df = pd.read_csv(filepath)
     count = 0
     for idx, row in df.iterrows():
         if row['CallerNodeID'] == row['CalleeNodeID']:
