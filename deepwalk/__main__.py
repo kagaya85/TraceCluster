@@ -83,7 +83,7 @@ def process(input, output, format="edgelist", representation_size=20, number_wal
 
     print("Counting vertex frequency...")
     if not vertex_freq_degree:
-      vertex_counts = serialized_walks.count_textfiles(walk_files, args.workers)
+      vertex_counts = serialized_walks.count_textfiles(walk_files, workers)
     else:
       # use degree distribution for frequency in tree
       vertex_counts = G.degree(nodes=G.iterkeys())
