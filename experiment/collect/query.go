@@ -58,7 +58,7 @@ func QueryTraces(ctx context.Context, traceIDs []string) <-chan api.Trace {
 	return traceC
 }
 
-func QueryTraceIDs(ctx context.Context, startTime time.Time, endTime time.Time, queryType api.TraceState) []string {
+func QueryTraceIDs(ctx context.Context, startTime time.Time, endTime time.Time, queryState api.TraceState) []string {
 	interval := 15 * time.Minute
 	itv := interval
 	pageNum := 1
@@ -76,7 +76,7 @@ func QueryTraceIDs(ctx context.Context, startTime time.Time, endTime time.Time, 
 				End:   end,
 				Step:  api.StepSecond,
 			},
-			TraceState: queryType,
+			TraceState: queryState,
 			QueryOrder: api.QueryOrderByDuration,
 			Paging: &api.Pagination{
 				PageNum:   &pageNum,
