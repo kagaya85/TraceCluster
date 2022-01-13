@@ -16,6 +16,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import requests
 import wordninja
 from transformers import AutoTokenizer, AutoModel
+from params import data_path_list, mm_data_path_list, mm_trace_root_list, chaos_dict
 
 data_root = '/data/TraceCluster/raw'
 
@@ -300,20 +301,21 @@ def calculate_edge_features(current_span: Span, trace_duration: dict, spanChildr
         'operation': current_span.operation,
         'peer': current_span.peer,
         'isError': current_span.isError,
+
+        'childrenSpanNum': 0,
+        'requestDuration': 0,
+        'responseDuration': 0,
+        'workDuration': 0,
+        'timeScale': round(
+            (current_span.duration / (trace_duration["end"] - trace_duration["start"])), 4),
+        'subspanNum': 0,
+        'requestAndResponseDuration': 0,
+        'isParallel': 0,
+        'callType': 0 if current_span.spanType == "Entry" else 1,
+        'statusCode': current_span.code,
     }
 
     if spanChildrenMap.get(current_span.spanId) is None:
-        features["childrenSpanNum"] = 0
-        features["requestDuration"] = 0
-        features["responseDuration"] = 0
-        features["subspanDuration"] = 0
-        features["timeScale"] = round(
-            (current_span.duration / (trace_duration["end"] - trace_duration["start"])), 4)
-        features["subspanNum"] = 0
-        features["requestAndResponseDuration"] = 0
-        features["isParallel"] = 0
-        features["callType"] = 0 if current_span.spanType == "Entry" else 1
-        features["statusCode"] = current_span.code
         return features
 
     children_span = spanChildrenMap[current_span.spanId]
@@ -351,17 +353,14 @@ def calculate_edge_features(current_span: Span, trace_duration: dict, spanChildr
     subspan_duration, subspan_num, is_parallel = subspan_info(
         current_span, children_span)
 
-    features["callType"] = 0 if current_span.spanType == "Entry" else 1
+    # udpate features
     features["isParallel"] = is_parallel
-    features["statusCode"] = current_span.code
     features["childrenSpanNum"] = len(children_span)
     features["requestDuration"] = request_duration
     features["responseDuration"] = response_duration
     features["requestAndResponseDuration"] = request_and_response_duration
     features["workDuration"] = current_span.duration - subspan_duration
     features["subspanNum"] = subspan_num
-    features["timeScale"] = round(
-        (current_span.duration / (trace_duration["end"] - trace_duration["start"])), 4)
 
     return features
 
