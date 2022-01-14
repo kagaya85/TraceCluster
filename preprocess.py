@@ -2,7 +2,7 @@
 import json
 import yaml
 import os
-from sys import getsizeof
+import sys
 import time
 import pandas as pd
 from pandas.core.frame import DataFrame
@@ -16,141 +16,9 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import requests
 import wordninja
 from transformers import AutoTokenizer, AutoModel
+from params import data_path_list, mm_data_path_list, mm_trace_root_list, chaos_dict
 
 data_root = '/data/TraceCluster/raw'
-
-data_path_list = [
-    # Normal
-    'normal/normal0822_01/SUCCESS_SpanData2021-08-22_15-43-01.csv',
-    'normal/normal0822_02/SUCCESS2_SpanData2021-08-22_22-04-35.csv',
-    'normal/normal0823/SUCCESS2_SpanData2021-08-23_15-15-08.csv',
-
-    # F01
-    'F01-01/SUCCESSF0101_SpanData2021-08-14_10-22-48.csv',
-    'F01-02/ERROR_F012_SpanData2021-08-14_01-52-43.csv',
-    'F01-03/SUCCESSerrorf0103_SpanData2021-08-16_16-17-08.csv',
-    'F01-04/SUCCESSF0104_SpanData2021-08-14_02-14-51.csv',
-    'F01-05/SUCCESSF0105_SpanData2021-08-14_02-45-59.csv',
-
-    # F02
-    'F02-01/SUCCESS_errorf0201_SpanData2021-08-17_18-25-59.csv',
-    'F02-02/SUCCESS_errorf0202_SpanData2021-08-17_18-47-04.csv',
-    'F02-03/SUCCESS_errorf0203_SpanData2021-08-17_18-54-53.csv',
-    'F02-04/ERROR_SpanData.csv',
-    'F02-05/ERROR_SpanData.csv',
-    'F02-06/ERROR_SpanData.csv',
-
-    # F03
-    'F03-01/ERROR_SpanData.csv',
-    'F03-02/ERROR_SpanData.csv',
-    'F03-03/ERROR_SpanData.csv',
-    'F03-04/ERROR_SpanData.csv',
-    'F03-05/ERROR_SpanData.csv',
-    'F03-06/ERROR_SpanData.csv',
-    'F03-07/ERROR_SpanData.csv',
-    'F03-08/ERROR_SpanData.csv',
-
-    # F04
-    'F04-01/ERROR_SpanData.csv',
-    'F04-02/ERROR_SpanData.csv',
-    'F04-03/ERROR_SpanData.csv',
-    'F04-04/ERROR_SpanData.csv',
-    'F04-05/ERROR_SpanData.csv',
-    'F04-06/ERROR_SpanData.csv',
-    'F04-07/ERROR_SpanData.csv',
-    'F04-08/ERROR_SpanData.csv',
-
-    # F05
-    "F05-02/ERROR_errorf0502_SpanData2021-08-10_13-53-38.csv",
-    "F05-03/ERROR_SpanData2021-08-07_20-34-09.csv",
-    "F05-04/ERROR_SpanData2021-08-07_21-02-22.csv",
-    "F05-05/ERROR_SpanData2021-08-07_21-28-23.csv",
-
-    # F07
-    "F07-01/back0729/ERROR_SpanData2021-07-29_10-36-21.csv",
-    "F07-01/back0729/SUCCESS_SpanData2021-07-29_10-38-09.csv",
-    "F07-01/ERROR_errorf0701_SpanData2021-08-10_14-09-59.csv",
-    "F07-02/back0729/ERROR_SpanData2021-07-29_13-58-37.csv",
-    "F07-02/back0729/SUCCESS_SpanData2021-07-29_13-51-48.csv",
-    "F07-02/ERROR_errorf0702_SpanData2021-08-10_14-33-35.csv",
-    "F07-03/ERROR_SpanData2021-08-07_22-53-33.csv",
-    "F07-04/ERROR_SpanData2021-08-07_23-49-11.csv",
-    "F07-05/ERROR_SpanData2021-08-07_23-57-44.csv",
-
-    # F08
-    "F08-01/ERROR_SpanData2021-07-29_19-15-36.csv",
-    "F08-01/SUCCESS_SpanData2021-07-29_19-16-01.csv",
-    "F08-02/ERROR_SpanData2021-07-30_10-13-04.csv",
-    "F08-02/SUCCESS_SpanData2021-07-30_10-13-46.csv",
-    "F08-03/ERROR_SpanData2021-07-30_12-07-36.csv",
-    "F08-03/SUCCESS_SpanData2021-07-30_12-07-23.csv",
-    "F08-04/ERROR_SpanData2021-07-30_14-20-15.csv",
-    "F08-04/SUCCESS_SpanData2021-07-30_14-22-24.csv",
-    "F08-05/ERROR_SpanData2021-07-30_11-00-30.csv",
-    "F08-05/SUCCESS_SpanData2021-07-30_11-01-05.csv",
-
-    # F11
-    "F11-01/SUCCESSF1101_SpanData2021-08-14_10-18-35.csv",
-    "F11-02/SUCCESSerrorf1102_SpanData2021-08-16_16-57-36.csv",
-    "F11-03/SUCCESSF1103_SpanData2021-08-14_03-04-11.csv",
-    "F11-04/SUCCESSF1104_SpanData2021-08-14_03-35-38.csv",
-    "F11-05/SUCCESSF1105_SpanData2021-08-14_03-38-35.csv",
-
-    # F12
-    "F12-01/ERROR_SpanData2021-08-12_16-17-46.csv",
-    "F12-02/ERROR_SpanData2021-08-12_16-24-54.csv",
-    "F12-03/ERROR_SpanData2021-08-12_16-36-33.csv",
-    "F12-04/ERROR_SpanData2021-08-12_17-04-34.csv",
-    "F12-05/ERROR_SpanData2021-08-12_16-49-08.csv",
-
-    # F13
-    "F13-01/SUCCESSerrorf1301_SpanData2021-08-16_21-01-36.csv",
-    "F13-02/SUCCESS_SpanData2021-08-13_17-34-58.csv",
-    "F13-03/SUCCESSerrorf1303_SpanData2021-08-16_18-55-52.csv",
-    "F13-04/SUCCESSF1304_SpanData2021-08-14_10-50-42.csv",
-    "F13-05/SUCCESSF1305_SpanData2021-08-14_11-13-43.csv",
-
-    # F14
-    "F14-01/SUCCESS_SpanData2021-08-12_14-56-41.csv",
-    "F14-02/SUCCESS_SpanData2021-08-12_15-24-50.csv",
-    "F14-03/SUCCESS_SpanData2021-08-12_15-46-08.csv",
-
-    # F23
-    "F23-01/ERROR_SpanData2021-08-07_20-30-26.csv",
-    "F23-02/ERROR_SpanData2021-08-07_20-51-14.csv",
-    "F23-03/ERROR_SpanData2021-08-07_21-10-11.csv",
-    "F23-04/ERROR_SpanData2021-08-07_21-34-47.csv",
-    "F23-05/ERROR_SpanData2021-08-07_22-02-42.csv",
-
-    # F24
-    "F24-01/ERROR_SpanData.csv",
-    "F24-02/ERROR_SpanData.csv",
-    "F24-03/ERROR_SpanData.csv",
-
-    # F25
-    "F25-01/ERROR_SpanData2021-08-16_11-17-21.csv",
-    "F25-02/ERROR_SpanData2021-08-16_11-21-59.csv",
-    "F25-03/ERROR_SpanData2021-08-16_12-20-59.csv",
-]
-
-mm_data_path_list = [
-    # '5-18/finer_data.json',
-    # '5-18/finer_data2.json',
-    # '8-2/data.json',
-    # '8-3/data.json',
-    # '11-9/data.json',
-    # '11-18/call_graph_2021-11-18_61266.csv'
-    # '11-22/call_graph_2021-11-22_23629.csv'
-    # '11-29/call_graph_2021-11-29_23629.csv',
-    # '12-3/call_graph_2021-12-03_24486.csv'
-    '12-3/call_graph_2021-12-03_23629.csv'
-]
-
-mm_trace_root_list = [
-    # '11-29/click_stream_2021-11-29_23629.csv',
-    # '12-3/click_stream_2021-12-03_24486.csv'
-    '12-3/click_stream_2021-12-03_23629.csv'
-]
 
 time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
 
@@ -161,7 +29,7 @@ cache_file = './secrets/cache.json'
 embedding_name = ''
 
 
-def normalize(x): return x
+def normalize(x: float) -> float: return x
 
 
 def embedding(input: str) -> List[float]:
@@ -210,7 +78,7 @@ class Span:
         self.service = ''
         self.peer = ''
         self.operation = ''
-        self.code = ''
+        self.code = '0'
         self.isError = False
 
         if raw_span is not None:
@@ -271,7 +139,7 @@ def load_span() -> List[DataFrame]:
         # load trace info
         for filepath in mm_data_path_list:
             filepath = os.path.join(data_root, 'wechat', filepath)
-            print(f"load wechat span data from {filepath}")
+            print(f"loading wechat span data from {filepath}")
             if filepath.endswith('.json'):
                 with open(filepath, 'r') as f:
                     raw_data = json.load(f)
@@ -300,9 +168,9 @@ def load_span() -> List[DataFrame]:
             # convert to dataframe
             for i, s in tqdm(mmspans):
                 spans[ITEM.SPAN_ID].append(
-                    str(s['CalleeNodeID'])+str(['CalleeOssID'])+str(['CalleeCmdID']))
+                    str(s['CalleeNodeID']) + str(['CalleeOssID']) + str(['CalleeCmdID']))
                 spans[ITEM.PARENT_SPAN_ID].append(
-                    str(s['CallerNodeID'])+str(s['CallerOssID'])+str(s['CallerCmdID']))
+                    str(s['CallerNodeID']) + str(s['CallerOssID']) + str(s['CallerCmdID']))
                 spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
                 spans[ITEM.SPAN_TYPE].append('EntrySpan')
                 spans[ITEM.START_TIME].append(s['TimeStamp'])
@@ -340,7 +208,8 @@ def load_span() -> List[DataFrame]:
         # skywalking data
         for filepath in data_path_list:
             filepath = os.path.join(data_root, 'trainticket', filepath)
-            print(f"load span data from {filepath}")
+            print(f"loading skywalking span data from {filepath}")
+
             data_type = {ITEM.START_TIME: np.uint64, ITEM.END_TIME: np.uint64}
             spans = pd.read_csv(
                 filepath, dtype=data_type
@@ -348,7 +217,7 @@ def load_span() -> List[DataFrame]:
             spans[ITEM.DURATION] = spans[ITEM.END_TIME] - \
                 spans[ITEM.START_TIME]
 
-            raw_spans.extend(data_partition(spans))
+            raw_spans.extend(data_partition(spans, 10240))
 
     return raw_spans
 
@@ -359,14 +228,14 @@ def data_partition(data: DataFrame, size: int = 1024) -> List[DataFrame]:
         return [data]
 
     res = []
-    for sub in [id_list[i:i+size] for i in range(0, len(id_list), size)]:
+    for sub in [id_list[i:i + size] for i in range(0, len(id_list), size)]:
         df = data[data[ITEM.TRACE_ID].isin(sub)]
         res.append(df)
 
     return res
 
 
-def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
+def build_graph(trace: List[Span], time_normolize: Callable[[float], float], operation_map: dict):
     """
     build trace graph from span list
     """
@@ -376,66 +245,241 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     if is_wechat:
         graph, str_set = build_mm_graph(trace, time_normolize)
     else:
-        graph, str_set = build_sw_graph(trace, time_normolize)
+        graph, str_set = build_sw_graph(trace, time_normolize, operation_map)
 
     str_set.add('start')
     return graph, str_set
 
 
-def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float]):
+def subspan_info(span: Span, child_spans: list[Span]):
+    """
+    returns subspan duration, subspan number, is_parallel (0-not parallel, 1-is parallel)
+    """
+    if len(child_spans) == 0:
+        return 0, 0
+    total_duration = 0
+    is_parallel = 0
+    time_spans = []
+    for child in child_spans:
+        time_spans.append(
+            {"start": child.startTime, "end": child.startTime + child.duration})
+    time_spans.sort(key=lambda s: s["start"])
+    last_time_span = time_spans[0]
+    last_length = -1
+
+    while (len(time_spans) != last_length):
+        last_length = len(time_spans)
+        for time_span in time_spans:
+            if time_span["start"] < last_time_span["end"]:
+                if time_span != time_spans[0]:
+                    is_parallel = 1
+                    time_span["start"] = last_time_span["start"]
+                    time_span["end"] = max(
+                        time_span["end"], last_time_span["end"])
+                    time_spans.remove(last_time_span)
+            last_time_span = time_span
+    subspanNum = len(time_spans) + 1
+
+    for time_span in time_spans:
+        total_duration += time_span["end"] - time_span["start"]
+    if time_spans[0]["start"] == span.startTime:
+        subspanNum -= 1
+    if time_spans[-1]["end"] == span.startTime + span.duration:
+        subspanNum -= 1
+
+    return total_duration, subspanNum, is_parallel
+
+
+def calculate_edge_features(current_span: Span, trace_duration: dict, spanChildrenMap: dict):
+    # base features
+    features = {
+        'spanId': current_span.spanId,
+        'parentSpanId': current_span.parentSpanId,
+        'startTime': current_span.startTime,
+        'rawDuration': current_span.duration,
+        'service': current_span.service,
+        'operation': current_span.operation,
+        'peer': current_span.peer,
+        'isError': current_span.isError,
+
+        'childrenSpanNum': 0,
+        'requestDuration': 0,
+        'responseDuration': 0,
+        'workDuration': 0,
+        'timeScale': round(
+            (current_span.duration / (trace_duration["end"] - trace_duration["start"])), 4),
+        'subspanNum': 0,
+        'requestAndResponseDuration': 0,
+        'isParallel': 0,
+        'callType': 0 if current_span.spanType == "Entry" else 1,
+        'statusCode': current_span.code,
+    }
+
+    if spanChildrenMap.get(current_span.spanId) is None:
+        return features
+
+    children_span = spanChildrenMap[current_span.spanId]
+    request_and_response_duration = 0.0
+    request_duration = 0.0
+    response_duration = 0.0
+    children_duration = 0.0
+    subspan_duration = 0.0
+    subspan_num = 0.0
+    min_time = sys.maxsize - 1
+    max_time = -1
+
+    for child in children_span:
+        if child.startTime < min_time:
+            min_time = child.startTime
+        if child.startTime + child.duration > max_time:
+            max_time = child.startTime + child.duration
+        if child.spanType == "Exit":
+            if spanChildrenMap.get(child.spanId) is not None:
+                grandChild = spanChildrenMap[child.spanId][0]
+                children_duration += grandChild.duration
+                request_duration += (grandChild.startTime - child.startTime)
+                response_duration += (child.duration -
+                                      request_duration - grandChild.duration)
+                request_and_response_duration += (
+                    child.duration - grandChild.duration)
+        if child.spanType == "Producer":
+            if spanChildrenMap.get(child.spanId) is not None:
+                grandChild = spanChildrenMap[child.spanId][0]
+                children_duration += grandChild.duration
+                if grandChild.startTime + grandChild.duration > trace_duration["end"]:
+                    trace_duration["end"] = grandChild.startTime + \
+                        grandChild.duration
+
+    subspan_duration, subspan_num, is_parallel = subspan_info(
+        current_span, children_span)
+
+    # udpate features
+    features["isParallel"] = is_parallel
+    features["childrenSpanNum"] = len(children_span)
+    features["requestDuration"] = request_duration
+    features["responseDuration"] = response_duration
+    features["requestAndResponseDuration"] = request_and_response_duration
+    features["workDuration"] = current_span.duration - subspan_duration
+    features["subspanNum"] = subspan_num
+
+    return features
+
+
+def check_abnormal_span(span: Span) -> bool:
+    start_hour = time.localtime(span.startTime).tm_hour
+
+    if start_hour in chaos_dict.keys() and span.service.startswith(chaos_dict.get(start_hour)):
+        return True
+
+    return False
+
+
+def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], operation_map: dict):
     vertexs = {0: 'start'}
     edges = {}
     str_set = set()
+    trace_duration = {}
 
     spanIdMap = {'-1': 0}
     spanIdCounter = 1
     rootSpan = None
+    spanMap = {}
+    spanChildrenMap = {}
 
+    # generate span dict
+    for span in trace:
+        spanMap[span.spanId] = span
+        if span.parentSpanId not in spanChildrenMap.keys():
+            spanChildrenMap[span.parentSpanId] = []
+        spanChildrenMap[span.parentSpanId].append(span)
+
+    # remove local span
+    for span in trace:
+        if span.spanType != 'Local':
+            continue
+
+        if spanMap.get(span.parentSpanId) is None:
+            return None, str_set
+        else:
+            local_span_children = spanChildrenMap[span.spanId]
+            local_span_parent = spanMap[span.parentSpanId]
+            spanChildrenMap[local_span_parent.spanId].remove(span)
+            for child in local_span_children:
+                child.parentSpanId = local_span_parent.spanId
+                spanChildrenMap[local_span_parent.spanId].append(child)
+
+    is_abnormal = 0
+    # process other span
     for span in trace:
         """
         (raph object contains Vertexs and Edges
         Edge: [(from, to, duration), ...]
         Vertex: [(id, nodestr), ...]
         """
+
+        # skip client span
+        if span.spanType in ['Exit', 'Producer', 'Local']:
+            continue
+
+        if check_abnormal_span(span):
+            is_abnormal = 1
+
+        # get the parent server span id
         if span.parentSpanId == '-1':
             rootSpan = span
+            trace_duration["start"] = span.startTime
+            trace_duration["end"] = span.startTime + \
+                span.duration + 1 if span.duration <= 0 else 0
+            parentSpanId = '-1'
+        else:
+            if spanMap.get(span.parentSpanId) is None:
+                return None, str_set
+            parentSpanId = spanMap[span.parentSpanId].parentSpanId
 
-        if span.parentSpanId not in spanIdMap.keys():
-            spanIdMap[span.parentSpanId] = spanIdCounter
+        if parentSpanId not in spanIdMap.keys():
+            spanIdMap[parentSpanId] = spanIdCounter
             spanIdCounter += 1
 
         if span.spanId not in spanIdMap.keys():
             spanIdMap[span.spanId] = spanIdCounter
             spanIdCounter += 1
 
-        spanId, parentSpanId = spanIdMap[span.spanId], spanIdMap[span.parentSpanId]
+        vid, pvid = spanIdMap[span.spanId], spanIdMap[parentSpanId]
 
         # span id should be unique
-        if spanId not in vertexs.keys():
-            opname = '/'.join([span.service, span.operation, span.code])
-            vertexs[spanId] = [span.service, opname]
+        if vid not in vertexs.keys():
+            opname = '/'.join([span.service, span.operation])
+            vertexs[vid] = [span.service, opname]
             str_set.add(span.service)
             str_set.add(opname)
 
-        if parentSpanId not in edges.keys():
-            edges[parentSpanId] = []
+        if pvid not in edges.keys():
+            edges[pvid] = []
 
-        edges[parentSpanId].append({
-            'vertexId': spanId,
-            'spanId': span.spanId,
-            'parentSpanId': span.parentSpanId,
-            'startTime': span.startTime,
-            'duration': time_normolize(span.duration),
-            'service': span.service,
-            'operation': span.operation,
-            'peer': span.peer,
-            'isError': span.isError,
-        })
+        # get features of the edge directed to current span
+        operation_select_keys = ['childrenSpanNum', 'requestDuration', 'responseDuration',
+                                 'requestAndResponseDuration', 'workDuration', 'subspanNum',
+                                 'duration', 'rawDuration', 'timeScale']
+
+        feats = calculate_edge_features(
+            span, trace_duration, spanChildrenMap)
+        feats['vertexId'] = vid
+        feats['duration'] = time_normolize(span.duration)
+
+        if span.operation not in operation_map.keys():
+            operation_map[span.operation] = {}
+            for key in operation_select_keys:
+                operation_map[span.operation][key] = []
+        for key in operation_select_keys:
+            operation_map[span.operation][key].append(feats[key])
+
+        edges[pvid].append(feats)
 
     if rootSpan == None:
         return None, str_set
 
     graph = {
+        'abnormal': is_abnormal,
         'vertexs': vertexs,
         'edges': edges,
     }
@@ -572,11 +616,11 @@ def save_data(graphs: Dict, idx: str = ''):
         idx+'.json', time_now_str, is_wechat)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
-    print("saving data..., map size: {}".format(getsizeof(graphs)))
+    print("saving data..., map size: {}".format(sys.getsizeof(graphs)))
     with open(filepath, 'w', encoding='utf-8') as fd:
         json.dump(graphs, fd, ensure_ascii=False)
 
-    print(f"data saved in {filepath}")
+    print(f"{len(graphs)} traces data saved in {filepath}")
 
 
 def divide_word(s: str, sep: str = "/") -> str:
@@ -741,32 +785,34 @@ def z_score(x: float, mean: float, std: float) -> float:
     """
     z-score normalize funciton
     """
-    return (x - mean) / std
+    return (float(x) - float(mean)) / float(std)
 
 
 def min_max(x: float, min: float, max: float) -> float:
     """
     min-max normalize funciton
     """
-    return (x - min) / (max - min)
+    return (float(x) - float(min)) / (float(max) - float(min))
 
 
 def task(ns, idx, divide_word: bool = True):
     span_data = ns.sl[idx]
     current = current_process()
-    pos = current._identity[0]-1
+    pos = current._identity[0] - 1
     graph_map = {}
     str_set = set()
-
-    for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID]), desc="processing #{:0>2d}".format(idx), position=pos):
+    operation_map = {}
+    for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID]), desc="processing #{:0>2d}".format(idx),
+                                     position=pos):
         trace = [Span(raw_span) for idx, raw_span in trace_data.iterrows()]
-        graph, sset = build_graph(trace_process(trace, divide_word), normalize)
+        graph, sset = build_graph(trace_process(
+            trace, divide_word), normalize, operation_map)
         if graph == None:
             continue
         graph_map[trace_id] = graph
         str_set = set.union(str_set, sset)
 
-    return (graph_map, str_set)
+    return (graph_map, str_set, operation_map)
 
 
 def main():
@@ -789,26 +835,28 @@ def main():
 
     # load all span
     raw_spans = load_span()
-
     if is_wechat and use_request:
         save_name_cache(cache)
 
     # concat all span data in one list
     span_data = pd.concat(raw_spans, axis=0, ignore_index=True)
+
     global normalize
     if args.normalize == 'minmax':
         max_duration = span_data[ITEM.DURATION].max()
         min_duration = span_data[ITEM.DURATION].min()
 
-        def normalize(x): return min_max(
-            x, max_duration, min_duration)
+        def normalize(x):
+            return min_max(
+                x, max_duration, min_duration)
 
     elif args.normalize == 'zscore':
         mean_duration = span_data[ITEM.DURATION].mean()
         std_duration = span_data[ITEM.DURATION].std()
 
-        def normalize(x): return z_score(
-            x, mean_duration, std_duration)
+        def normalize(x):
+            return z_score(
+                x, mean_duration, std_duration)
 
     else:
         print(f"invalid normalize method name: {embedding_name}")
@@ -827,8 +875,10 @@ def main():
         exit()
 
     result_map = {}
+    operation_map = {}
     name_set = set()
     file_idx = 0
+
     # With shared memory
     with Manager() as m:
         ns = m.Namespace()
@@ -838,8 +888,10 @@ def main():
             fs = [exe.submit(task, ns, idx, enable_word_division)
                   for idx in range(data_size)]
             for fu in as_completed(fs):
-                (graphs, sset) = fu.result()
+                (graphs, sset, temp_operation_map) = fu.result()
                 result_map = utils.mergeDict(result_map, graphs)
+                operation_map = utils.mergeOperation(
+                    temp_operation_map, operation_map)
                 name_set = set.union(name_set, sset)
                 # control the data size
                 if len(result_map) > args.max_num:
@@ -859,8 +911,14 @@ def main():
         embedding_name+'_embedding.json', time_now_str, is_wechat)
     with open(embd_filepath, 'w', encoding='utf-8') as fd:
         json.dump(name_dict, fd, ensure_ascii=False)
-
     print(f'embedding data saved in {embd_filepath}')
+
+    operation_filepath = utils.generate_save_filepath(
+        'operations.json', time_now_str, is_wechat)
+    with open(operation_filepath, 'w', encoding='utf-8') as fo:
+        json.dump(operation_map, fo, ensure_ascii=False)
+    print(f'operations data saved in {operation_filepath}')
+
     print('preprocess finished :)')
 
 

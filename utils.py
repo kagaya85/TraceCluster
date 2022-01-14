@@ -1,9 +1,6 @@
 import re
 import os
-import time
 from typing import List
-
-from preprocess import embedding
 
 
 def boolStr2Int(str: str) -> int:
@@ -63,6 +60,20 @@ def wordSplit(s: str, words: List[str]) -> List[str]:
 
 def mergeDict(x: dict, y: dict):
     return {**x, **y}
+
+
+def mergeOperation(temp_operation_map: dict, operation_map: dict):
+    if not operation_map:
+        operation_map = temp_operation_map
+    else:
+        for key, value in temp_operation_map.items():
+            if operation_map.get(key) is None:
+                operation_map[key] = value
+            else:
+                for index in operation_map[key].keys():
+                    operation_map[key][index].extend(
+                        temp_operation_map[key][index])
+    return operation_map
 
 
 def getNewFile(dirpath: str) -> List[str]:
