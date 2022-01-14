@@ -16,11 +16,12 @@ import (
 )
 
 var (
-	rootpath     string
-	intervalStr  string
-	startTimeStr string
-	timezone     string
-	url          string
+	rootpath    string
+	durationStr string
+	fromTimeStr string
+	timezone    string
+	url         string
+	queryType   string
 )
 
 const (
@@ -34,11 +35,12 @@ type Config struct {
 }
 
 func init() {
-	flag.StringVar(&startTimeStr, "start-time", "2021-12-20 00:00:00", "collect start time")
-	flag.StringVar(&intervalStr, "interval", "24h", "collect interval duration")
+	flag.StringVar(&fromTimeStr, "from", "2022-01-01 00:00:00", "collect from time")
+	flag.StringVar(&durationStr, "duration", "24h", "collect duration time, support h/m/s")
 	flag.StringVar(&timezone, "timezone", "Asia/Shanghai", "time zone")
-	flag.StringVar(&rootpath, "save-path", "./raw", "directory path where preprocessed data saved")
-	flag.StringVar(&url, "url", "http://175.27.169.178:8080/graphql", "skywalking graphql server url")
+	flag.StringVar(&rootpath, "savedir", "./raw", "directory path where preprocessed data saved")
+	flag.StringVar(&url, "url", "http://localhost:8080/graphql", "skywalking graphql server url")
+	flag.StringVar(&queryType, "type", "all", "collect traces type, support all/error/success")
 	flag.Parse()
 }
 
@@ -48,16 +50,16 @@ func main() {
 		log.Fatalln("load time zone error:", err)
 	}
 
-	startTime, err := time.ParseInLocation("2006-01-02 15:04:05", startTimeStr, tz)
+	startTime, err := time.ParseInLocation("2006-01-02 15:04:05", fromTimeStr, tz)
 	if err != nil {
 		log.Fatalln("parse time string error:", err)
 	}
 
-	interval, err := time.ParseDuration(intervalStr)
+	duration, err := time.ParseDuration(durationStr)
 	if err != nil {
 		log.Fatalln("parse interval duration error:", err)
 	}
-	endTime := startTime.Add(interval)
+	endTime := startTime.Add(duration)
 
 	cfg := &Config{
 		url:      url,
@@ -73,12 +75,24 @@ func main() {
 	ctx = context.WithValue(ctx, passwordKey{}, cfg.password)
 	ctx = context.WithValue(ctx, authKey{}, "")
 
-	traceIDs := QueryTraceIDs(ctx, startTime, endTime)
+	var state api.TraceState
+	switch queryType {
+	case "all", "All", "ALL":
+		state = api.TraceStateAll
+	case "error", "Error", "ERROR":
+		state = api.TraceStateError
+	case "success", "Success", "SUCCESS":
+		state = api.TraceStateSuccess
+	default:
+		log.Fatalf("invalid query trace type %q", queryType)
+	}
+
+	traceIDs := QueryTraceIDs(ctx, startTime, endTime, state)
 
 	traceC := QueryTraces(ctx, traceIDs)
 
 	start := startTime.Format("2006-01-02_15-04-05")
-	if err := SaveCSV(traceC, fmt.Sprintf("%s_%s_%s", start, intervalStr, "traces.csv")); err != nil {
+	if err := SaveCSV(traceC, fmt.Sprintf("%s_%s_%s", start, durationStr, "traces.csv")); err != nil {
 		log.Fatal(err)
 	}
 }
