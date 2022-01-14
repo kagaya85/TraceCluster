@@ -251,16 +251,16 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float], ope
     return graph, str_set
 
 
-def subspan_info(span: Span, children_span: list[Span]):
+def subspan_info(span: Span, child_spans: list[Span]):
     """
     returns subspan duration, subspan number, is_parallel (0-not parallel, 1-is parallel)
     """
-    if len(children_span) == 0:
+    if len(child_spans) == 0:
         return 0, 0
     total_duration = 0
     is_parallel = 0
     time_spans = []
-    for child in children_span:
+    for child in child_spans:
         time_spans.append(
             {"start": child.startTime, "end": child.startTime + child.duration})
     time_spans.sort(key=lambda s: s["start"])
@@ -428,7 +428,8 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
         if span.parentSpanId == '-1':
             rootSpan = span
             trace_duration["start"] = span.startTime
-            trace_duration["end"] = span.startTime + span.duration
+            trace_duration["end"] = span.startTime + \
+                span.duration + 1 if span.duration <= 0 else 0
             parentSpanId = '-1'
         else:
             if spanMap.get(span.parentSpanId) is None:
