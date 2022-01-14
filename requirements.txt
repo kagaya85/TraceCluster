@@ -11,3 +11,10 @@ torch_geometric==2.0.1
 tqdm==4.62.3
 transformers==4.11.3
 wordninja==2.0.0
+wheel>=0.23.0
+Cython>=0.20.2
+six>=1.7.3
+scipy>=0.15.0
+psutil>=2.1.1
+networkx>=2.0
+gensim==3.8.1
