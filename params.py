@@ -1,5 +1,19 @@
 # preprocess global parameters
 
+new_data_list = [
+    # New Data
+
+    # Normal
+    'normal/2022-01-11_00-00-00_12h_traces.csv',
+    'normal/2022-01-11_12-00-00_6h_traces.csv',
+
+    # Chaos
+    'chaos/2022-01-10_16-00-00_5h_traces.csv',
+    # 'chaos/2022-01-11_00-00-00_24h_traces.csv',
+    'chaos/2022-01-12_00-00-00_24h_traces.csv',
+    'chaos/2022-01-13_00-00-00_24h_traces.csv',
+]
+
 old_data_list = [
     # Normal
     'normal/normal0822_01/SUCCESS_SpanData2021-08-22_15-43-01.csv',
@@ -112,11 +126,6 @@ old_data_list = [
     "F25-01/ERROR_SpanData2021-08-16_11-17-21.csv",
     "F25-02/ERROR_SpanData2021-08-16_11-21-59.csv",
     "F25-03/ERROR_SpanData2021-08-16_12-20-59.csv",
-]
-
-new_data_list = [
-    # New Data
-    "2022-01-10_16-00-00_5h_traces.csv",
 ]
 
 # skywalking data list

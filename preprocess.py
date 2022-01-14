@@ -10,7 +10,7 @@ import numpy as np
 import argparse
 from tqdm import tqdm
 import utils
-from typing import List, Callable, Dict, Tuple
+from typing import List, Callable, Dict
 from multiprocessing import cpu_count, Manager, current_process
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import requests
@@ -29,7 +29,7 @@ cache_file = './secrets/cache.json'
 embedding_name = ''
 
 
-def normalize(x): return x
+def normalize(x: float) -> float: return x
 
 
 def embedding(input: str) -> List[float]:
@@ -139,7 +139,7 @@ def load_span() -> List[DataFrame]:
         # load trace info
         for filepath in mm_data_path_list:
             filepath = os.path.join(data_root, 'wechat', filepath)
-            print(f"load wechat span data from {filepath}")
+            print(f"loading wechat span data from {filepath}")
             if filepath.endswith('.json'):
                 with open(filepath, 'r') as f:
                     raw_data = json.load(f)
@@ -208,7 +208,7 @@ def load_span() -> List[DataFrame]:
         # skywalking data
         for filepath in data_path_list:
             filepath = os.path.join(data_root, 'trainticket', filepath)
-            print(f"load span data from {filepath}")
+            print(f"loading skywalking span data from {filepath}")
 
             data_type = {ITEM.START_TIME: np.uint64, ITEM.END_TIME: np.uint64}
             spans = pd.read_csv(
@@ -251,7 +251,7 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float], ope
     return graph, str_set
 
 
-def subspan_info(span: Span, children_span: list[Span]) -> Tuple(int, int, int):
+def subspan_info(span: Span, children_span: list[Span]):
     """
     returns subspan duration, subspan number, is_parallel (0-not parallel, 1-is parallel)
     """
@@ -784,14 +784,14 @@ def z_score(x: float, mean: float, std: float) -> float:
     """
     z-score normalize funciton
     """
-    return (x - mean) / std
+    return (float(x) - float(mean)) / float(std)
 
 
 def min_max(x: float, min: float, max: float) -> float:
     """
     min-max normalize funciton
     """
-    return (x - min) / (max - min)
+    return (float(x) - float(min)) / (float(max) - float(min))
 
 
 def task(ns, idx, divide_word: bool = True):
