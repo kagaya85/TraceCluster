@@ -1,9 +1,15 @@
+from deepwalk import __main__
 from ge import Node2Vec, DeepWalk
 import networkx as nx
 import json
 import sys
+import os
+import re
 sys.path.append(r'./deepwalk')
-from deepwalk import __main__
+
+file_name = "/tmp/pycharm_project_683/data/preprocessed/trainticket/bert_2022-01-12_10-36-30/0.json"
+output_dir = "./data/preprocessed/trainticket"
+weighted = False
 
 
 def read_json(file):
@@ -107,10 +113,13 @@ def processEmbeddingFileToJSONFile(node_filename, filename, output_filename):
 
 def node2Vec_embedding(edgelist_filename, output_filename, weighted=False):
     if weighted is False:
-        G = nx.read_edgelist(edgelist_filename, create_using=nx.DiGraph(), nodetype=None)
+        G = nx.read_edgelist(
+            edgelist_filename, create_using=nx.DiGraph(), nodetype=None)
     else:
-        G = nx.read_edgelist(edgelist_filename, create_using=nx.DiGraph(), nodetype=None, data=[('weight', int)])
-    model = Node2Vec(G, walk_length=20, num_walks=15, p=1, q=1, workers=1, use_rejection_sampling=0)
+        G = nx.read_edgelist(edgelist_filename, create_using=nx.DiGraph(
+        ), nodetype=None, data=[('weight', int)])
+    model = Node2Vec(G, walk_length=20, num_walks=15, p=1,
+                     q=1, workers=1, use_rejection_sampling=0)
     model.train(embed_size=20, window_size=5)
     embeddings = model.get_embeddings()
     mp = {}
@@ -127,7 +136,8 @@ def node2Vec_embedding(edgelist_filename, output_filename, weighted=False):
 
 def deepwalk_embedding(edgelist_filename, output_filename):
     # Deepwalk未实现带权重，且对于有向图而言。
-    G = nx.read_edgelist(edgelist_filename, create_using=nx.DiGraph(), nodetype=None)  # read graph
+    G = nx.read_edgelist(
+        edgelist_filename, create_using=nx.DiGraph(), nodetype=None)  # read graph
     deep_walk = DeepWalk(G, walk_length=20, num_walks=15)
     deep_walk.train(embed_size=20, window_size=5)
     embeddings = deep_walk.get_embeddings()
@@ -144,8 +154,6 @@ def deepwalk_embedding(edgelist_filename, output_filename):
 
 
 if __name__ == '__main__':
-    file_name = "/tmp/pycharm_project_683/data/preprocessed/trainticket/bert_2022-01-12_10-36-30/0.json"
-    weighted = False
     if weighted:
         str = ""
     else:
@@ -155,9 +163,11 @@ if __name__ == '__main__':
     graph = build_graph(file_name)
     edgelist_file = make(graph, weighted=weighted)
     node2Vec_embedding(edgelist_filename=edgelist_file,
-                       output_filename='./experiment/node_embedding/embedding' + str +'_node2Vec.json', weighted=weighted)
+                       output_filename=os.path.join(output_dir, str + '_node2vec.json'), weighted=weighted)
     deepwalk_embedding(edgelist_filename=edgelist_file,
-                       output_filename='./experiment/node_embedding/embedding' + str +'_deepwalk.json')
+                       output_filename=os.path.join(output_dir, str + '_deepwalk.json'))
+
+    print(f'embedding file saved in {output_dir}')
     # # 调用第三方库deepwalk生成结点embedding
     # __main__.process(input="./experiment/edges_1.txt", output="./experiment/embeddingss", format='edgelist',
     #                  representation_size=20, number_walks=80, walk_length=20, window_size=5, undirected=False)
