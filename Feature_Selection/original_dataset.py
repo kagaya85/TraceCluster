@@ -21,11 +21,13 @@ class TraceDataset(InMemoryDataset):
 
     @property
     def z_score_num_features(self):
-        return ['childrenSpanNum', 'requestAndResponseDuration', 'subspanDuration', 'rawDuration', 'subspanNum']
+        # return ['childrenSpanNum', 'requestAndResponseDuration', 'subspanDuration', 'rawDuration', 'subspanNum']
+        return []
 
     @property
     def span_type_features(self):
         return ['timeScale', 'isParallel', 'callType']
+        # return []
 
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
@@ -215,8 +217,9 @@ class TraceDataset(InMemoryDataset):
                 s = slice(slices[0], slices[0 + 1])
             data[key] = item[s]
         _, num_feature = data.x.size()
+        _, num_edge_feature = data.edge_attr.size()
 
-        return num_feature
+        return num_feature, num_edge_feature
 
 
 if __name__ == '__main__':

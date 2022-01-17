@@ -35,7 +35,7 @@ def arguments():
     parser.add_argument('--aug', type=str, default='random3')
     parser.add_argument('--seed', type=int, default=0)
 
-    parser.add_argument('--classes', dest='classes', type=str, default='multi',
+    parser.add_argument('--classes', dest='classes', type=str, default='binary',
                         help='binary classification or multi classification, eg. binary or multi')
     parser.add_argument('--save-to', dest='save_path',
                         default='./weights', help='weights save path')
@@ -79,7 +79,8 @@ def main():
     print("dataset size:", len(dataset))
     print("dataset_train size:", len(dataset_train))
     print("dataset_eval size:", len(dataset_eval))
-    print("feature number:", dataset.get_num_feature())
+    print("feature number:", dataset.get_num_feature()[0])
+    print("edge feature number:", dataset.get_num_feature()[1])
     print('batch_size: {}'.format(batch_size))
     print('lr: {}'.format(lr))
     print('hidden_dim: {}'.format(args.hidden_dim))
@@ -88,7 +89,7 @@ def main():
 
     # get feature dim
     try:
-        dataset_num_features = dataset.get_num_feature()
+        dataset_num_features, num_edge_feature = dataset.get_num_feature()
     except:
         dataset_num_features = 1
 
@@ -111,7 +112,7 @@ def main():
 
 
     # init model
-    model = Encoder(dataset_num_features, args.hidden_dim, args.num_gc_layers, num_classes).to(device)
+    model = Encoder(dataset_num_features, args.hidden_dim, args.num_gc_layers, num_classes, num_edge_feature).to(device)
 
     # init optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -127,7 +128,7 @@ def main():
         loss_sum = 0.0
         for data in tqdm(dataloader_train):
             data = data.to(device)
-            x = model(data.x, data.edge_index, data.batch)    # batchsize*2
+            x = model(data.x, data.edge_index, data.edge_attr, data.batch)    # batchsize*2
             if args.classes == 'binary':
                 y = data.y    # batchsize
             elif args.classes == 'multi':
@@ -151,7 +152,7 @@ def main():
         y = data.y
     elif args.classes == 'multi':
         y = torch.Tensor([multiLabel[data.root_url[i]] for i in range(len(data.root_url))]).to(device).long()
-    print("Accuracy score is {}".format(accuracy_score(model.predict(data.x, data.edge_index, data.batch).cpu().numpy(), y.cpu().numpy())))
+    print("Accuracy score is {}".format(accuracy_score(model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy(), y.cpu().numpy())))
 
 
 

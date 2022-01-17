@@ -1,17 +1,18 @@
+from re import T
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
 from torch.autograd import Variable
 from torch.nn.modules import loss
-from torch_geometric.nn import GATConv, global_mean_pool
+from torch_geometric.nn import GATConv, TransformerConv, global_mean_pool
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class Encoder(torch.nn.Module):
-    def __init__(self, input_dim, output_dim, num_gc_layers, num_classes):
+    def __init__(self, input_dim, output_dim, num_gc_layers, num_classes, num_edge_attr):
         super(Encoder, self).__init__()
 
         self.num_gc_layers = num_gc_layers
@@ -19,8 +20,10 @@ class Encoder(torch.nn.Module):
         self.convs = torch.nn.ModuleList()
         self.bns = torch.nn.ModuleList()
 
-        conv_0 = GATConv(in_channels=input_dim, out_channels=output_dim*4)
-        conv_1 = GATConv(in_channels=output_dim*4, out_channels=output_dim)
+        # conv_0 = GATConv(in_channels=input_dim, out_channels=output_dim*4)
+        # conv_1 = GATConv(in_channels=output_dim*4, out_channels=output_dim)
+        conv_0 = TransformerConv(in_channels=input_dim, out_channels=output_dim*4, edge_dim=num_edge_attr)
+        conv_1 = TransformerConv(in_channels=output_dim*4, out_channels=output_dim, edge_dim=num_edge_attr)
         self.convs.append(conv_0)
         self.convs.append(conv_1)
 
@@ -31,13 +34,13 @@ class Encoder(torch.nn.Module):
 
         self.fc = torch.nn.Linear(output_dim, num_classes)
 
-    def forward(self, x, edge_index, batch):
+    def forward(self, x, edge_index, edge_attr, batch):
         if x is None:
             x = torch.ones((batch.shape[0], 1)).to(device)
 
         xs = []
         for i in range(self.num_gc_layers):
-            x = self.convs[i](x, edge_index)
+            x = self.convs[i](x, edge_index, edge_attr)
             x = self.bns[i](x)
             xs.append(x)
 
@@ -50,8 +53,8 @@ class Encoder(torch.nn.Module):
 
         return output
 
-    def predict(self, x, edge_index, batch):
-        prediction = torch.max(F.softmax(self.forward(x, edge_index, batch), dim=1), 1)[1] 
+    def predict(self, x, edge_index, edge_attr, batch):
+        prediction = torch.max(F.softmax(self.forward(x, edge_index, edge_attr, batch), dim=1), 1)[1] 
         return prediction
         
         
