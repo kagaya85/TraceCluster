@@ -686,6 +686,9 @@ spec:
         - name: rabbitmq
           image: registry.cn-hangzhou.aliyuncs.com/h10g/rabbitmq:3
           imagePullPolicy: IfNotPresent
+          env:
+            - name: TZ
+              value: Asia/Shanghai
           ports:
             - containerPort: 5672
           resources:
