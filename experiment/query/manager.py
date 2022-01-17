@@ -471,6 +471,7 @@ def workflow(timeout: int = 24*hour, task_timeout: int = 1*hour):
         time.sleep(1*minute)
 
     p.close()
+    logger.info('waiting for constant query end...')
     p.join()
     return
 
@@ -495,8 +496,6 @@ def main():
     workflow(duration)
     logger.info('workflow ended')
 
-    logger.info('waiting for constant query end...')
-    p.join()
     logger.info('auto-query manager ended')
 
 

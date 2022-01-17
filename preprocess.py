@@ -217,9 +217,19 @@ def load_span() -> List[DataFrame]:
             spans[ITEM.DURATION] = spans[ITEM.END_TIME] - \
                 spans[ITEM.START_TIME]
 
+            spans[ITEM.SERVICE] = spans[ITEM.SERVICE].map(
+                lambda x: remove_tail_id(x))
             raw_spans.extend(data_partition(spans, 10240))
 
     return raw_spans
+
+
+def remove_tail_id(s: str) -> str:
+    x = 'service'
+    idx = s.find(x)
+    if idx > 0:
+        return s[:idx+len(x)]
+    return s
 
 
 def data_partition(data: DataFrame, size: int = 1024) -> List[DataFrame]:
