@@ -12,32 +12,45 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class Encoder(torch.nn.Module):
-    def __init__(self, input_dim, output_dim, num_gc_layers, num_classes, num_edge_attr):
+    def __init__(self, input_dim, output_dim, num_gc_layers, num_classes, num_edge_attr, gnn_type):
         super(Encoder, self).__init__()
 
         self.num_gc_layers = num_gc_layers
         self.num_classes = num_classes
+        self.gnn_type = gnn_type
         self.convs = torch.nn.ModuleList()
         self.bns = torch.nn.ModuleList()
 
-        # GATConv
-        # conv_0 = GATConv(in_channels=input_dim, out_channels=output_dim*4)
-        # conv_1 = GATConv(in_channels=output_dim*4, out_channels=output_dim)
-        # TransformerConv
-        conv_0 = TransformerConv(in_channels=input_dim, out_channels=output_dim*4, edge_dim=num_edge_attr)
-        conv_1 = TransformerConv(in_channels=output_dim*4, out_channels=output_dim, edge_dim=num_edge_attr)
-        # CGConv
-        # conv_0 = CGConv(channels=input_dim, dim=num_edge_attr)
-        # conv_1 = CGConv(channels=output_dim*4, dim=num_edge_attr)
+        if gnn_type == 'GATConv':
+            # GATConv
+            conv_0 = GATConv(in_channels=input_dim, out_channels=output_dim*4)
+            conv_1 = GATConv(in_channels=output_dim*4, out_channels=output_dim)
+            bn_0 = torch.nn.BatchNorm1d(output_dim*4)
+            bn_1 = torch.nn.BatchNorm1d(output_dim)
+        elif gnn_type == 'TransformerConv':
+            # TransformerConv
+            conv_0 = TransformerConv(in_channels=input_dim, out_channels=output_dim*4, edge_dim=num_edge_attr)
+            conv_1 = TransformerConv(in_channels=output_dim*4, out_channels=output_dim, edge_dim=num_edge_attr)
+            bn_0 = torch.nn.BatchNorm1d(output_dim*4)
+            bn_1 = torch.nn.BatchNorm1d(output_dim)
+        elif gnn_type == 'CGConv':
+            # CGConv
+            conv_0 = CGConv(channels=input_dim, dim=num_edge_attr)
+            conv_1 = CGConv(channels=input_dim, dim=num_edge_attr)
+            bn_0 = torch.nn.BatchNorm1d(input_dim)
+            bn_1 = torch.nn.BatchNorm1d(input_dim)
+        
         self.convs.append(conv_0)
         self.convs.append(conv_1)
 
-        bn_0 = torch.nn.BatchNorm1d(output_dim*4)
-        bn_1 = torch.nn.BatchNorm1d(output_dim)
         self.bns.append(bn_0)
         self.bns.append(bn_1)
 
-        self.fc = torch.nn.Linear(output_dim, num_classes)
+        if gnn_type == 'GATConv' or gnn_type == 'TransformerConv':
+            self.fc = torch.nn.Linear(output_dim, num_classes)
+        elif gnn_type == 'CGConv':
+            self.fc = torch.nn.Linear(input_dim, num_classes)
+
 
     def forward(self, x, edge_index, edge_attr, batch):
         if x is None:
@@ -45,7 +58,10 @@ class Encoder(torch.nn.Module):
 
         xs = []
         for i in range(self.num_gc_layers):
-            x = self.convs[i](x=x, edge_index=edge_index, edge_attr=edge_attr)
+            if self.gnn_type == 'TransformerConv' or self.gnn_type == 'CGConv':
+                x = self.convs[i](x=x, edge_index=edge_index, edge_attr=edge_attr)
+            elif self.gnn_type == 'GATConv':
+                x = self.convs[i](x=x, edge_index=edge_index)
             x = self.bns[i](x)
             xs.append(x)
 

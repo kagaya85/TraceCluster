@@ -30,6 +30,8 @@ def arguments():
                         help='learning rate, default 0.001')
     parser.add_argument('--num-gc-layers', dest='num_gc_layers', type=int, default=2,
                         help='number of graph convolution layers before each pooling')
+    parser.add_argument('--gnn-type', dest='gnn_type', type=str, default='TransformerConv',
+                        help='choose a GNN type, eg. TransformerConv, GATConv, CGConv')
     parser.add_argument('--hidden-dim', dest='hidden_dim', type=int, default=16,    # 32
                         help='hidden dim number, default 16')
     parser.add_argument('--aug', type=str, default='random3')
@@ -96,6 +98,7 @@ def main():
     print('lr: {}'.format(lr))
     print('hidden_dim: {}'.format(args.hidden_dim))
     print('num_gc_layers: {}'.format(args.num_gc_layers))
+    print('gnn_type: {}'.format(args.gnn_type))
     print('----------------------')
 
 
@@ -124,7 +127,7 @@ def main():
 
 
     # init model
-    model = Encoder(dataset_num_features, args.hidden_dim, args.num_gc_layers, num_classes, num_edge_feature).to(device)
+    model = Encoder(dataset_num_features, args.hidden_dim, args.num_gc_layers, num_classes, num_edge_feature, args.gnn_type).to(device)
 
     # init optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
