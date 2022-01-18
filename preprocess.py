@@ -343,22 +343,25 @@ def calculate_edge_features(current_span: Span, trace_duration: dict, spanChildr
             min_time = child.startTime
         if child.startTime + child.duration > max_time:
             max_time = child.startTime + child.duration
+
+        if spanChildrenMap.get(child.spanId) is None:
+            continue
+
+        grandChild = spanChildrenMap[child.spanId][0]
+
+        children_duration += grandChild.duration
+        child_request_duration = grandChild.startTime - child.startTime
+
         if child.spanType == "Exit":
-            if spanChildrenMap.get(child.spanId) is not None:
-                grandChild = spanChildrenMap[child.spanId][0]
-                children_duration += grandChild.duration
-                request_duration += (grandChild.startTime - child.startTime)
-                response_duration += (child.duration -
-                                      request_duration - grandChild.duration)
-                request_and_response_duration += (
-                    child.duration - grandChild.duration)
-        if child.spanType == "Producer":
-            if spanChildrenMap.get(child.spanId) is not None:
-                grandChild = spanChildrenMap[child.spanId][0]
-                children_duration += grandChild.duration
-                if grandChild.startTime + grandChild.duration > trace_duration["end"]:
-                    trace_duration["end"] = grandChild.startTime + \
-                        grandChild.duration
+            request_duration += child_request_duration
+            response_duration += (child.duration -
+                                  child_request_duration - grandChild.duration)
+            request_and_response_duration += (child.duration -
+                                              grandChild.duration)
+        elif child.spanType == "Producer":
+            if grandChild.startTime + grandChild.duration > trace_duration["end"]:
+                trace_duration["end"] = grandChild.startTime + \
+                    grandChild.duration
 
     subspan_duration, subspan_num, is_parallel = subspan_info(
         current_span, children_span)
@@ -377,8 +380,9 @@ def calculate_edge_features(current_span: Span, trace_duration: dict, spanChildr
 
 def check_abnormal_span(span: Span) -> bool:
     start_hour = time.localtime(span.startTime).tm_hour
+    chaos_service = chaos_dict.get(start_hour)
 
-    if start_hour in chaos_dict.keys() and span.service.startswith(chaos_dict.get(start_hour)):
+    if start_hour in chaos_dict.keys() and span.service.startswith(chaos_service):
         return True
 
     return False
@@ -419,6 +423,7 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
                 spanChildrenMap[local_span_parent.spanId].append(child)
 
     is_abnormal = 0
+    chaos_root = ''
     # process other span
     for span in trace:
         """
@@ -433,6 +438,7 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
 
         if check_abnormal_span(span):
             is_abnormal = 1
+            chaos_root = chaos_dict.get(time.localtime(span.startTime).tm_hour)
 
         # get the parent server span id
         if span.parentSpanId == '-1':
@@ -490,6 +496,7 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
 
     graph = {
         'abnormal': is_abnormal,
+        'rc': chaos_root,
         'vertexs': vertexs,
         'edges': edges,
     }
