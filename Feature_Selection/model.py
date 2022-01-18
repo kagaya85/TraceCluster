@@ -5,7 +5,7 @@ import torch.nn as nn
 import numpy as np
 from torch.autograd import Variable
 from torch.nn.modules import loss
-from torch_geometric.nn import GATConv, TransformerConv, global_mean_pool
+from torch_geometric.nn import GATConv, TransformerConv, CGConv, global_mean_pool
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -20,10 +20,15 @@ class Encoder(torch.nn.Module):
         self.convs = torch.nn.ModuleList()
         self.bns = torch.nn.ModuleList()
 
+        # GATConv
         # conv_0 = GATConv(in_channels=input_dim, out_channels=output_dim*4)
         # conv_1 = GATConv(in_channels=output_dim*4, out_channels=output_dim)
+        # TransformerConv
         conv_0 = TransformerConv(in_channels=input_dim, out_channels=output_dim*4, edge_dim=num_edge_attr)
         conv_1 = TransformerConv(in_channels=output_dim*4, out_channels=output_dim, edge_dim=num_edge_attr)
+        # CGConv
+        # conv_0 = CGConv(channels=input_dim, dim=num_edge_attr)
+        # conv_1 = CGConv(channels=output_dim*4, dim=num_edge_attr)
         self.convs.append(conv_0)
         self.convs.append(conv_1)
 
@@ -40,7 +45,7 @@ class Encoder(torch.nn.Module):
 
         xs = []
         for i in range(self.num_gc_layers):
-            x = self.convs[i](x, edge_index, edge_attr)
+            x = self.convs[i](x=x, edge_index=edge_index, edge_attr=edge_attr)
             x = self.bns[i](x)
             xs.append(x)
 
