@@ -71,16 +71,20 @@ def main():
 
     # init dataset
     dataset = TraceDataset(root=dataroot)
-    trainIndex = []
-    testIndex = []
-    for index in range(len(dataset)):
-        if index%5 == 0:
-            testIndex.append(index)
-        else:
-            trainIndex.append(index)
-    dataset_train = dataset[trainIndex]
-    dataset_eval = dataset[testIndex]
-    # dataset_eval = TraceDataset(root=dataroot)
+    # get dataset index
+    # index = [i for i in range(len(dataset))]
+    # np.random.shuffle(index)
+
+    # fw=open('./Feature_Selection/data/indexList.txt', 'w')
+    # fw.write(str(index).replace('[', '').replace(']', ''))
+    # fw.close()
+
+    fr=open('./Feature_Selection/data/indexList.txt', 'r')
+    S = fr.read()
+    index = [int(index_item) for index_item in S.split(', ')]    
+
+    dataset_train = dataset[index[:int(7*len(index)/10)]]
+    dataset_eval = dataset[index[int(7*len(index)/10):]]
 
     print('----------------------')
     print("dataset size:", len(dataset))
@@ -93,6 +97,7 @@ def main():
     print('hidden_dim: {}'.format(args.hidden_dim))
     print('num_gc_layers: {}'.format(args.num_gc_layers))
     print('----------------------')
+
 
     # get feature dim
     try:
@@ -166,7 +171,6 @@ def main():
     
     accuracyScore_2 = accuracy_score(model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy(), y.cpu().numpy())
     print("Accuracy score 2 is {}".format(accuracyScore_2))
-
 
 
 if __name__ == '__main__':
