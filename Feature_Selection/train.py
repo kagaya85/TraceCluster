@@ -70,9 +70,16 @@ def main():
         os.path.realpath(__file__)), '.', 'data')
 
     # init dataset
-    dataset = TraceDataset(root=dataroot).shuffle()
-    dataset_train = dataset[:int(7*len(dataset)/10)]
-    dataset_eval = dataset[int(7*len(dataset)/10):]
+    dataset = TraceDataset(root=dataroot)
+    trainIndex = []
+    testIndex = []
+    for index in range(len(dataset)):
+        if index%5 == 0:
+            testIndex.append(index)
+        else:
+            trainIndex.append(index)
+    dataset_train = dataset[trainIndex]
+    dataset_eval = dataset[testIndex]
     # dataset_eval = TraceDataset(root=dataroot)
 
     print('----------------------')
@@ -152,7 +159,11 @@ def main():
         y = data.y
     elif args.classes == 'multi':
         y = torch.Tensor([multiLabel[data.root_url[i]] for i in range(len(data.root_url))]).to(device).long()
-    print("Accuracy score is {}".format(accuracy_score(model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy(), y.cpu().numpy())))
+    
+    accuracyScore = accuracy_score(model.predict(data.x, data.edge_index, 100*data.edge_attr, data.batch).cpu().numpy(), model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy())
+    # accuracyScore = accuracy_score(model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy(), y.cpu().numpy())
+    
+    print("Accuracy score is {}".format(accuracyScore))
 
 
 
