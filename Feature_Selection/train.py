@@ -160,10 +160,12 @@ def main():
     elif args.classes == 'multi':
         y = torch.Tensor([multiLabel[data.root_url[i]] for i in range(len(data.root_url))]).to(device).long()
     
-    accuracyScore = accuracy_score(model.predict(data.x, data.edge_index, 100*data.edge_attr, data.batch).cpu().numpy(), model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy())
-    # accuracyScore = accuracy_score(model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy(), y.cpu().numpy())
     
-    print("Accuracy score is {}".format(accuracyScore))
+    accuracyScore_1 = accuracy_score(model.predict(data.x, data.edge_index, 100*data.edge_attr, data.batch).cpu().numpy(), model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy())
+    print("Accuracy score 1 is {}".format(accuracyScore_1))
+    
+    accuracyScore_2 = accuracy_score(model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy(), y.cpu().numpy())
+    print("Accuracy score 2 is {}".format(accuracyScore_2))
 
 
 
