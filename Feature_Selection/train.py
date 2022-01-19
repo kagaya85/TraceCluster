@@ -30,7 +30,7 @@ def arguments():
                         help='learning rate, default 0.001')
     parser.add_argument('--num-gc-layers', dest='num_gc_layers', type=int, default=2,
                         help='number of graph convolution layers before each pooling')
-    parser.add_argument('--gnn-type', dest='gnn_type', type=str, default='TransformerConv',
+    parser.add_argument('--gnn-type', dest='gnn_type', type=str, default='CGConv',
                         help='choose a GNN type, eg. TransformerConv, GATConv, CGConv')
     parser.add_argument('--hidden-dim', dest='hidden_dim', type=int, default=16,    # 32
                         help='hidden dim number, default 16')
@@ -94,18 +94,18 @@ def main():
     print("dataset_eval size:", len(dataset_eval))
     print("feature number:", dataset.get_num_feature()[0])
     print("edge feature number:", dataset.get_num_feature()[1])
-    print('batch_size: {}'.format(batch_size))
-    print('lr: {}'.format(lr))
-    print('hidden_dim: {}'.format(args.hidden_dim))
-    print('num_gc_layers: {}'.format(args.num_gc_layers))
-    print('gnn_type: {}'.format(args.gnn_type))
+    print("batch_size: {}".format(batch_size))
+    print("lr: {}".format(lr))
+    print("hidden_dim: {}".format(args.hidden_dim))
+    print("num_gc_layers: {}".format(args.num_gc_layers))
+    print("gnn_type: {}".format(args.gnn_type))
     print('----------------------')
 
 
     # get feature dim
     try:
         dataset_num_features, num_edge_feature = dataset.get_num_feature()
-        if num_edge_feature == 0:
+        if num_edge_feature == 0 and args.gnn_type == 'TransformerConv':
             num_edge_feature = None
     except:
         dataset_num_features = 1
@@ -145,7 +145,7 @@ def main():
         loss_sum = 0.0
         for data in tqdm(dataloader_train):
             data = data.to(device)
-            if num_edge_feature == None:
+            if num_edge_feature == None or num_edge_feature == 0:
                 data.edge_attr = None
             x = model(data.x, data.edge_index, data.edge_attr, data.batch)    # batchsize*2
             if args.classes == 'binary':
@@ -173,10 +173,10 @@ def main():
         y = torch.Tensor([multiLabel[data.root_url[i]] for i in range(len(data.root_url))]).to(device).long()
     
     
-    if num_edge_feature != None:
+    if num_edge_feature != None and num_edge_feature != 0:
         accuracyScore_1 = accuracy_score(model.predict(data.x, data.edge_index, 100*data.edge_attr, data.batch).cpu().numpy(), model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy())
         print("Accuracy score 1 is {}".format(accuracyScore_1))
-    elif num_edge_feature == None:
+    elif num_edge_feature == None or num_edge_feature == 0:
         print("Accuracy score 1 is not available !")
         data.edge_attr = None
     accuracyScore_2 = accuracy_score(model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy(), y.cpu().numpy())
