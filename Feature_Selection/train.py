@@ -1,4 +1,4 @@
-from ast import NotIn
+from ast import NotIn, arg
 import torch
 import argparse
 import random
@@ -113,7 +113,8 @@ def main():
     # init dataloader
     dataloader = DataLoader(dataset, batch_size=1)
     dataloader_train = DataLoader(dataset_train, batch_size=batch_size)
-    dataloader_eval = DataLoader(dataset_eval, batch_size=len(dataset_eval))
+    # dataloader_eval = DataLoader(dataset_eval, batch_size=len(dataset_eval))
+    dataloader_eval = DataLoader(dataset_eval, batch_size=batch_size)
     
     # get classes
     if args.classes == 'binary':
@@ -166,21 +167,32 @@ def main():
     # test model
     print("Test model ...")
     model.eval()
-    data = [data for data in dataloader_eval][0].to(device)
-    if args.classes == 'binary':
-        y = data.y
-    elif args.classes == 'multi':
-        y = torch.Tensor([multiLabel[data.root_url[i]] for i in range(len(data.root_url))]).to(device).long()
-    
+    pred_y_1_x100 = torch.Tensor([]).to(device)
+    pred_y_1_x1 = torch.Tensor([]).to(device)
+    pred_y_2 = torch.Tensor([]).to(device)
+    true_y = torch.Tensor([]).to(device)
+    for data in dataloader_eval:
+        data = data.to(device)
+        if args.classes == 'binary':
+            true_y = torch.cat([true_y, data.y], dim=0)
+        elif args.classes == 'multi':
+            true_y = torch.cat([true_y, torch.Tensor([multiLabel[data.root_url[i]] for i in range(len(data.root_url))]).to(device).long()], dim=0) 
+        
+        if num_edge_feature != None and num_edge_feature != 0:
+            pred_y_1_x100 = torch.cat([pred_y_1_x100, model.predict(data.x, data.edge_index, 100*data.edge_attr, data.batch)], dim=0) 
+            pred_y_1_x1 = torch.cat([pred_y_1_x1, model.predict(data.x, data.edge_index, data.edge_attr, data.batch)], dim=0) 
+        elif num_edge_feature == None or num_edge_feature == 0:
+            data.edge_attr = None
+        pred_y_2 = torch.cat([pred_y_2, model.predict(data.x, data.edge_index, data.edge_attr, data.batch)], dim=0) 
     
     if num_edge_feature != None and num_edge_feature != 0:
-        accuracyScore_1 = accuracy_score(model.predict(data.x, data.edge_index, 100*data.edge_attr, data.batch).cpu().numpy(), model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy())
+        accuracyScore_1 = accuracy_score(pred_y_1_x100.cpu().numpy(), pred_y_1_x1.cpu().numpy())
         print("Accuracy score 1 is {}".format(accuracyScore_1))
     elif num_edge_feature == None or num_edge_feature == 0:
         print("Accuracy score 1 is not available !")
-        data.edge_attr = None
-    accuracyScore_2 = accuracy_score(model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy(), y.cpu().numpy())
+    accuracyScore_2 = accuracy_score(pred_y_2.cpu().numpy(), true_y.cpu().numpy())
     print("Accuracy score 2 is {}".format(accuracyScore_2))
+
 
 
 if __name__ == '__main__':

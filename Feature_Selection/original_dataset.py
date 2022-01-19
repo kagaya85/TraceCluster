@@ -27,7 +27,7 @@ class TraceDataset(InMemoryDataset):
     @property
     def span_type_features(self):
         # return ['timeScale', 'isParallel', 'callType']
-        return []
+        return ['callType']
 
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
@@ -106,7 +106,7 @@ class TraceDataset(InMemoryDataset):
         """
         get operation embedding
         """
-        with open(self.root + '/preprocessed/embeddings.json', 'r') as f:
+        with open(self.root + '/preprocessed/embedding.json', 'r') as f:
             operations_embedding = json.load(f)
 
         return operations_embedding
