@@ -22,7 +22,7 @@ class TraceDataset(InMemoryDataset):
     @property
     def z_score_num_features(self):
         # return ['childrenSpanNum', 'requestAndResponseDuration', 'subspanDuration', 'rawDuration', 'subspanNum']
-        return ['subspanDuration']
+        return []
 
     @property
     def span_type_features(self):

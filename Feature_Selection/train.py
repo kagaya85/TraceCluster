@@ -105,6 +105,8 @@ def main():
     # get feature dim
     try:
         dataset_num_features, num_edge_feature = dataset.get_num_feature()
+        if num_edge_feature == 0:
+            num_edge_feature = None
     except:
         dataset_num_features = 1
 
@@ -143,6 +145,8 @@ def main():
         loss_sum = 0.0
         for data in tqdm(dataloader_train):
             data = data.to(device)
+            if num_edge_feature == None:
+                data.edge_attr = None
             x = model(data.x, data.edge_index, data.edge_attr, data.batch)    # batchsize*2
             if args.classes == 'binary':
                 y = data.y    # batchsize
@@ -169,9 +173,12 @@ def main():
         y = torch.Tensor([multiLabel[data.root_url[i]] for i in range(len(data.root_url))]).to(device).long()
     
     
-    accuracyScore_1 = accuracy_score(model.predict(data.x, data.edge_index, 100*data.edge_attr, data.batch).cpu().numpy(), model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy())
-    print("Accuracy score 1 is {}".format(accuracyScore_1))
-    
+    if num_edge_feature != None:
+        accuracyScore_1 = accuracy_score(model.predict(data.x, data.edge_index, 100*data.edge_attr, data.batch).cpu().numpy(), model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy())
+        print("Accuracy score 1 is {}".format(accuracyScore_1))
+    elif num_edge_feature == None:
+        print("Accuracy score 1 is not available !")
+        data.edge_attr = None
     accuracyScore_2 = accuracy_score(model.predict(data.x, data.edge_index, data.edge_attr, data.batch).cpu().numpy(), y.cpu().numpy())
     print("Accuracy score 2 is {}".format(accuracyScore_2))
 
