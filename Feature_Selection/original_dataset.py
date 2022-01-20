@@ -27,7 +27,7 @@ class TraceDataset(InMemoryDataset):
     @property
     def span_type_features(self):
         # return ['timeScale', 'isParallel', 'callType']
-        return ['callType']
+        return []
 
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:

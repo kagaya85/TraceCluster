@@ -30,14 +30,14 @@ def arguments():
                         help='learning rate, default 0.001')
     parser.add_argument('--num-gc-layers', dest='num_gc_layers', type=int, default=2,
                         help='number of graph convolution layers before each pooling')
-    parser.add_argument('--gnn-type', dest='gnn_type', type=str, default='CGConv',
+    parser.add_argument('--gnn-type', dest='gnn_type', type=str, default='GATConv',
                         help='choose a GNN type, eg. TransformerConv, GATConv, CGConv')
     parser.add_argument('--hidden-dim', dest='hidden_dim', type=int, default=16,    # 32
                         help='hidden dim number, default 16')
     parser.add_argument('--aug', type=str, default='random3')
     parser.add_argument('--seed', type=int, default=0)
 
-    parser.add_argument('--classes', dest='classes', type=str, default='binary',
+    parser.add_argument('--classes', dest='classes', type=str, default='multi',
                         help='binary classification or multi classification, eg. binary or multi')
     parser.add_argument('--save-to', dest='save_path',
                         default='./weights', help='weights save path')
@@ -105,7 +105,7 @@ def main():
     # get feature dim
     try:
         dataset_num_features, num_edge_feature = dataset.get_num_feature()
-        if num_edge_feature == 0 and args.gnn_type == 'TransformerConv':
+        if (num_edge_feature == 0 and args.gnn_type == 'TransformerConv') or (num_edge_feature == 0 and args.gnn_type == 'GATConv'):
             num_edge_feature = None
     except:
         dataset_num_features = 1

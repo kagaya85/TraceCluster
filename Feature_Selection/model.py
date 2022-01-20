@@ -23,8 +23,8 @@ class Encoder(torch.nn.Module):
 
         if gnn_type == 'GATConv':
             # GATConv
-            conv_0 = GATConv(in_channels=input_dim, out_channels=output_dim*4)
-            conv_1 = GATConv(in_channels=output_dim*4, out_channels=output_dim)
+            conv_0 = GATConv(in_channels=input_dim, out_channels=output_dim*4, edge_dim=num_edge_attr)
+            conv_1 = GATConv(in_channels=output_dim*4, out_channels=output_dim, edge_dim=num_edge_attr)
             bn_0 = torch.nn.BatchNorm1d(output_dim*4)
             bn_1 = torch.nn.BatchNorm1d(output_dim)
         elif gnn_type == 'TransformerConv':
@@ -58,10 +58,7 @@ class Encoder(torch.nn.Module):
 
         xs = []
         for i in range(self.num_gc_layers):
-            if self.gnn_type == 'TransformerConv' or self.gnn_type == 'CGConv':
-                x = self.convs[i](x=x, edge_index=edge_index, edge_attr=edge_attr)
-            elif self.gnn_type == 'GATConv':
-                x = self.convs[i](x=x, edge_index=edge_index)
+            x = self.convs[i](x=x, edge_index=edge_index, edge_attr=edge_attr)
             x = self.bns[i](x)
             xs.append(x)
 
