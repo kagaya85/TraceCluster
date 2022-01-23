@@ -22,7 +22,7 @@ class TraceDataset(InMemoryDataset):
     @property
     def z_score_num_features(self):
         # return ['childrenSpanNum', 'requestAndResponseDuration', 'subspanDuration', 'rawDuration', 'subspanNum']
-        return []
+        return ['requestAndResponseDuration']
 
     @property
     def span_type_features(self):
@@ -106,7 +106,7 @@ class TraceDataset(InMemoryDataset):
         """
         get operation embedding
         """
-        with open(self.root + '/preprocessed/embedding.json', 'r') as f:
+        with open(self.root + '/preprocessed/embeddings.json', 'r') as f:
             operations_embedding = json.load(f)
 
         return operations_embedding

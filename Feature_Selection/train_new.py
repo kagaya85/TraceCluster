@@ -1,4 +1,6 @@
 from ast import NotIn, arg
+from audioop import bias
+from copy import deepcopy
 import torch
 import argparse
 import random
@@ -30,14 +32,14 @@ def arguments():
                         help='learning rate, default 0.001')
     parser.add_argument('--num-gc-layers', dest='num_gc_layers', type=int, default=2,
                         help='number of graph convolution layers before each pooling')
-    parser.add_argument('--gnn-type', dest='gnn_type', type=str, default='GATConv',
+    parser.add_argument('--gnn-type', dest='gnn_type', type=str, default='TransformerConv',
                         help='choose a GNN type, eg. TransformerConv, GATConv, CGConv')
     parser.add_argument('--hidden-dim', dest='hidden_dim', type=int, default=16,    # 32
                         help='hidden dim number, default 16')
     parser.add_argument('--aug', type=str, default='random3')
     parser.add_argument('--seed', type=int, default=0)
 
-    parser.add_argument('--classes', dest='classes', type=str, default='multi',
+    parser.add_argument('--classes', dest='classes', type=str, default='binary',
                         help='binary classification or multi classification, eg. binary or multi')
     parser.add_argument('--save-to', dest='save_path',
                         default='./weights', help='weights save path')
@@ -83,10 +85,41 @@ def main():
 
     fr=open('./Feature_Selection/data/indexList.txt', 'r')
     S = fr.read()
-    index = [int(index_item) for index_item in S.split(', ')]    
+    index = [int(index_item) for index_item in S.split(', ')]
 
-    dataset_train = dataset[index[:int(7*len(index)/10)]]
-    dataset_eval = dataset[index[int(7*len(index)/10):]]
+    dataset_List = []
+    dataset_List_0 = []
+    dataset_List_1 = []
+    # create trainSet and evalSet
+    print("Create trainSet and evalSet ...")
+    for index_item in tqdm(index):
+        if dataset[index_item].root_url == '{POST}/api/v1/inside_pay_service/inside_payment':
+            dataset_List.append(index_item)
+            if dataset[index_item].y == 0:
+                dataset_List_0.append(index_item)
+            elif dataset[index_item].y == 1:
+                dataset_List_1.append(index_item)
+
+    index_train = dataset_List_0[:int(7*len(dataset_List_0)/10)] + dataset_List_1[:int(7*len(dataset_List_1)/10)]
+    index_eval = dataset_List_0[int(7*len(dataset_List_0)/10):] + dataset_List_1[int(7*len(dataset_List_1)/10):]
+
+    # index_eval_random = random.sample(dataset_List_0[int(7*len(dataset_List_0)/10):], int(len(dataset_List_0[int(7*len(dataset_List_0)/10):])/10))
+    # traceID_list = [dataItem.trace_id for dataItem in dataset[index_eval_random]]
+    # fw_eval=open('./Feature_Selection/data/traceIDList_eval.txt', 'w')
+    # fw_eval.write(str(traceID_list).replace('[', '').replace(']', '').replace('\'', ''))
+    # fw_eval.close()
+
+    fr_eval=open('./Feature_Selection/data/traceIDList_eval.txt', 'r')
+    S_eval = fr_eval.read()
+    traceID_list_eval = [traceID for traceID in S_eval.split(', ')]
+
+
+    print("URL dataset size:", len(dataset_List))
+    print("URL dataset size y=0:", len(dataset_List_0))
+    print("URL dataset size y=1:", len(dataset_List_1)) 
+
+    dataset_train = dataset[index_train]
+    dataset_eval = dataset[index_eval]
 
     print('----------------------')
     print("dataset size:", len(dataset))
@@ -169,31 +202,48 @@ def main():
     # test model
     print("Test model ...")
     model.eval()
-    pred_y_1_x100 = torch.Tensor([]).to(device)
-    pred_y_1_x1 = torch.Tensor([]).to(device)
-    pred_y_2 = torch.Tensor([]).to(device)
-    true_y = torch.Tensor([]).to(device)
+    pred_y_x10 = torch.Tensor([]).to(device)
+    pred_y_x1 = torch.Tensor([]).to(device)
+    true_y_x10 = torch.Tensor([]).to(device)
+    true_y_x1 = torch.Tensor([]).to(device)
     for data in dataloader_eval:
         data = data.to(device)
         if args.classes == 'binary':
-            true_y = torch.cat([true_y, data.y], dim=0)
+            # original edge_attr
+            true_y_x1 = torch.cat([true_y_x1, data.y], dim=0)
+            # edge_attr x10
+            true_y_bias = []
+            for traceID in data.trace_id:
+                if traceID in traceID_list_eval:
+                    true_y_bias.append(1)
+                else:
+                    true_y_bias.append(0)
+            true_y_x10 = torch.cat([true_y_x10, data.y+torch.Tensor(true_y_bias).to(device)], dim=0)
+                       
         elif args.classes == 'multi':
             true_y = torch.cat([true_y, torch.Tensor([multiLabel[data.root_url[i]][0] for i in range(len(data.root_url))]).to(device).long()], dim=0) 
         
         if num_edge_feature != None and num_edge_feature != 0:
-            pred_y_1_x100 = torch.cat([pred_y_1_x100, model.predict(data.x, data.edge_index, 100*data.edge_attr, data.batch)], dim=0) 
-            pred_y_1_x1 = torch.cat([pred_y_1_x1, model.predict(data.x, data.edge_index, data.edge_attr, data.batch)], dim=0) 
+            # original edge_attr
+            pred_y_x1 = torch.cat([pred_y_x1, model.predict(data.x, data.edge_index, data.edge_attr, data.batch)], dim=0) 
+            # edge_attr x10
+            edge_attr_bias = []
+            for traceID in data.trace_id:
+                if traceID in traceID_list_eval:
+                    edge_attr_bias.append([10])
+                else:
+                    edge_attr_bias.append([1])
+            pred_y_x10 = torch.cat([pred_y_x10, model.predict(data.x, data.edge_index, torch.Tensor(edge_attr_bias).to(device)*data.edge_attr, data.batch)], dim=0)
         elif num_edge_feature == None or num_edge_feature == 0:
-            data.edge_attr = None
-        pred_y_2 = torch.cat([pred_y_2, model.predict(data.x, data.edge_index, data.edge_attr, data.batch)], dim=0) 
+            data.edge_attr = None 
     
     if num_edge_feature != None and num_edge_feature != 0:
-        accuracyScore_1 = accuracy_score(pred_y_1_x100.cpu().numpy(), pred_y_1_x1.cpu().numpy())
-        print("Accuracy score 1 is {}".format(accuracyScore_1))
+        accuracyScore_1 = accuracy_score(pred_y_x1.cpu().numpy(), true_y_x1.cpu().numpy())
+        print("Accuracy score 1 (x1) is {}".format(accuracyScore_1))
     elif num_edge_feature == None or num_edge_feature == 0:
         print("Accuracy score 1 is not available !")
-    accuracyScore_2 = accuracy_score(pred_y_2.cpu().numpy(), true_y.cpu().numpy())
-    print("Accuracy score 2 is {}".format(accuracyScore_2))
+    accuracyScore_2 = accuracy_score(pred_y_x10.cpu().numpy(), true_y_x10.cpu().numpy())
+    print("Accuracy score 2 (x10) is {}".format(accuracyScore_2))
 
 
 
