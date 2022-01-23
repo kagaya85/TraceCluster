@@ -230,9 +230,11 @@ def main():
             edge_attr_bias = []
             for traceID in data.trace_id:
                 if traceID in traceID_list_eval:
-                    edge_attr_bias.append([10])
+                    for i in range(len(data.edge_attr)):
+                        edge_attr_bias.append([10])
                 else:
-                    edge_attr_bias.append([1])
+                    for i in range(len(data.edge_attr)):
+                        edge_attr_bias.append([1])
             pred_y_x10 = torch.cat([pred_y_x10, model.predict(data.x, data.edge_index, torch.Tensor(edge_attr_bias).to(device)*data.edge_attr, data.batch)], dim=0)
         elif num_edge_feature == None or num_edge_feature == 0:
             data.edge_attr = None 
