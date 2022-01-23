@@ -206,7 +206,7 @@ def main():
     pred_y_x1 = torch.Tensor([]).to(device)
     true_y_x10 = torch.Tensor([]).to(device)
     true_y_x1 = torch.Tensor([]).to(device)
-    for data in dataloader_eval:
+    for outside_index, data in enumerate(dataloader_eval):
         data = data.to(device)
         if args.classes == 'binary':
             # original edge_attr
@@ -228,12 +228,12 @@ def main():
             pred_y_x1 = torch.cat([pred_y_x1, model.predict(data.x, data.edge_index, data.edge_attr, data.batch)], dim=0) 
             # edge_attr x10
             edge_attr_bias = []
-            for traceID in data.trace_id:
+            for inside_index, traceID in enumerate(data.trace_id):
                 if traceID in traceID_list_eval:
-                    for i in range(len(data.edge_attr)):
+                    for i in range(len(dataset_eval[outside_index*batch_size+inside_index].edge_attr)):
                         edge_attr_bias.append([10])
                 else:
-                    for i in range(len(data.edge_attr)):
+                    for i in range(len(dataset_eval[outside_index*batch_size+inside_index].edge_attr)):
                         edge_attr_bias.append([1])
             pred_y_x10 = torch.cat([pred_y_x10, model.predict(data.x, data.edge_index, torch.Tensor(edge_attr_bias).to(device)*data.edge_attr, data.batch)], dim=0)
         elif num_edge_feature == None or num_edge_feature == 0:
