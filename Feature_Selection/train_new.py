@@ -118,8 +118,10 @@ def main():
     print("URL dataset size y=0:", len(dataset_List_0))
     print("URL dataset size y=1:", len(dataset_List_1)) 
 
+    index_eval_random = random.sample(dataset_List_0[int(7*len(dataset_List_0)/10):], int(len(dataset_List_0[int(7*len(dataset_List_0)/10):])/10))
+    
     dataset_train = dataset[index_train]
-    dataset_eval = dataset[index_eval]
+    dataset_eval = dataset[index_eval_random]
 
     print('----------------------')
     print("dataset size:", len(dataset))
