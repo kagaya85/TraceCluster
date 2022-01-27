@@ -267,7 +267,6 @@ def permute_edges_for_subgraph(data):
 
     edge_attr = np.asarray(edge_attr)
     data.edge_attr = torch.tensor(edge_attr, dtype=torch.float)
-    print(data)
     return data
 
 
