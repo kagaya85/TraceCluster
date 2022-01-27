@@ -248,8 +248,12 @@ class TraceDataset(InMemoryDataset):
             data_aug = drop_nodes(deepcopy(data))
         elif self.aug == 'pedges':    # 删除 or 增加部分边
             data_aug = permute_edges(deepcopy(data))
-        elif self.aug == 'subgraph':    #
-            data_aug = subgraph(deepcopy(data))
+        elif self.aug == 'subgraph':    # 随机选初始点扩张固定节点数子图
+            data_aug_1 = subgraph(data_1)
+            data_aug_2 = subgraph(data_2)
+        elif self.aug == 'permute_edges_for_subgraph':  # 随机删一条边，选较大子图
+            data_aug_1 = permute_edges_for_subgraph(data_1)
+            data_aug_2 = permute_edges_for_subgraph(data_2)
         elif self.aug == 'mask_nodes':    # 结点属性屏蔽
             data_aug_1 = mask_nodes(data_1)
             data_aug_2 = mask_nodes(data_2)
@@ -327,6 +331,6 @@ class TraceDataset(InMemoryDataset):
 
 if __name__ == '__main__':
     print("start...")
-    dataset = TraceDataset(root="./data", aug="time_error")
-    data, data_aug_1, data_aug_2 = dataset.get(1000)
+    dataset = TraceDataset(root="./data", aug="permute_edges_for_subgraph")
+    data, data_aug_1, data_aug_2 = dataset.get(1)
 

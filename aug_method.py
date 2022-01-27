@@ -1,9 +1,8 @@
 import copy
-
 import torch
 import numpy as np
 import math
-
+import queue
 
 def drop_nodes(data):
     node_num, _ = data.x.size()  # x: num_node * num_node_features
@@ -124,14 +123,14 @@ def subgraph(data):
     idx_drop = [n for n in range(node_num) if not n in idx_sub]  # 丢弃非子图集合的节点
     idx_nondrop = idx_sub  # 保留节点为子图集合节点
     idx_dict = {idx_nondrop[n]: n for n in list(range(len(idx_nondrop)))}
-
-    # data.x = data.x[idx_nondrop]
+    data.x = data.x[idx_nondrop]
     edge_index = data.edge_index.numpy()
 
     adj = torch.zeros((node_num, node_num))
     adj[edge_index[0], edge_index[1]] = 1
     adj[idx_drop, :] = 0
     adj[:, idx_drop] = 0
+
     edge_index = adj.nonzero(as_tuple=False).t()
 
     data.edge_index = edge_index
@@ -181,7 +180,7 @@ def time_error_injection(data):
     trace = {}
     node_num = data.x.size(0)
     if node_num == 1:
-        print('Can\'t inject time error because there is only one edge!')
+        print('Can\'t inject time error because there is only one node!')
         return None
     for i in range(node_num):
         trace[i] = []
@@ -213,3 +212,63 @@ def time_error_injection(data):
         return
     dfs_for_time_error_injection(0, None)
     return data
+
+
+def permute_edges_for_subgraph(data):
+    trace = {}
+    node_num = data.x.size(0)
+    if node_num == 1:
+        print('Can\'t inject time error because there is only one node!')
+        return None
+    for i in range(node_num):
+        trace[i] = []
+    permuted_edge_id = np.random.choice(data.edge_index.size(1))
+    edge_index = data.edge_index.numpy()
+    edge_dict = {(edge_index[0][n], edge_index[1][n]): n for n in range(edge_index.shape[1])}
+    subgraph_1 = [edge_index[0][permuted_edge_id]]
+    subgraph_2 = [edge_index[1][permuted_edge_id]]
+    edge_index = np.delete(edge_index, permuted_edge_id, axis=1)
+    for i in range(edge_index.shape[1]):
+        trace[int(edge_index[0][i])].append(adjacency_edge(int(edge_index[1][i]), i))
+
+    def bfs(start_node, subgraph):
+        que = queue.Queue()
+        subgraph.append(start_node)
+        que.put(start_node)
+        while not que.empty():
+            node = que.get()
+            for i in range(len(trace[node])):
+                que.put(trace[node][i].to)
+                subgraph.append(trace[node][i].to)
+        return list(set(subgraph))
+    subgraph_1 = bfs(0, subgraph_1)
+    subgraph_2 = bfs(subgraph_2[0],subgraph_2)
+    if len(subgraph_1) >= len(subgraph_2):
+        data.x = data.x[subgraph_1]
+        idx_drop = [n for n in range(node_num) if not n in subgraph_1]  # 丢弃非子图集合的节点
+    else:
+        data.x = data.x[subgraph_2]
+        idx_drop = [n for n in range(node_num) if not n in subgraph_2]  # 丢弃非子图集合的节点
+    adj = torch.zeros((node_num, node_num))
+    adj[edge_index[0], edge_index[1]] = 1
+    adj[idx_drop, :] = 0
+    adj[:, idx_drop] = 0
+
+    edge_index = adj.nonzero(as_tuple=False).t()
+
+    data.edge_index = edge_index
+
+    edge_index = data.edge_index.numpy()
+    edge_attr = []
+    for idx_edge in range(data.edge_index.size(1)):
+        idx_column = edge_dict[(edge_index[0][idx_edge],
+                                edge_index[1][idx_edge])]
+        edge_attr.append(data.edge_attr[idx_column].numpy())
+
+    edge_attr = np.asarray(edge_attr)
+    data.edge_attr = torch.tensor(edge_attr, dtype=torch.float)
+    print(data)
+    return data
+
+
+
