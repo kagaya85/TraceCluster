@@ -1,4 +1,5 @@
 import math
+import time
 
 import torch
 from torch_geometric.data import Dataset, InMemoryDataset
@@ -208,6 +209,8 @@ class TraceDataset(InMemoryDataset):
         z_socre = (raw - feature_stat[0]) / feature_stat[1]
         return z_socre
 
+    _dispatcher = {}
+
     def get(self, idx: int):
         if self.len() == 1:
             return copy.copy(self.data)
@@ -224,13 +227,9 @@ class TraceDataset(InMemoryDataset):
             slice_dict=self.slices,
             decrement=False,
         )
-
-        data_1 = copy.deepcopy(data)
-
-        data_2 = copy.deepcopy(data)
-
+        data_1 = deepcopy(data)
+        data_2 = deepcopy(data)
         # self._data_list[idx] = copy.copy(data)
-
 
         """
         edge_index = data.edge_index
@@ -265,9 +264,15 @@ class TraceDataset(InMemoryDataset):
             data_aug_1 = mask_edges(data_aug_1)
             data_aug_2 = mask_nodes(data_2)
             data_aug_2 = mask_edges(data_aug_2)
-        elif self.aug == "time_error":  # 时间异常对比
-            data_aug_1 = time_error_injection(data_1)
-            data_aug_2 = time_error_injection(data_2)
+        elif self.aug == "request_and_response_duration_time_error_injection":  # request_and_response_duration时间异常对比
+            data_aug_1 = time_error_injection(data_1, root_cause='request_and_response_duration')
+            data_aug_2 = time_error_injection(data_2, root_cause='request_and_response_duration')
+        elif self.aug == 'subSpan_duration_time_error_injection':   # subSpan_duration时间异常
+            data_aug_1 = time_error_injection(data_1, root_cause='subSpan_duration')
+            data_aug_2 = time_error_injection(data_2, root_cause='subSpan_duration')
+        elif self.aug == 'response_code_error_injection':
+            data_aug_1 = response_code_injection(data_1)
+            data_aug_2 = response_code_injection(data_2)
 
         elif self.aug == 'none':
             """
@@ -331,6 +336,15 @@ class TraceDataset(InMemoryDataset):
 
 if __name__ == '__main__':
     print("start...")
-    dataset = TraceDataset(root="./data", aug="permute_edges_for_subgraph")
-    data, data_aug_1, data_aug_2 = dataset.get(1)
+    dataset = TraceDataset(root="./data", aug='mask_edges')
+    data, data_aug_1, data_aug_2 = dataset.get(0)
+    # print(data.edge_attr)
+    # print(data_aug_1.edge_attr)
+    # print(data_aug_2.edge_attr)
+    # start_time = time.time()
+    # for i in range(len(dataset)):
+    #     dataset.get(i)
+    #     if i % 10 == 0:
+    #         print(i)
+    # print(time.time()-start_time)
 

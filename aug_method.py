@@ -1,4 +1,6 @@
 import copy
+import random
+
 import torch
 import numpy as np
 import math
@@ -170,14 +172,24 @@ def mask_edges(data):
     return data
 
 
+def response_code_injection(data):
+    edge_num, feat_dim = data.edge_attr.size()
+    inject_num = math.ceil(edge_num / 2)
+    idx_mask = np.random.choice(edge_num, inject_num, replace=False)
+    for i in idx_mask:
+        data.edge_attr[i][-1] = 1
+    return data
+
+
 class adjacency_edge:
     def __init__(self, to, edge_attr_id):
         self.to = to
         self.edge_attr_id = edge_attr_id
 
 
-def time_error_injection(data):
+def time_error_injection(data, root_cause):
     trace = {}
+    random_range = 10
     node_num = data.x.size(0)
     if node_num == 1:
         print('Can\'t inject time error because there is only one node!')
@@ -189,13 +201,21 @@ def time_error_injection(data):
     inject_node = np.random.randint(1, node_num)
     flag = False
     end = False
+    diff_sum = 0
 
     def dfs_for_time_error_injection(current_node, current_edge_attr):
-        nonlocal flag, end
+        nonlocal flag, end, diff_sum
         if current_node == inject_node:
             flag = True
             if data.edge_attr[current_edge_attr][7] == 0:
-                data.edge_attr[current_edge_attr][3] += 10
+                value = np.random.randint(1, random_range)
+                if root_cause == 'request_and_response_duration':
+                    data.edge_attr[current_edge_attr][1] += value
+                elif root_cause == 'subSpan_duration':
+                    data.edge_attr[current_edge_attr][2] += value
+                if current_node != 1:
+                    diff_sum += value
+                data.edge_attr[current_edge_attr][3] += value
             else:
                 end = True
             return
@@ -205,12 +225,22 @@ def time_error_injection(data):
                 return
             if flag is True and current_node != 0:
                 if data.edge_attr[current_edge_attr][7] == 0:
-                    data.edge_attr[current_edge_attr][3] += 10
+                    value = np.random.randint(1, random_range)
+                    if root_cause == 'request_and_response_duration':
+                        data.edge_attr[current_edge_attr][1] += value
+                    elif root_cause == 'subSpan_duration':
+                        data.edge_attr[current_edge_attr][2] += value
+                    if current_node != 1:
+                        diff_sum += value
+                    data.edge_attr[current_edge_attr][3] += value
                 else:
                     end = True
                 return
         return
     dfs_for_time_error_injection(0, None)
+    data.edge_attr[0][3] += diff_sum
+    for i in range(1, data.edge_attr.size(0)):
+        data.edge_attr[i][5] = data.edge_attr[i][3]/data.edge_attr[0][3]
     return data
 
 
