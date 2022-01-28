@@ -1,91 +1,18 @@
 import re
 import json
 import time
-import requests
 import numpy as np
 from copy import deepcopy
-import warnings
-import paramiko
-from elasticsearch import Elasticsearch, helpers
-warnings.filterwarnings("ignore")
+import pandas as pd
+from pandas.core.frame import DataFrame
+from typing import List, Callable, Dict
+from ...preprocess import load_span, Span
 
-es_url = 'http://11.11.11.24:9200'
 root_index = 'root'
-client = Elasticsearch([es_url])
 
 
-'''
-  Query the initial trace data from elasticsearch by scroll(1 min)
-  :arg
-      date: format 2020-08-14 or 2020-08-*
-      start: the timestamp of start time (ms)
-      end:  the timestamp of end time (ms)
-  :return
-      all span between start time and end time except jaeger-query service 
-'''
-
-
-def get_span(start=None, end=None):
-    local_time = time.localtime(start/1000)
-    day = time.strftime('%Y-%m', local_time)
-    index_name = 'jaeger-span-' + day + '-*'
-    scroll_api = es_url + "/" + index_name + "/_search?scroll=1m"
-    based_api = es_url + "/_search/scroll?filter_path=hits.hits._source"
-    headers = {"Content-Type": "application/json"}
-
-    query_data = {
-        "size": 10000,
-        "query": {
-            "bool": {
-                "must_not": [
-                    {
-                        "terms": {
-                            "process.serviceName": [
-                                "jaeger-query"
-                            ]}
-                    }
-                ],
-                "filter": {
-                    "range": {
-                        "startTimeMillis": {
-                            "lte": str(end),
-                            "gte": str(start)
-                        }
-                    }
-                }
-            }
-        },
-        "sort": {
-            "traceID": {
-                "order": "asc"
-            },
-            "startTime": {
-                "order": "asc"
-            }
-        }
-    }
-    data = requests.post(scroll_api, json=query_data, headers=headers).json()
-
-    for i in range(10):
-        if '_scroll_id' not in data:
-            print("query error, restart query scroll")
-            time.sleep(10)
-            data = requests.post(
-                scroll_api, json=query_data, headers=headers).json()
-        else:
-            break
-
-    scroll_data = {
-        "scroll": "1m",
-        "scroll": data['_scroll_id']
-    }
-    span_list = []
-    while 'hits' in data and len(data['hits']['hits']) > 0:
-        span_list += data['hits']['hits']
-        data = requests.post(based_api, json=scroll_data,
-                             headers=headers).json()
-
-    print('\nSpan Length:', len(span_list))
+def get_span() -> List[DataFrame]:
+    span_list = load_span()
     return span_list
 
 
@@ -98,16 +25,11 @@ def get_span(start=None, end=None):
 '''
 
 
-def get_service_operation_list(span_list):
+def get_service_operation_list(span_list: List[Span]) -> List[str]:
     operation_list = []
 
-    for doc in span_list:
-        doc = doc['_source']
-        operation_name = doc['operationName']
-        operation_name = operation_name.split('/')[-1]
-
-        # Currencyservice_Convert
-        operation = doc['process']['serviceName'] + '_' + operation_name
+    for span in span_list:
+        operation = span.operation
         if operation not in operation_list:
             operation_list.append(operation)
 
