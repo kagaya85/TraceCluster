@@ -227,9 +227,6 @@ class TraceDataset(InMemoryDataset):
             slice_dict=self.slices,
             decrement=False,
         )
-        data_1 = deepcopy(data)
-        data_2 = deepcopy(data)
-        # self._data_list[idx] = copy.copy(data)
 
         """
         edge_index = data.edge_index
@@ -244,35 +241,26 @@ class TraceDataset(InMemoryDataset):
         #data.edge_index = torch.cat((data.edge_index, sl), dim=1)
 
         if self.aug == 'dnodes':    # 删除部分点
-            data_aug = drop_nodes(deepcopy(data))
+            data = drop_nodes(data)
         elif self.aug == 'pedges':    # 删除 or 增加部分边
-            data_aug = permute_edges(deepcopy(data))
+            data = permute_edges(data)
         elif self.aug == 'subgraph':    # 随机选初始点扩张固定节点数子图
-            data_aug_1 = subgraph(data_1)
-            data_aug_2 = subgraph(data_2)
+            data = subgraph(data)
         elif self.aug == 'permute_edges_for_subgraph':  # 随机删一条边，选较大子图
-            data_aug_1 = permute_edges_for_subgraph(data_1)
-            data_aug_2 = permute_edges_for_subgraph(data_2)
+            data = permute_edges_for_subgraph(data)
         elif self.aug == 'mask_nodes':    # 结点属性屏蔽
-            data_aug_1 = mask_nodes(data_1)
-            data_aug_2 = mask_nodes(data_2)
+            data = mask_nodes(data)
         elif self.aug == 'mask_edges':    # 边属性屏蔽
-            data_aug_1 = mask_edges(data_1)
-            data_aug_2 = mask_edges(data_2)
+            data= mask_edges(data)
         elif self.aug == 'mask_nodes_and_edges':    # 结点与边属性屏蔽
-            data_aug_1 = mask_nodes(data_1)
-            data_aug_1 = mask_edges(data_aug_1)
-            data_aug_2 = mask_nodes(data_2)
-            data_aug_2 = mask_edges(data_aug_2)
+            data = mask_nodes(data)
+            data = mask_edges(data)
         elif self.aug == "request_and_response_duration_time_error_injection":  # request_and_response_duration时间异常对比
-            data_aug_1 = time_error_injection(data_1, root_cause='request_and_response_duration')
-            data_aug_2 = time_error_injection(data_2, root_cause='request_and_response_duration')
+            data = time_error_injection(data, root_cause='request_and_response_duration')
         elif self.aug == 'subSpan_duration_time_error_injection':   # subSpan_duration时间异常
-            data_aug_1 = time_error_injection(data_1, root_cause='subSpan_duration')
-            data_aug_2 = time_error_injection(data_2, root_cause='subSpan_duration')
+            data = time_error_injection(data, root_cause='subSpan_duration')
         elif self.aug == 'response_code_error_injection':
-            data_aug_1 = response_code_injection(data_1)
-            data_aug_2 = response_code_injection(data_2)
+            data = response_code_injection(data)
 
         elif self.aug == 'none':
             """
@@ -324,27 +312,29 @@ class TraceDataset(InMemoryDataset):
                 assert False
 
         else:
-            print('augmentation error')
-            assert False
+            print('no need for augmentation ')
 
         # print(data, data_aug)
         # assert False
 
-        return data, data_aug_1, data_aug_2
+        return data
         # return data, data_aug_1
 
 
 if __name__ == '__main__':
     print("start...")
-    dataset = TraceDataset(root="./data", aug='mask_edges')
-    data, data_aug_1, data_aug_2 = dataset.get(0)
-    # print(data.edge_attr)
-    # print(data_aug_1.edge_attr)
-    # print(data_aug_2.edge_attr)
-    # start_time = time.time()
-    # for i in range(len(dataset)):
-    #     dataset.get(i)
-    #     if i % 10 == 0:
-    #         print(i)
-    # print(time.time()-start_time)
+    dataset = TraceDataset(root="./data")
+    dataset.aug = None
+    # data = dataset.get(0)
+    dataset1 = deepcopy(dataset)
+    dataset1.aug = "response_code_error_injection"
+    # data_aug_1 = dataset1.get(0)
+    # print(data, '\n', data.edge_attr)
+    # print(data_aug_1, '\n', data_aug_1.edge_attr)
+    start_time = time.time()
+    for i in range(len(dataset1)):
+        dataset1.get(i)
+        # if i % 10 == 0:
+        #     print(i)
+    print(time.time()-start_time)
 
