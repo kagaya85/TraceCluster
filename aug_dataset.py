@@ -40,7 +40,6 @@ class TraceDataset(InMemoryDataset):
 
     @property
     def processed_file_names(self) -> Union[str, List[str], Tuple]:
-
         return ["processed.pt"]
 
     def download(self):
@@ -491,3 +490,4 @@ def mask_nodes(data):
 if __name__ == '__main__':
     print("start...")
     dataset = TraceDataset(root="./data")
+    print('finish...')

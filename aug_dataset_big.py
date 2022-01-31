@@ -25,7 +25,6 @@ class TraceDataset(InMemoryDataset):
     def __init__(self, root, transform=None, pre_transform=None, aug=None):
         super(TraceDataset, self).__init__(
             root, transform, pre_transform)
-        self.data, self.slices = torch.load(self.processed_paths[0])
         self.aug = aug
 
 
@@ -45,14 +44,43 @@ class TraceDataset(InMemoryDataset):
 
     @property
     def processed_file_names(self) -> Union[str, List[str], Tuple]:
-        return ["processed.pt"]
+        file_list = []
+        for file in os.listdir(self.processed_dir):
+            if os.path.splitext(file)[1] == '.pt':
+                if file in ['pre_filter.pt', 'pre_transform.pt']:
+                    continue
+                file_list.append(file)
+
+        return file_list
+
+    @property
+    def processed_dir(self):
+        name = 'processed'
+        return osp.join(self.root, name)
+
+    @property
+    def normal_idx(self):
+        with open(self.processed_dir + '\data_info.json', "r") as f:    # file name not list
+            data_info = json.load(f)
+            normal_idx = data_info['normal']
+        return normal_idx
+
+    @property
+    def abnormal_idx(self):
+        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+            data_info = json.load(f)
+            abnormal_idx = data_info['abnormal']
+        return abnormal_idx
 
     def download(self):
         pass
 
     def process(self):
 
-        data_list = []
+        idx = 0
+        normal_idx = []
+        abnormal_idx = []
+        # data_list = []
         num_features_stat = self._get_num_features_stat()
         operation_embedding = self._operation_embedding()
 
@@ -89,15 +117,21 @@ class TraceDataset(InMemoryDataset):
                 y=trace['abnormal'],
                 root_url=trace["edges"]["0"][0]["operation"]
             )
-            data_list.append(data)
+            # data_list.append(data)
 
             # test
             # if data.trace_id == '1e3c47720fe24523938fff342ebe6c0d.35.16288656971030003':
             #    data.edge_attr = data.edge_attr * 1000
 
-            # filename = osp.join(self.processed_dir, 'data_{}.pt'.format(idx))
-            # torch.save(data, filename)
-            # idx += 1
+            if trace['abnormal'] == 0:
+                normal_idx.append(idx)
+            elif trace['abnormal'] == 1:
+                abnormal_idx.append(idx)
+
+            filename = osp.join(self.processed_dir, 'data_{}.pt'.format(idx))
+            torch.save(data, filename)
+            idx += 1
+
             # data_list.append(data)
 
         # if self.pre_filter is not None:
@@ -106,8 +140,16 @@ class TraceDataset(InMemoryDataset):
         # if self.pre_transform is not None:
         #     data_list = [self.pre_transform(data) for data in data_list]
 
-        datas, slices = self.collate(data_list)
-        torch.save((datas, slices), self.processed_paths[0])
+        # datas, slices = self.collate(data_list)
+        # torch.save((datas, slices), self.processed_paths[0])
+
+        datainfo = {'normal':  normal_idx,
+                     'abnormal':  abnormal_idx}
+
+        with open(self.processed_dir+'\data_info.json', 'w', encoding='utf-8') as json_file:
+            json.dump(datainfo, json_file)
+            print('write data info success')
+
 
     def _operation_embedding(self):
         """
@@ -209,21 +251,8 @@ class TraceDataset(InMemoryDataset):
     _dispatcher = {}
 
     def get(self, idx: int):
-        if self.len() == 1:
-            return copy.copy(self.data)
-
-        if not hasattr(self, '_data_list') or self._data_list is None:
-            self._data_list = self.len() * [None]
-        elif self._data_list[idx] is not None:
-            return copy.copy(self._data_list[idx])
-
-        data = separate(
-            cls=self.data.__class__,
-            batch=self.data,
-            idx=idx,
-            slice_dict=self.slices,
-            decrement=False,
-        )
+        data = torch.load(
+            osp.join(self.processed_dir, 'data_{}.pt'.format(idx)))
 
         """
         edge_index = data.edge_index
@@ -324,20 +353,24 @@ class TraceDataset(InMemoryDataset):
         # return data
         return data, data_aug_1, data_aug_2
 
+    def len(self) -> int:
+
+        return len(self.processed_file_names)
+
 
 if __name__ == '__main__':
     print("start...")
-    dataset = TraceDataset(root="./data")
-    dataset.aug = None
+    dataset = TraceDataset(root="../Data/TraceCluster/big_data")
+    dataset.aug = "response_code_error_injection"
     # data = dataset.get(0)
-    dataset1 = deepcopy(dataset)
-    dataset1.aug = "response_code_error_injection"
+    # dataset1 = deepcopy(dataset)
+    # dataset1.aug = "response_code_error_injection"
     # data_aug_1 = dataset1.get(0)
     # print(data, '\n', data.edge_attr)
     # print(data_aug_1, '\n', data_aug_1.edge_attr)
     start_time = time.time()
-    for i in range(len(dataset1)):
-        dataset1.get(i)
+    for i in tqdm(range(len(dataset))):
+        dataset.get(i)
         # if i % 10 == 0:
         #     print(i)
     print(time.time()-start_time)
