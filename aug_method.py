@@ -250,6 +250,9 @@ def permute_edges_for_subgraph(data):
     if node_num == 1:
         print('Can\'t inject time error because there is only one node!')
         return None
+    elif node_num == 2:
+        print('This graph only have 2 nodes. There is no need to permute 1 edge for subgraph.')
+        return data
     for i in range(node_num):
         trace[i] = []
     permuted_edge_id = np.random.choice(data.edge_index.size(1))
@@ -272,31 +275,39 @@ def permute_edges_for_subgraph(data):
                 subgraph.append(trace[node][i].to)
         return list(set(subgraph))
     subgraph_1 = bfs(0, subgraph_1)
-    subgraph_2 = bfs(subgraph_2[0],subgraph_2)
+    subgraph_2 = bfs(subgraph_2[0], subgraph_2)
     if len(subgraph_1) >= len(subgraph_2):
         data.x = data.x[subgraph_1]
         idx_drop = [n for n in range(node_num) if not n in subgraph_1]  # 丢弃非子图集合的节点
+        subgraph_big = subgraph_1
     else:
         data.x = data.x[subgraph_2]
         idx_drop = [n for n in range(node_num) if not n in subgraph_2]  # 丢弃非子图集合的节点
+        subgraph_big = subgraph_2
     adj = torch.zeros((node_num, node_num))
     adj[edge_index[0], edge_index[1]] = 1
     adj[idx_drop, :] = 0
     adj[:, idx_drop] = 0
-
+    node_dic = {}
+    idx = 0
+    for i in range(node_num):
+        if i in subgraph_big:
+            node_dic[i] = idx
+            idx += 1
     edge_index = adj.nonzero(as_tuple=False).t()
-
     data.edge_index = edge_index
-
-    edge_index = data.edge_index.numpy()
     edge_attr = []
     for idx_edge in range(data.edge_index.size(1)):
-        idx_column = edge_dict[(edge_index[0][idx_edge],
-                                edge_index[1][idx_edge])]
+        idx_column = edge_dict[(int(edge_index[0][idx_edge]),
+                                int(edge_index[1][idx_edge]))]
         edge_attr.append(data.edge_attr[idx_column].numpy())
 
     edge_attr = np.asarray(edge_attr)
     data.edge_attr = torch.tensor(edge_attr, dtype=torch.float)
+    for i in range(edge_index.size(1)):
+        edge_index[0][i] = node_dic[int(edge_index[0][i])]
+        edge_index[1][i] = node_dic[int(edge_index[1][i])]
+    data.edge_index = edge_index
     return data
 
 

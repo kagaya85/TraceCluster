@@ -325,16 +325,16 @@ if __name__ == '__main__':
     print("start...")
     dataset = TraceDataset(root="./data")
     dataset.aug = None
-    # data = dataset.get(0)
+    data = dataset.get(0)
     dataset1 = deepcopy(dataset)
-    dataset1.aug = "response_code_error_injection"
-    # data_aug_1 = dataset1.get(0)
-    # print(data, '\n', data.edge_attr)
-    # print(data_aug_1, '\n', data_aug_1.edge_attr)
-    start_time = time.time()
-    for i in range(len(dataset1)):
-        dataset1.get(i)
-        # if i % 10 == 0:
-        #     print(i)
-    print(time.time()-start_time)
+    dataset1.aug = 'permute_edges_for_subgraph'
+    data_aug_1 = dataset1.get(0)
+    print(data, '\n', data.edge_attr)
+    print(data_aug_1, '\n', data_aug_1.edge_attr)
+    # start_time = time.time()
+    # for i in range(len(dataset1)):
+    #     dataset1.get(i)
+    #     # if i % 10 == 0:
+    #     #     print(i)
+    # print(time.time()-start_time)
 
