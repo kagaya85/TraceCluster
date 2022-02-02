@@ -6,7 +6,6 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
-from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 from torch.nn import ModuleList, Embedding
 from torch.nn import Sequential, ReLU, Linear, LeakyReLU, Tanh
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -37,7 +36,7 @@ class CGNNet(nn.Module):
         self.convs = ModuleList()
         self.batch_norms = ModuleList()
         for _ in range(num_layers):
-            conv = CGConv(channels=20)
+            conv = CGConv(channels=20, dim=8)
             self.convs.append(conv)
             self.batch_norms.append(BatchNorm(20))
 
@@ -46,7 +45,7 @@ class CGNNet(nn.Module):
         self.ggnn= GatedGraphConv(out_channels=20, num_layers=2).to(device)
         self.gat1 = GATConv(in_channels=20, out_channels=60)
         self.gat2 = GATConv(in_channels=60, out_channels=16)
-        self.mlp = nn.Sequential(Linear(16, 24), Tanh(), Linear(24, 12), Tanh(), Linear(12, 1))
+        self.mlp = nn.Sequential(Linear(20, 32), Tanh(), Linear(32, 8), Tanh(), Linear(8, 1))
         # self.mlp = nn.Sequential(Linear(768, 1))
         self.readout = GlobalAttention(gate_nn=nn.Sequential(
             nn.Linear(20, 20), nn.Tanh(),
@@ -57,20 +56,20 @@ class CGNNet(nn.Module):
 
         # x1 = self.ggnn(x, edge_index)
 
-        x = self.gat1(x, edge_index)
-        x = self.batch_norms1(x)
-        x = self.gat2(x, edge_index)
+        # x = self.gat1(x, edge_index)
+        # x = self.batch_norms1(x)
+        # x = self.gat2(x, edge_index)
 
-        # xs = []
-        # for conv, batch_norm in zip(self.convs, self.batch_norms):
-        #     x = F.tanh(batch_norm(conv(x, edge_index)))
-        #     xs.append(x)
-        #
-        # xpool = [global_add_pool(x, batch) for x in xs]
+        xs = []
+        for conv, batch_norm in zip(self.convs, self.batch_norms):
+            x = F.tanh(batch_norm(conv(x, edge_index, edge_attr)))
+            xs.append(x)
+
+        xpool = [global_add_pool(x, batch) for x in xs]
 
         # x = torch.cat(xpool, 1)
-        # x = xpool[-1]
-        x = global_add_pool(x,batch)
+        x = xpool[-1]
+        # x = global_add_pool(x,batch)
         # x = self.readout_2(x,batch)
         # x = self.readout(x,batch)
 
@@ -102,7 +101,7 @@ model = CGNNet().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 criterion = torch.nn.BCEWithLogitsLoss()
 
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=128, shuffle=True)
 
 model.train()
@@ -123,9 +122,6 @@ for epoch in range(epochs):
 
         loss.backward()
         optimizer.step()
-
-
-        print(time.time() - start_time)
 
         total_loss += loss.item()
         total += 1

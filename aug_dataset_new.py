@@ -1,5 +1,6 @@
 import math
 import time
+from tqdm import tqdm
 
 import torch
 from torch_geometric.data import Dataset, InMemoryDataset
@@ -45,10 +46,6 @@ class TraceDataset(InMemoryDataset):
     @property
     def processed_file_names(self) -> Union[str, List[str], Tuple]:
         return ["processed.pt"]
-
-    @property
-    def processed_dir(self) -> str:
-        return r'/data/graph-data/traceCluster'
 
     def download(self):
         pass
@@ -245,22 +242,29 @@ class TraceDataset(InMemoryDataset):
         elif self.aug == 'pedges':    # 删除 or 增加部分边
             data = permute_edges(data)
         elif self.aug == 'subgraph':    # 随机选初始点扩张固定节点数子图
-            data = subgraph(data)
+            data_aug_1 = subgraph(deepcopy(data))
+            data_aug_2 = subgraph(deepcopy(data))
         elif self.aug == 'permute_edges_for_subgraph':  # 随机删一条边，选较大子图
-            data = permute_edges_for_subgraph(data)
+            data_aug_1 = permute_edges_for_subgraph(deepcopy(data))
+            data_aug_2 = permute_edges_for_subgraph(deepcopy(data))
         elif self.aug == 'mask_nodes':    # 结点属性屏蔽
-            data = mask_nodes(data)
+            data_aug_1 = mask_nodes(deepcopy(data))
+            data_aug_2 = mask_nodes(deepcopy(data))
         elif self.aug == 'mask_edges':    # 边属性屏蔽
-            data= mask_edges(data)
+            data_aug_1 = mask_edges(deepcopy(data))
+            data_aug_2 = mask_edges(deepcopy(data))
         elif self.aug == 'mask_nodes_and_edges':    # 结点与边属性屏蔽
-            data = mask_nodes(data)
-            data = mask_edges(data)
+            data_aug_1 = mask_nodes(deepcopy(data))
+            data_aug_2 = mask_edges(deepcopy(data))
         elif self.aug == "request_and_response_duration_time_error_injection":  # request_and_response_duration时间异常对比
-            data = time_error_injection(data, root_cause='request_and_response_duration')
+            data_aug_1 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
+            data_aug_2 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
         elif self.aug == 'subSpan_duration_time_error_injection':   # subSpan_duration时间异常
-            data = time_error_injection(data, root_cause='subSpan_duration')
+            data_aug_1 = time_error_injection(deepcopy(data), root_cause='subSpan_duration')
+            data_aug_2 = time_error_injection(deepcopy(data), root_cause='subSpan_duration')
         elif self.aug == 'response_code_error_injection':
-            data = response_code_injection(data)
+            data_aug_1 = response_code_injection(deepcopy(data))
+            data_aug_2 = response_code_injection(deepcopy(data))
 
         elif self.aug == 'none':
             """
@@ -317,8 +321,8 @@ class TraceDataset(InMemoryDataset):
         # print(data, data_aug)
         # assert False
 
-        return data
-        # return data, data_aug_1
+        # return data
+        return data, data_aug_1, data_aug_2
 
 
 if __name__ == '__main__':
