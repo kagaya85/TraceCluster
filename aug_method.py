@@ -249,9 +249,9 @@ def permute_edges_for_subgraph(data):
     node_num = data.x.size(0)
     if node_num == 1:
         print('Can\'t inject time error because there is only one node!')
-        return None
+        assert False
     elif node_num == 2:
-        print('This graph only have 2 nodes. There is no need to permute 1 edge for subgraph.')
+        # print('This graph only have 2 nodes. There is no need to permute 1 edge for subgraph.')
         return data
     for i in range(node_num):
         trace[i] = []

@@ -3,38 +3,69 @@ import torch.nn as nn
 
 from torch.nn import ModuleList
 import torch_geometric
-from torch_geometric.nn import BatchNorm, GATConv, global_mean_pool
+from torch_geometric.nn import BatchNorm, GATConv, global_mean_pool, TransformerConv, CGConv, global_add_pool
 import numpy as np
 
 
 
 
 class Encoder(nn.Module):
-    def __init__(self, num_layers=2, input_dim=20, output_dim=16):
+    def __init__(self, num_layers=2, input_dim=20, output_dim=16, num_edge_attr=8,
+                 gnn_type='CGConv', pooling_type='mean'):
         super(Encoder, self).__init__()
 
         self.convs = ModuleList()
         self.batch_norms = ModuleList()
+        self.gnn_type = gnn_type
+        self.num_layer = num_layers
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.pooling_type = pooling_type
 
-        conv_1 = GATConv(in_channels=input_dim, out_channels=input_dim*3)
-        conv_2 = GATConv(in_channels=input_dim*3, out_channels=output_dim)
-        bn_1 = BatchNorm(input_dim*3)
-        bn_2 = BatchNorm(output_dim)
+        if gnn_type == 'GATConv':
+            # GATConv
+            conv_0 = GATConv(in_channels=input_dim, out_channels=output_dim*3, edge_dim=num_edge_attr)
+            conv_1 = GATConv(in_channels=output_dim*3, out_channels=output_dim, edge_dim=num_edge_attr)
+            bn_0 = BatchNorm(output_dim*3)
+            bn_1 = BatchNorm(output_dim)
+        elif gnn_type == 'TransformerConv':
+            # TransformerConv
+            conv_0 = TransformerConv(in_channels=input_dim, out_channels=output_dim*3, edge_dim=num_edge_attr)
+            conv_1 = TransformerConv(in_channels=output_dim*3, out_channels=output_dim, edge_dim=num_edge_attr)
+            bn_0 = BatchNorm(output_dim*3)
+            bn_1 = BatchNorm(output_dim)
+        elif gnn_type == 'CGConv':
+            # CGConv
+            conv_0 = CGConv(channels=input_dim, dim=num_edge_attr)
+            conv_1 = CGConv(channels=input_dim, dim=num_edge_attr)
+            bn_0 = BatchNorm(input_dim)
+            bn_1 = BatchNorm(input_dim)
+        else:
+            print('gnn type error')
+            assert False
 
+
+        self.convs.append(conv_0)
         self.convs.append(conv_1)
-        self.convs.append(conv_2)
 
+        self.batch_norms.append(bn_0)
         self.batch_norms.append(bn_1)
-        self.batch_norms.append(bn_2)
 
     def forward(self, x, edge_index, edge_attr, batch):
 
         xs = []
         for conv, batch_norm in zip(self.convs, self.batch_norms):
-            x = batch_norm(conv(x, edge_index))
+            x = batch_norm(conv(x, edge_index, edge_attr))
             xs.append(x)
 
-        x = global_mean_pool(x, batch)
+        if self.pooling_type == 'mean':
+            x = global_mean_pool(x, batch)
+        elif self.pooling_type == 'add':
+            x = global_mean_pool()
+        else:
+            print('pooling type error')
+            assert False
+
         return x
 
     def get_embeddings(self, dataloader):
@@ -53,17 +84,21 @@ class Encoder(nn.Module):
         ret = np.concatenate(ret, 0)
         y = np.concatenate(y, 0)
         return ret, y
-    
-    
 
 
 class SIMCLR(nn.Module):
-    def __init__(self, num_layers=2, input_dim=20, output_dim=16):
+    def __init__(self, num_layers=2, input_dim=20, output_dim=16, num_edge_attr=8, gnn_type='CGConv',
+                 pooling_type='mean'):
         super(SIMCLR, self).__init__()
 
+        self.gnn_type = gnn_type
+        self.num_layer = num_layers
+        self.input_dim = input_dim
         self.output_dim = output_dim
+        self.pooling_type = pooling_type
 
-        self.encoder = Encoder(num_layers=num_layers, input_dim=input_dim, output_dim=output_dim)
+        self.encoder = Encoder(num_layers=num_layers, input_dim=input_dim, output_dim=output_dim,
+                               num_edge_attr=num_edge_attr, gnn_type=gnn_type, pooling_type=pooling_type)
 
         self.proj_head = nn.Sequential(nn.Linear(output_dim, output_dim), nn.LeakyReLU(),
                                        nn.Linear(output_dim, output_dim))

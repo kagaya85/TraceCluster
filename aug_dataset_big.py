@@ -1,6 +1,7 @@
 import math
 import time
 from tqdm import tqdm
+from collections import Counter
 
 import torch
 from torch_geometric.data import Dataset, InMemoryDataset
@@ -284,7 +285,9 @@ class TraceDataset(InMemoryDataset):
             data_aug_2 = mask_edges(deepcopy(data))
         elif self.aug == 'mask_nodes_and_edges':    # 结点与边属性屏蔽
             data_aug_1 = mask_nodes(deepcopy(data))
-            data_aug_2 = mask_edges(deepcopy(data))
+            data_aug_1 = mask_edges(data_aug_1)
+            data_aug_2 = mask_nodes(deepcopy(data))
+            data_aug_2 = mask_edges(data_aug_2)
         elif self.aug == "request_and_response_duration_time_error_injection":  # request_and_response_duration时间异常对比
             data_aug_1 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
             data_aug_2 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
@@ -294,7 +297,6 @@ class TraceDataset(InMemoryDataset):
         elif self.aug == 'response_code_error_injection':
             data_aug_1 = response_code_injection(deepcopy(data))
             data_aug_2 = response_code_injection(deepcopy(data))
-
         elif self.aug == 'none':
             """
             if data.edge_index.max() > data.x.size()[0]:
@@ -303,65 +305,68 @@ class TraceDataset(InMemoryDataset):
                 assert False
             """
             # data_aug_1 = pickle.loads(pickle.dumps(data))
-            data_aug_1 = deepcopy(data)
+            data_aug_1 = data
             # data_aug_2 = pickle.loads(pickle.dumps(data))
             #data_aug.x = torch.ones((data.edge_index.max()+1, 1))
-            data_aug_2 = deepcopy(data)
-
-        elif self.aug == 'random2':
-            n = np.random.randint(2)
-            if n == 0:
-                data_aug = drop_nodes(deepcopy(data))
-            elif n == 1:
-                data_aug = subgraph(deepcopy(data))
-            else:
-                print('sample error')
-                assert False
-
-        elif self.aug == 'random3':
+            data_aug_2 = data
+        elif self.aug == 'random':
             n = np.random.randint(3)
-            if n == 0:
-                data_aug = drop_nodes(deepcopy(data))
-            elif n == 1:
-                data_aug = permute_edges(deepcopy(data))
+            if n < 2:
+                # view aug
+                data_aug_1 = self._get_view_aug(data)
+                data_aug_2 = self._get_view_aug(data)
             elif n == 2:
-                data_aug = mask_nodes(deepcopy(data))
-            else:
-                print('sample error')
-                assert False
-
-        elif self.aug == 'random4':
-            n = np.random.randint(4)
-            if n == 0:
-                data_aug = drop_nodes(deepcopy(data))
-            elif n == 1:
-                data_aug = permute_edges(deepcopy(data))
-            elif n == 2:
-                data_aug = subgraph(deepcopy(data))
-            elif n == 3:
-                data_aug = mask_nodes(deepcopy(data))
-            else:
-                print('sample error')
-                assert False
-
+                # anomaly aug
+                data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
         else:
             print('no need for augmentation ')
+            assert False
 
-        # print(data, data_aug)
-        # assert False
-
-        # return data
         return data, data_aug_1, data_aug_2
 
     def len(self) -> int:
 
         return len(self.processed_file_names)
 
+    def _get_view_aug(self, data):
+        n = np.random.randint(4)
+        if n == 0:
+            data_aug = mask_nodes(deepcopy(data))
+        elif n == 1:
+            data_aug = mask_edges(deepcopy(data))
+        elif n == 2:
+            data_aug = mask_nodes(deepcopy(data))
+            data_aug = mask_edges(data_aug)
+        elif n == 3:
+            data_aug = permute_edges_for_subgraph(deepcopy(data))
+        # elif n == 4:
+        #     data_aug = subgraph(deepcopy(data))
+        else:
+            print('sample error')
+            assert False
+        return data_aug
+
+    def _get_anomaly_aug(self, data):
+        n = np.random.randint(3)
+        if n == 0:
+            data_aug_1 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
+            data_aug_2 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
+        elif n == 1:
+            data_aug_1 = time_error_injection(deepcopy(data), root_cause='subSpan_duration')
+            data_aug_2 = time_error_injection(deepcopy(data), root_cause='subSpan_duration')
+        elif n == 2:
+            data_aug_1 = response_code_injection(deepcopy(data))
+            data_aug_2 = response_code_injection(deepcopy(data))
+        else:
+            print('sample error')
+            assert False
+        return data_aug_1, data_aug_2
+
 
 if __name__ == '__main__':
     print("start...")
     dataset = TraceDataset(root="../Data/TraceCluster/big_data")
-    dataset.aug = "response_code_error_injection"
+    dataset.aug = "none"
     # data = dataset.get(0)
     # dataset1 = deepcopy(dataset)
     # dataset1.aug = "response_code_error_injection"
@@ -369,9 +374,12 @@ if __name__ == '__main__':
     # print(data, '\n', data.edge_attr)
     # print(data_aug_1, '\n', data_aug_1.edge_attr)
     start_time = time.time()
+    node_count = []
     for i in tqdm(range(len(dataset))):
-        dataset.get(i)
+        data, _, _ = dataset.get(i)
+        node_count.append(data.num_nodes)
         # if i % 10 == 0:
         #     print(i)
+    print(Counter(node_count))
     print(time.time()-start_time)
 
