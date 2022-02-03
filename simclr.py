@@ -5,7 +5,7 @@ from torch.nn import ModuleList
 import torch_geometric
 from torch_geometric.nn import BatchNorm, GATConv, global_mean_pool, TransformerConv, CGConv, global_add_pool
 import numpy as np
-
+from tqdm import tqdm
 
 
 
@@ -61,7 +61,7 @@ class Encoder(nn.Module):
         if self.pooling_type == 'mean':
             x = global_mean_pool(x, batch)
         elif self.pooling_type == 'add':
-            x = global_mean_pool()
+            x = global_mean_pool(x, batch)
         else:
             print('pooling type error')
             assert False
@@ -74,10 +74,10 @@ class Encoder(nn.Module):
         y = []
         trace_ids = []
         with torch.no_grad():
-            for data in dataloader:
-                data = data[0]
+            for data in tqdm(dataloader):
+                # data = data[0]
                 data.to(device)
-                x = self.forward(data)
+                x = self.forward(data.x, data.edge_index, data.edge_attr, data.batch)
 
                 ret.append(x.cpu().numpy())
                 y.append(data.y.cpu().numpy())

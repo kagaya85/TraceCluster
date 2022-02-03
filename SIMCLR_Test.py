@@ -38,11 +38,11 @@ def main():
     epochs = 20
     normal_classes = [0]
     abnormal_classes = [1]
-    batch_size = 128
+    batch_size = 64
     num_workers = 10
     num_layers = 2
-    gnn_type = 'CGConv'
-    pooling_type = 'mean'
+    gnn_type = 'CGConv'  # GATConv  TransformerConv  CGConv
+    pooling_type = 'add'  # mean  add
 
     aug = 'random'
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -58,8 +58,8 @@ def main():
     random.shuffle(abnormal_idx)
     random.shuffle(normal_idx)
 
-    train_normal = normal_idx[:int(len(normal_idx) * 0.05)]
-    test_normal = normal_idx[int(len(normal_idx) * 0.05):]
+    train_normal = normal_idx[:int(len(normal_idx) * 0.8)]
+    test_normal = normal_idx[int(len(normal_idx) * 0.8):]
     train_abnormal = abnormal_idx[:int(len(abnormal_idx) * 0)]
     test_abnormal = abnormal_idx[int(len(abnormal_idx) * 0):]
 
@@ -74,7 +74,8 @@ def main():
     # abnormal_idx = get_target_label_idx(dataset.data.y.clone().data.cpu().numpy(), abnormal_classes)
 
     # Set up logging
-    output_path = f"../Data/TraceCluster/log/" + time.strftime("%Y-%m-%d_%Hh-%Mm-%Ss", time.localtime())
+    output_path = f"../Data/TraceCluster/log/" + time.strftime("%Y-%m-%d_%Hh-%Mm-%Ss", time.localtime()) \
+                  + '{}epoch_{}_{}'.format(epochs, gnn_type, pooling_type)
     if not os.path.exists(output_path):
         os.makedirs(output_path)
     logging.basicConfig(level=logging.INFO)
@@ -110,14 +111,16 @@ def main():
         'epochs': epochs,
         'gnn_type': gnn_type,
         'pooling_type': pooling_type,
+        'num_node_features': dataset.num_node_features,
+        'num_edge_features': dataset.num_edge_features,
         'output_dim': output_dim,
         'aug': aug,
-        'train_idx': train_normal+train_abnormal
+        'train_idx': train_normal + train_abnormal,
+        'test_idx': test_normal + test_abnormal
     }
     with open(output_path + '/train_info.json', 'w', encoding='utf-8') as json_file:
         json.dump(train_info, json_file)
         logger.info('write train info success')
-
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
@@ -154,7 +157,7 @@ def main():
         logger.info(
             'Epoch: %3d/%3d, Train Loss: %.5f, Time: %.5f' % (epoch + 1, epochs, total_loss, time.time() - start_time))
 
-    save_model_path = output_path + "/save_" + str(time.time()).split(".")[0] + ".model"
+    save_model_path = output_path + '/{}_{}'.format(gnn_type, pooling_type) + ".model"
     logger.info(f"save model to {save_model_path}")
     torch.save(model.state_dict(), save_model_path)
 

@@ -305,10 +305,11 @@ class TraceDataset(InMemoryDataset):
                 assert False
             """
             # data_aug_1 = pickle.loads(pickle.dumps(data))
-            data_aug_1 = data
+            # data_aug_1 = data
             # data_aug_2 = pickle.loads(pickle.dumps(data))
             #data_aug.x = torch.ones((data.edge_index.max()+1, 1))
-            data_aug_2 = data
+            # data_aug_2 = data
+            return data
         elif self.aug == 'random':
             n = np.random.randint(3)
             if n < 2:
