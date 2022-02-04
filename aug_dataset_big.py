@@ -73,6 +73,20 @@ class TraceDataset(InMemoryDataset):
             abnormal_idx = data_info['abnormal']
         return abnormal_idx
 
+    @property
+    def trace_classes(self):
+        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+            data_info = json.load(f)
+            trace_classes = data_info['trace_classes']
+        return trace_classes
+
+    @property
+    def url_status_classes(self):
+        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+            data_info = json.load(f)
+            url_status_classes = data_info['url_status_classes']
+        return url_status_classes
+
     def download(self):
         pass
 
@@ -81,6 +95,8 @@ class TraceDataset(InMemoryDataset):
         idx = 0
         normal_idx = []
         abnormal_idx = []
+        class_list = []  # url status node_num
+        url_status_class_list = []  # url status
         # data_list = []
         num_features_stat = self._get_num_features_stat()
         operation_embedding = self._operation_embedding()
@@ -107,6 +123,15 @@ class TraceDataset(InMemoryDataset):
                 print("Feature dismatch! num_edges_edge_feats: {}, num_edges_edge_index: {}, trace_id: {}".format(
                     num_edges_edge_feats, num_edges_edge_index, trace_id))
 
+            # define class based on root url, normal/abnormal, node num
+            trace_class = trace["edges"]["0"][0]["operation"] + str(trace['abnormal']) + str(node_feats.size(0))
+            if trace_class not in class_list:
+                class_list.append(trace_class)
+            # define url status class based on root url, normal/abnormal
+            url_status_class = trace["edges"]["0"][0]["operation"] + str(trace['abnormal'])
+            if url_status_class not in url_status_class_list:
+                url_status_class_list.append(url_status_class)
+
             data = Data(
                 x=node_feats,
                 edge_index=edge_index,
@@ -116,7 +141,9 @@ class TraceDataset(InMemoryDataset):
                 time_stamp=trace["edges"]["0"][0]["startTime"],
                 # time_stamp=list(trace["edges"].items())[0][1][0]["startTime"],
                 y=trace['abnormal'],
-                root_url=trace["edges"]["0"][0]["operation"]
+                root_url=trace["edges"]["0"][0]["operation"],
+                trace_class=class_list.index(trace_class),
+                url_status_class=url_status_class_list.index(url_status_class)
             )
             # data_list.append(data)
 
@@ -144,8 +171,10 @@ class TraceDataset(InMemoryDataset):
         # datas, slices = self.collate(data_list)
         # torch.save((datas, slices), self.processed_paths[0])
 
-        datainfo = {'normal':  normal_idx,
-                     'abnormal':  abnormal_idx}
+        datainfo = {'normal': normal_idx,
+                    'abnormal': abnormal_idx,
+                    'trace_classes': class_list,
+                    'url_status_classes': url_status_class_list}
 
         with open(self.processed_dir+'\data_info.json', 'w', encoding='utf-8') as json_file:
             json.dump(datainfo, json_file)
@@ -311,12 +340,12 @@ class TraceDataset(InMemoryDataset):
             # data_aug_2 = data
             return data
         elif self.aug == 'random':
-            n = np.random.randint(3)
-            if n < 2:
+            n = np.random.randint(4)
+            if n < 3:
                 # view aug
                 data_aug_1 = self._get_view_aug(data)
                 data_aug_2 = self._get_view_aug(data)
-            elif n == 2:
+            elif n == 3:
                 # anomaly aug
                 data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
         else:
@@ -366,8 +395,8 @@ class TraceDataset(InMemoryDataset):
 
 if __name__ == '__main__':
     print("start...")
-    dataset = TraceDataset(root="../Data/TraceCluster/big_data")
-    dataset.aug = "none"
+    dataset = TraceDataset(root="../Data/TraceCluster/new_data")
+    dataset.aug = "mask_nodes"
     # data = dataset.get(0)
     # dataset1 = deepcopy(dataset)
     # dataset1.aug = "response_code_error_injection"

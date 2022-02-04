@@ -72,6 +72,8 @@ class Encoder(nn.Module):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         ret = []
         y = []
+        trace_class = []
+        url_status_class = []
         trace_ids = []
         with torch.no_grad():
             for data in tqdm(dataloader):
@@ -81,9 +83,13 @@ class Encoder(nn.Module):
 
                 ret.append(x.cpu().numpy())
                 y.append(data.y.cpu().numpy())
+                trace_class.append(data.trace_class.cpu().numpy())
+                url_status_class.append(data.url_status_class.cpu().numpy())
         ret = np.concatenate(ret, 0)
         y = np.concatenate(y, 0)
-        return ret, y
+        trace_class = np.concatenate(trace_class, 0)
+        url_status_class = np.concatenate(url_status_class, 0)
+        return ret, y, trace_class, url_status_class
 
 
 class SIMCLR(nn.Module):
