@@ -379,7 +379,7 @@ def calculate_edge_features(current_span: Span, trace_duration: dict, spanChildr
 
 
 def check_abnormal_span(span: Span) -> bool:
-    start_hour = time.localtime(span.startTime).tm_hour
+    start_hour = time.localtime(span.startTime//1000).tm_hour
     chaos_service = chaos_dict.get(start_hour)
 
     if start_hour in chaos_dict.keys() and span.service.startswith(chaos_service):
