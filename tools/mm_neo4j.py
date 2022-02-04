@@ -4,16 +4,29 @@ import json
 
 preprocessed_file = 'data/preprocessed/wechat/bert_2021-12-03_16-08-10.json'
 
+preprocessed_list = [
+    'data/preprocessed/wechat/2022-01-27_22-32-45/0.json',
+    'data/preprocessed/wechat/2022-01-27_22-32-45/1.json',
+    'data/preprocessed/wechat/2022-01-27_22-32-45/2.json',
+]
+
 node_label = 'Operation'
 edge_label = 'Call'
 
 
+def mergeDict(x: dict, y: dict):
+    return {**x, **y}
+
+
 def main():
     # load data
-    f = open(preprocessed_file, 'r')
-    print(f"load preprocessed data from {preprocessed_file}")
-    data = json.load(f)
-    f.close()
+    data = {}
+    for filepath in preprocessed_list:
+        f = open(filepath, 'r')
+        print(f"load preprocessed data from {filepath}")
+        tmp = json.load(f)
+        f.close()
+        data = mergeDict(data, tmp)
 
     graph = Graph('http://localhost:7474',
                   auth=('neo4j', 'password'))

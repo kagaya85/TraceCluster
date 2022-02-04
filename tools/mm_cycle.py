@@ -1,13 +1,14 @@
 import pandas as pd
 from tqdm import tqdm
 
-filepath = 'data/raw/wechat/12-3/call_graph_2021-12-03_23629.csv'
+# filepath = 'data/raw/wechat/12-3/call_graph_2021-12-03_23629.csv'
+filepath = '/data/TraceCluster/raw/wechat/trace_mmfindersynclogicsvr/call_graph_2022-01-18_23629.csv'
 
 
 def main():
     df = pd.read_csv(filepath)
     count = 0
-    for idx, row in df.iterrows():
+    for idx, row in tqdm(df.iterrows()):
         if row['CallerNodeID'] == row['CalleeNodeID']:
             count = count + 1
             print(row)
