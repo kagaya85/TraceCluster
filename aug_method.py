@@ -156,7 +156,10 @@ def subgraph(data):
 
 def mask_nodes(data):
     node_num, feat_dim = data.x.size()
-    mask_num = math.ceil(node_num / 2)
+    if node_num < 5:
+        mask_num = math.ceil(1)
+    else:
+        mask_num = math.ceil(node_num / 5)
     idx_mask = np.random.choice(node_num, mask_num, replace=False)
     data.x[idx_mask] = torch.tensor(np.random.normal(
         loc=0.5, scale=0.5, size=(mask_num, feat_dim)), dtype=torch.float32)
@@ -165,7 +168,10 @@ def mask_nodes(data):
 
 def mask_edges(data):
     edge_num, feat_dim = data.edge_attr.size()
-    mask_num = math.ceil(edge_num / 2)
+    if edge_num < 5:
+        mask_num = math.ceil(1)
+    else:
+        mask_num = math.ceil(edge_num / 5)
     idx_mask = np.random.choice(edge_num, mask_num, replace=False)
     data.edge_attr[idx_mask] = torch.tensor(np.random.normal(
         loc=0.5, scale=0.5, size=(mask_num, feat_dim)), dtype=torch.float32)

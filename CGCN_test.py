@@ -1,22 +1,17 @@
-import os.path as osp
 import random
 import time
 from tqdm import tqdm
 import torch
-import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
 from torch.nn import ModuleList, Embedding
 from torch.nn import Sequential, ReLU, Linear, LeakyReLU, Tanh
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch_geometric.utils import degree
-from torch_geometric.datasets import ZINC, MoleculeNet
 from torch_geometric.loader import DataLoader
 from torch_geometric.nn import PNAConv, BatchNorm, global_add_pool, global_mean_pool, CGConv, GatedGraphConv, GlobalAttention, Set2Set, GATConv
 from sklearn.metrics import f1_score, recall_score, precision_score
 from torch.utils.data import Subset
 
-from original_dataset import TraceDataset
+from aug_dataset_new import TraceDataset
 
 def get_target_label_idx(labels, targets):
     """
@@ -62,7 +57,7 @@ class CGNNet(nn.Module):
 
         xs = []
         for conv, batch_norm in zip(self.convs, self.batch_norms):
-            x = F.tanh(batch_norm(conv(x, edge_index, edge_attr)))
+            x = batch_norm(conv(x, edge_index, edge_attr))
             xs.append(x)
 
         xpool = [global_add_pool(x, batch) for x in xs]
@@ -76,68 +71,72 @@ class CGNNet(nn.Module):
         return self.mlp(x)
 
 
-learning_rate = 0.001
-epochs = 50
-dataset = TraceDataset(root='./data')
-normal_classes = [0]
-abnormal_classes = [1]
+if __name__ == '__main__':
+    learning_rate = 0.001
+    epochs = 20
+    dataset = TraceDataset(root='../Data/TraceCluster/new_data_inmem', aug='none')
+    normal_classes = [0]
+    abnormal_classes = [1]
 
-normal_idx = get_target_label_idx(dataset.data.y.clone().data.cpu().numpy(), normal_classes)
-abnormal_idx = get_target_label_idx(dataset.data.y.clone().data.cpu().numpy(), abnormal_classes)
+    # normal_idx = get_target_label_idx(dataset.data.y.clone().data.cpu().numpy(), normal_classes)
+    # abnormal_idx = get_target_label_idx(dataset.data.y.clone().data.cpu().numpy(), abnormal_classes)
 
-random.shuffle(abnormal_idx)
-random.shuffle(normal_idx)
+    normal_idx = dataset.normal_idx
+    abnormal_idx = dataset.abnormal_idx
 
-train_normal = normal_idx[:int(len(normal_idx) * 0.2)]
-test_normal = normal_idx[int(len(normal_idx) * 0.2):]
-train_abnormal = abnormal_idx[:int(len(abnormal_idx) * 0.4)]
-test_abnormal = abnormal_idx[int(len(abnormal_idx) * 0.4):]
+    random.shuffle(abnormal_idx)
+    random.shuffle(normal_idx)
 
-train_dataset = Subset(dataset, train_normal + train_abnormal)
-test_dataset = Subset(dataset, test_abnormal + test_normal)
+    train_normal = normal_idx[:int(len(normal_idx) * 0.2)]
+    test_normal = normal_idx[int(len(normal_idx) * 0.2):]
+    train_abnormal = abnormal_idx[:int(len(abnormal_idx) * 0.4)]
+    test_abnormal = abnormal_idx[int(len(abnormal_idx) * 0.4):]
 
-device = torch.device('cuda')
-model = CGNNet().to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-criterion = torch.nn.BCEWithLogitsLoss()
+    train_dataset = Subset(dataset, train_normal + train_abnormal)
+    test_dataset = Subset(dataset, test_abnormal + test_normal)
 
-train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=128, shuffle=True)
+    device = torch.device('cuda')
+    model = CGNNet().to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    criterion = torch.nn.BCEWithLogitsLoss()
 
-model.train()
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=True)
+
+    model.train()
 
 
-for epoch in range(epochs):
-    start_time = time.time()
-    total_loss = 0
-    total = 0
-
-    for data in tqdm(train_loader):
+    for epoch in range(epochs):
         start_time = time.time()
+        total_loss = 0
+        total = 0
+
+        for data in tqdm(train_loader):
+            start_time = time.time()
+            data = data.to(device)
+            optimizer.zero_grad()
+
+            out = model(data.x, data.edge_index, data.edge_attr, data.batch)
+            loss = criterion(torch.squeeze(out), data.y.float())
+
+            loss.backward()
+            optimizer.step()
+
+            total_loss += loss.item()
+            total += 1
+
+        total_loss = total_loss / total
+        print('Epoch: %3d/%3d, Train Loss: %.5f' % (epoch + 1, epochs, total_loss))
+
+    ys, preds = [], []
+    for data in test_loader:
         data = data.to(device)
-        optimizer.zero_grad()
-
+        ys.append(data.y.cpu())
         out = model(data.x, data.edge_index, data.edge_attr, data.batch)
-        loss = criterion(torch.squeeze(out), data.y.float())
+        preds.append((out > 0).float().cpu())
 
-        loss.backward()
-        optimizer.step()
-
-        total_loss += loss.item()
-        total += 1
-
-    total_loss = total_loss / total
-    print('Epoch: %3d/%3d, Train Loss: %.5f' % (epoch + 1, epochs, total_loss))
-
-ys, preds = [], []
-for data in test_loader:
-    data = data.to(device)
-    ys.append(data.y.cpu())
-    out = model(data.x, data.edge_index, data.edge_attr, data.batch)
-    preds.append((out > 0).float().cpu())
-
-y, pred = torch.cat(ys, dim=0).numpy(), torch.cat(preds, dim=0).numpy()
-print(f1_score(y, pred) if pred.sum() > 0 else 0)
-print(recall_score(y, pred) if pred.sum() > 0 else 0)
-print(precision_score(y, pred) if pred.sum() > 0 else 0)
-exit()
+    y, pred = torch.cat(ys, dim=0).numpy(), torch.cat(preds, dim=0).numpy()
+    print(f1_score(y, pred) if pred.sum() > 0 else 0)
+    print(recall_score(y, pred) if pred.sum() > 0 else 0)
+    print(precision_score(y, pred) if pred.sum() > 0 else 0)
+    exit()

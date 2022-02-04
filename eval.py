@@ -6,21 +6,21 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from simclr import SIMCLR
-from aug_dataset_big import TraceDataset
+from aug_dataset_new import TraceDataset
 from torch.utils.data import Subset
 from torch_geometric.loader import DataLoader
 from sklearn.svm import SVC, LinearSVC, OneClassSVM
 from sklearn.manifold import TSNE
-# from eval_method import oc_svm_classify
+from eval_method import oc_svm_classify, lof_detection, evaluate_embedding
 
 
 def main():
-    model_path = '../Data/TraceCluster/log/20epoch-CGConv-add/'
+    model_path = '../Data/TraceCluster/log/20epoch_TransformerConv_add/'
     batch_size = 128
     normal_classes = [0]
     abnormal_classes = [1]
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    dataset = TraceDataset(root='../Data/TraceCluster/big_data', aug='none')
+    dataset = TraceDataset(root='../Data/TraceCluster/data', aug='none')
 
     with open(model_path + 'train_info.json', "r") as f:  # file name not list
         model_info = json.load(f)
@@ -36,18 +36,18 @@ def main():
 
     normal_idx = dataset.normal_idx
     abnormal_idx = dataset.abnormal_idx
+    #
+    # random.shuffle(abnormal_idx)
+    # random.shuffle(normal_idx)
+    #
+    # train_normal = normal_idx[:int(len(normal_idx) * 0.8)]
+    # train_abnormal = abnormal_idx[:int(len(abnormal_idx) * 0)]
+    # test_normal = normal_idx[int(len(normal_idx) * 0.8):]
+    # test_abnormal = abnormal_idx[int(len(abnormal_idx) * 0):]
+    # train_idx = train_normal + train_abnormal
 
-    random.shuffle(abnormal_idx)
-    random.shuffle(normal_idx)
-
-    train_normal = normal_idx[:int(len(normal_idx) * 0.01)]
-    train_abnormal = abnormal_idx[:int(len(abnormal_idx) * 0.01)]
-    test_normal = normal_idx[int(len(normal_idx) * 0.99):]
-    test_abnormal = abnormal_idx[int(len(abnormal_idx) * 0.99):]
-    train_idx = train_normal + train_abnormal
-
-    test_idx = test_abnormal + test_normal
-    # test_idx = list(set(normal_idx + abnormal_idx).difference(set(train_idx)))
+    # test_idx = test_abnormal + test_normal
+    test_idx = list(set(normal_idx + abnormal_idx).difference(set(train_idx)))
 
     eval_dataset = Subset(dataset, test_idx)
     train_dataset = Subset(dataset, train_idx)
@@ -59,19 +59,22 @@ def main():
                    pooling_type=pooling_type).to(device)
     model.load_state_dict(torch.load(model_path + '{}_{}'.format(gnn_type, pooling_type) + ".model"))
 
-    emb_train, y_train, trace_class_train, url_status_class_train = model.encoder.get_embeddings(train_dataloader)
-    emb_test, y_test, trace_class_test, url_status_class_test = model.encoder.get_embeddings(eval_dataloader)
+    emb_train, y_train, trace_class_train, url_status_class_train, url_class_list_train = model.encoder.get_embeddings(train_dataloader)
+    emb_test, y_test, trace_class_test, url_status_class_test, url_class_list_test = model.encoder.get_embeddings(eval_dataloader)
 
-    # oc_svm_classify(emb_train, emb_test, y_train, y_test)
+    oc_svm_classify(emb_train, emb_test, y_train, y_test)
+    # lof_detection(emb_train, emb_test, y_train, y_test, [])
+    # evaluate_embedding(np.concatenate([emb_train, emb_test]), np.concatenate([y_train, y_test]), search=True)
 
-    tsne = TSNE()
-    data_embedding = np.concatenate([emb_train, emb_test])
-    labels = np.concatenate([y_train, y_test])
-    trace_class = np.concatenate([trace_class_train, trace_class_test])
-    url_status_class = np.concatenate([url_status_class_train, url_status_class_test])
-    x = tsne.fit_transform(data_embedding)
-    plt.scatter(x[:, 0], x[:, 1], c=url_status_class, marker='o', s=10, cmap=plt.cm.Spectral)
-    plt.show()
+    # tsne = TSNE()
+    # data_embedding = np.concatenate([emb_train, emb_test])
+    # labels = np.concatenate([y_train, y_test])
+    # trace_class = np.concatenate([trace_class_train, trace_class_test])
+    # url_status_class = np.concatenate([url_status_class_train, url_status_class_test])
+    # url_class_list = np.concatenate([url_class_list_train, url_class_list_test])
+    # x = tsne.fit_transform(data_embedding)
+    # plt.scatter(x[:, 0], x[:, 1], c=labels, marker='o', s=10, cmap=plt.cm.Spectral)
+    # plt.show()
     # plt.savefig(xp_path + '/t-sne-test.jpg')
 
 

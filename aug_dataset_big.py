@@ -35,7 +35,11 @@ class TraceDataset(InMemoryDataset):
 
     @property
     def span_type_features(self):
-        return ['timeScale', 'isParallel', 'callType']
+        return ['timeScale', 'isParallel', 'callType', 'isError']
+
+    @property
+    def edge_features(self):
+        return self.z_score_num_features + self.span_type_features
 
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
@@ -87,6 +91,13 @@ class TraceDataset(InMemoryDataset):
             url_status_classes = data_info['url_status_classes']
         return url_status_classes
 
+    @property
+    def url_classes(self):
+        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+            data_info = json.load(f)
+            url_classes = data_info['url_classes']
+        return url_classes
+
     def download(self):
         pass
 
@@ -97,6 +108,7 @@ class TraceDataset(InMemoryDataset):
         abnormal_idx = []
         class_list = []  # url status node_num
         url_status_class_list = []  # url status
+        url_class_list = []
         # data_list = []
         num_features_stat = self._get_num_features_stat()
         operation_embedding = self._operation_embedding()
@@ -132,6 +144,11 @@ class TraceDataset(InMemoryDataset):
             if url_status_class not in url_status_class_list:
                 url_status_class_list.append(url_status_class)
 
+            # define url status class based on root url, normal/abnormal
+            root_url_class = trace["edges"]["0"][0]["operation"]
+            if root_url_class not in url_class_list:
+                url_class_list.append(root_url_class)
+
             data = Data(
                 x=node_feats,
                 edge_index=edge_index,
@@ -143,7 +160,8 @@ class TraceDataset(InMemoryDataset):
                 y=trace['abnormal'],
                 root_url=trace["edges"]["0"][0]["operation"],
                 trace_class=class_list.index(trace_class),
-                url_status_class=url_status_class_list.index(url_status_class)
+                url_status_class=url_status_class_list.index(url_status_class),
+                url_class=url_class_list.index(root_url_class)
             )
             # data_list.append(data)
 
@@ -174,7 +192,8 @@ class TraceDataset(InMemoryDataset):
         datainfo = {'normal': normal_idx,
                     'abnormal': abnormal_idx,
                     'trace_classes': class_list,
-                    'url_status_classes': url_status_class_list}
+                    'url_status_classes': url_status_class_list,
+                    'url_classes': url_class_list}
 
         with open(self.processed_dir+'\data_info.json', 'w', encoding='utf-8') as json_file:
             json.dump(datainfo, json_file)
@@ -244,7 +263,10 @@ class TraceDataset(InMemoryDataset):
                     feat.append(to[feature])
 
                 for feature in self.span_type_features:
-                    feat.append(float(to[feature]))
+                    if feature == 'isError':
+                        feat.append(0.0 if to[feature] is False else 1.0)
+                    else:
+                        feat.append(float(to[feature]))
 
                 edge_feats.append(feat)
 

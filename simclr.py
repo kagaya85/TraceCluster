@@ -74,6 +74,7 @@ class Encoder(nn.Module):
         y = []
         trace_class = []
         url_status_class = []
+        url_class_list = []
         trace_ids = []
         with torch.no_grad():
             for data in tqdm(dataloader):
@@ -85,11 +86,13 @@ class Encoder(nn.Module):
                 y.append(data.y.cpu().numpy())
                 trace_class.append(data.trace_class.cpu().numpy())
                 url_status_class.append(data.url_status_class.cpu().numpy())
+                url_class_list.append(data.url_class.cpu().numpy())
         ret = np.concatenate(ret, 0)
         y = np.concatenate(y, 0)
         trace_class = np.concatenate(trace_class, 0)
         url_status_class = np.concatenate(url_status_class, 0)
-        return ret, y, trace_class, url_status_class
+        url_class_list = np.concatenate(url_class_list, 0)
+        return ret, y, trace_class, url_status_class, url_class_list
 
 
 class SIMCLR(nn.Module):

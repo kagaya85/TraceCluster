@@ -15,8 +15,6 @@ from sklearn import preprocessing
 from sklearn.metrics import accuracy_score, recall_score, precision_score
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
-import seaborn as sns
-import hdbscan
 
 import warnings
 
@@ -244,7 +242,7 @@ def oc_svm_classify(emb_train, emb_test, y_train, y_test):
     emb_train, y_train = np.array(emb_train), np.array(y_train)
     emb_test, y_test = np.array(emb_test), np.array(y_test)
 
-    clf = OneClassSVM(nu=0.1)
+    clf = OneClassSVM(nu=0.05)
     clf.fit(emb_train)
     y_pred_train = clf.predict(emb_train)
     y_pred_test = clf.predict(emb_test)
@@ -278,16 +276,6 @@ def oc_svm_classify(emb_train, emb_test, y_train, y_test):
 
     print('OCSVM Test precision is %.5f' % precision_test)
     print('OCSVM Train precision is %.5f' % precision_train)
-
-    return
-
-
-def hdbscan_detection(emb_train, emb_test, y_train, y_test):
-    emb_train, y_train = np.array(emb_train), np.array(y_train)
-    emb_test, y_test = np.array(emb_test), np.array(y_test)
-
-    cluster = hdbscan.HDBSCAN(min_cluster_size=5)
-    cluster.fit(emb_train)
 
     return
 
