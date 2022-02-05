@@ -1,3 +1,4 @@
+from curses.ascii import SP
 import re
 import json
 import time
@@ -8,7 +9,7 @@ from pandas.core.frame import DataFrame
 from typing import List, Callable, Dict
 from ...preprocess import load_span, Span
 
-root_index = 'root'
+root_index = '-1'
 
 
 def get_span() -> List[DataFrame]:
@@ -50,14 +51,14 @@ def get_service_operation_list(span_list: List[Span]) -> List[str]:
 """
 
 
-def get_operation_slo(service_operation_list, span_list):
+def get_operation_slo(service_operation_list: List[str], span_list: List[Span]):
     template = {
         'parent': '',  # parent span
         'operation': '',  # current servicename_operation
         'duration': 0  # duration of current operation
     }
 
-    traceid = span_list[0]['_source']['traceID']
+    traceid = span_list[0].traceId
     filter_data = {}
     temp = {}
     normal_trace = True
@@ -71,76 +72,44 @@ def get_operation_slo(service_operation_list, span_list):
                     return False
         return True
 
-    def server_client_determined():
-        """
-        :return span.kind
-        tags: [{"key": "span.kind",
-            "type": "string",
-            "value": "server"}]
-        """
-        for tag in doc['tags']:
-            if tag['key'] == "span.kind":
-                return tag['value']
-
-    def get_operation_name():
-        operation_name = doc['operationName']
-        operation_name = operation_name.split('/')[-1]
-        operation_name = doc['process']['serviceName'] + '_' + operation_name
-        return operation_name
-
-    for doc in span_list:
-        doc = doc['_source']
-        if traceid == doc['traceID']:
-            spanid = doc['spanID']
+    for span in span_list:
+        if traceid == span.traceId:
+            spanid = span.spanId
             temp[spanid] = deepcopy(template)
-            temp[spanid]['duration'] = doc['duration']
-            temp[spanid]['operation'] = get_operation_name()
+            temp[spanid]['duration'] = span.duration
+            temp[spanid]['operation'] = span.operation
 
-            if server_client_determined() == 'server' and doc['process']['serviceName'] == "frontend":
+            if span.spanType == 'Entry' and span.service == "frontend":
                 temp[spanid]['parent'] = root_index
             else:
-                """
-               "references" : [{"refType" : "CHILD_OF",
-                "traceID" : "0000658f4e42f8674d2e36630a9ca2b8",
-                "spanID" : "83438897471cc41a"}],
-                """
-                if len(doc['references']) == 0:
-                    print(doc)
-                    normal_trace = False
-                else:
-                    parentId = doc['references'][0]['spanID']
-                    temp[spanid]['parent'] = parentId
-                    if parentId in temp:
-                        temp[parentId]['duration'] -= temp[spanid]['duration']
-                    else:
-                        normal_trace = False
-
-        elif traceid != doc['traceID'] and len(temp) > 0:
-            if check_filter_data() and normal_trace:
-                filter_data[traceid] = temp
-
-            traceid = doc['traceID']
-            normal_trace = True
-            spanid = doc['spanID']
-            temp = {}
-            temp[spanid] = deepcopy(template)
-            temp[spanid]['duration'] = doc['duration']
-            temp[spanid]['operation'] = get_operation_name()
-            if server_client_determined() == 'server' and doc['process']['serviceName'] == "frontend":
-                temp[spanid]['parent'] = root_index
-            else:
-                if len(doc['references']) == 0:
-                    normal_trace = False
-                    print(
-                        "filter data because it is not frontend and its references is null ")
-                    print(traceid)
-                else:
-                    parentId = doc['references'][0]['spanID']
-                    temp[spanid]['parent'] = parentId
+                parentId = span.parentSpanId
+                temp[spanid]['parent'] = parentId
                 if parentId in temp:
                     temp[parentId]['duration'] -= temp[spanid]['duration']
                 else:
                     normal_trace = False
+
+        elif traceid != span.spanId and len(temp) > 0:
+            if check_filter_data() and normal_trace:
+                filter_data[traceid] = temp
+
+            traceid = span.traceId
+            normal_trace = True
+            spanid = span.spanId
+            temp = {}
+            temp[spanid] = deepcopy(template)
+            temp[spanid]['duration'] = span.duration
+            temp[spanid]['operation'] = span.operation
+            if span.spanType == 'Entry' and span.service == "frontend":
+                temp[spanid]['parent'] = root_index
+            else:
+                parentId = span.parentSpanId
+                temp[spanid]['parent'] = parentId
+                if parentId in temp:
+                    temp[parentId]['duration'] -= temp[spanid]['duration']
+                else:
+                    normal_trace = False
+
     # The last trace
     if len(temp) > 1:
         if check_filter_data() and normal_trace:
@@ -194,22 +163,9 @@ def get_operation_slo(service_operation_list, span_list):
 '''
 
 
-def get_operation_duration_data(operation_list, span_list):
+def get_operation_duration_data(operation_list: List[str], span_list: List[Span]):
     operation_dict = {}
-
-    trace_id = span_list[0]['_source']['traceID']
-
-    def server_client_determined():
-        for tag in doc['tags']:
-            if tag['key'] == "span.kind":
-                return tag['value']
-
-    def get_operation_name():
-        operation_name_tmp = doc['operationName']
-        operation_name_tmp = operation_name_tmp.split('/')[-1]
-        operation_name_tmp = doc['process']['serviceName'] + \
-            '_' + operation_name_tmp
-        return operation_name_tmp
+    trace_id = span_list[0].traceId
 
     def init_dict(trace_id):
         if trace_id not in operation_dict:
@@ -219,34 +175,26 @@ def get_operation_duration_data(operation_list, span_list):
             operation_dict[trace_id]['duration'] = 0
 
     length = 0
-    for doc in span_list:
-        doc = doc['_source']
-        tag = server_client_determined()
-        operation_name = get_operation_name()
+    for span in span_list:
+        tag = span.spanType
+        operation_name = span.operation
 
-        init_dict(doc['traceID'])
+        init_dict(span.spanId)
 
-        if trace_id == doc['traceID']:
+        if trace_id == span.traceId:
             operation_dict[trace_id][operation_name] += 1
             length += 1
 
-            if doc['process']['serviceName'] == "frontend" and tag == "server":
-                operation_dict[trace_id]['duration'] += doc['duration']
+            if span.service == "frontend" and tag == "Entry":
+                operation_dict[trace_id]['duration'] += span['duration']
 
         else:
-            if operation_dict[trace_id]['duration'] == 0:
-                if length > 45:
-                    operation_dict.pop(trace_id)
-
-                else:
-                    operation_dict.pop(trace_id)
-
-            trace_id = doc['traceID']
+            trace_id = span.traceId
             length = 0
             operation_dict[trace_id][operation_name] += 1
 
-            if doc['process']['serviceName'] == "frontend" and tag == "server":
-                operation_dict[trace_id]['duration'] += doc['duration']
+            if span.service == "frontend" and tag == "server":
+                operation_dict[trace_id]['duration'] += span['duration']
 
     return operation_dict
 
@@ -272,7 +220,7 @@ def get_operation_duration_data(operation_list, span_list):
 '''
 
 
-def get_pagerank_graph(trace_list, span_list):
+def get_pagerank_graph(trace_list: List[str], span_list: List[Span]):
     template = {
         'parent': '',  # parent span
         'operation': '',  # current servicename_operation
@@ -281,66 +229,33 @@ def get_pagerank_graph(trace_list, span_list):
     if len(trace_list) > 0:
         traceid = trace_list[0]
     else:
-        traceid = span_list[0]
+        traceid = span_list[0].traceId
     filter_data = {}
     temp = {}
-
-    def get_operation_name():
-        """
-        有时pod_name在 tags 中，有时在process的tags中
-        "process": {"tags": [{"key": "name",
-                    "type": "string",
-                    "value": "frontend-7dbb469cd9-lkv68"}]}
-        "tags" : [{"key" : "name",
-              "type" : "string",
-              "value" : "adservice-7688bd74f6-7qkvl"}]
-
-        operation = pod_name + operation_name
-        :return operation
-        """
-        pod_name = ""
-
-        for tag in doc['process']['tags']:
-            if tag['key'] == "name":
-                pod_name = tag['value']
-
-        for tag in doc['tags']:
-            if tag['key'] == "name":
-                pod_name = tag['value']
-
-        operation = pod_name + "_" + doc['operationName']
-        return operation
 
     operation_operation = {}
     operation_trace = {}
     trace_operation = {}
     pr_trace = {}
 
-    for doc in span_list:
-        doc = doc['_source']
-        operation_name = get_operation_name()
-        if doc['traceID'] in trace_list:
-            if traceid == doc['traceID']:
-                spanid = doc['spanID']
+    for span in span_list:
+        operation_name = span.operation
+        if span.traceId in trace_list:
+            if traceid == span.traceId:
+                spanid = span.spanId
                 temp[spanid] = deepcopy(template)
-                temp[spanid]['operation'] = get_operation_name()
+                temp[spanid]['operation'] = span.operation
+                temp[spanid]['parent'] = span.parentSpanId
 
-                if len(doc['references']) > 0:
-                    parentId = doc['references'][0]['spanID']
-                    temp[spanid]['parent'] = parentId
-
-            elif traceid != doc['traceID'] and len(temp) > 0:
+            elif traceid != span.spanId and len(temp) > 0:
                 filter_data[traceid] = temp
 
-                traceid = doc['traceID']
-                spanid = doc['spanID']
+                traceid = span.traceId
+                spanid = span.spanId
                 temp = {}
                 temp[spanid] = deepcopy(template)
-                temp[spanid]['operation'] = get_operation_name()
-
-                if len(doc['references']) > 0:
-                    parentId = doc['references'][0]['spanID']
-                    temp[spanid]['parent'] = parentId
+                temp[spanid]['operation'] = span.operation
+                temp[spanid]['parent'] = span.parentSpanId
 
             if len(temp) > 1:
                 filter_data[traceid] = temp
@@ -359,16 +274,16 @@ def get_pagerank_graph(trace_list, span_list):
                 operation_operation[operation_name] = []
                 trace_operation[operation_name] = []
 
-            if doc['traceID'] not in operation_trace:
-                operation_trace[doc['traceID']] = []
-                pr_trace[doc['traceID']] = []
+            if span.traceId not in operation_trace:
+                operation_trace[span.traceId] = []
+                pr_trace[span.traceId] = []
 
-            pr_trace[doc['traceID']].append(operation_name)
+            pr_trace[span.traceId].append(operation_name)
 
-            if operation_name not in operation_trace[doc['traceID']]:
-                operation_trace[doc['traceID']].append(operation_name)
-            if doc['traceID'] not in trace_operation[operation_name]:
-                trace_operation[operation_name].append(doc['traceID'])
+            if operation_name not in operation_trace[span.traceId]:
+                operation_trace[span.traceId].append(operation_name)
+            if span.traceId not in trace_operation[operation_name]:
+                trace_operation[operation_name].append(span.traceId)
 
     for traceid in filter_data:
         single_trace = filter_data[traceid]
@@ -400,6 +315,5 @@ if __name__ == '__main__':
     # print(span_list)
     operation_list = get_service_operation_list(span_list)
     print(operation_list)
-    operation_slo = get_operation_slo(
-        service_operation_list=operation_list, span_list=span_list)
+    operation_slo = get_operation_slo(operation_list, span_list)
     print(operation_slo)

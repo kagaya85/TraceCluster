@@ -115,7 +115,7 @@ def arguments():
     return parser.parse_args()
 
 
-def load_span() -> List[DataFrame]:
+def load_span(is_wechat: bool) -> List[DataFrame]:
     """
     load raw sapn data from pathList
     """
@@ -851,7 +851,7 @@ def main():
     print(f"parallel processing number: {args.cores}")
 
     # load all span
-    raw_spans = load_span()
+    raw_spans = load_span(is_wechat)
     if is_wechat and use_request:
         save_name_cache(cache)
 
