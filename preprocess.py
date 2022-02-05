@@ -865,7 +865,7 @@ def main():
 
         def normalize(x):
             return min_max(
-                x, max_duration, min_duration)
+                x, min_duration, max_duration)
 
     elif args.normalize == 'zscore':
         mean_duration = span_data[ITEM.DURATION].mean()
