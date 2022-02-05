@@ -8,10 +8,11 @@ new_data_list = [
     'normal/2022-01-11_12-00-00_6h_traces.csv',
 
     # Chaos
-    'chaos/2022-01-10_16-00-00_5h_traces.csv',
+    # 'chaos/2022-01-10_16-00-00_5h_traces.csv',
     # 'chaos/2022-01-11_00-00-00_24h_traces.csv',
     'chaos/2022-01-12_00-00-00_24h_traces.csv',
     'chaos/2022-01-13_00-00-00_24h_traces.csv',
+    'chaos/2022-01-27_00-00-00_24h_traces.csv'
 ]
 
 old_data_list = [
