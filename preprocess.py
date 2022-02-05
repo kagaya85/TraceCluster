@@ -219,6 +219,8 @@ def load_span() -> List[DataFrame]:
 
             spans[ITEM.SERVICE] = spans[ITEM.SERVICE].map(
                 lambda x: remove_tail_id(x))
+            spans[ITEM.PEER] = spans[ITEM.PEER].map(
+                lambda x: remove_tail_id(x))
             raw_spans.extend(data_partition(spans, 10240))
 
     return raw_spans
@@ -378,18 +380,34 @@ def calculate_edge_features(current_span: Span, trace_duration: dict, spanChildr
     return features
 
 
-def check_abnormal_span(span: Span) -> bool:
+def check_abnormal_span(span: Span, exit_list: List[Span]) -> tuple[bool, str]:
+    # 故障请求延时为5s，所以小于5000ms的不算作异常
+    if span.duration < 5000 and not span.isError:
+        return False, ''
+
     start_hour = time.localtime(span.startTime//1000).tm_hour
     chaos_service = chaos_dict.get(start_hour)
 
-    if start_hour not in chaos_dict.keys() or not span.service.startswith(chaos_service):
-        return False
+    # 该时段没有故障
+    if chaos_service == None:
+        return False, ''
 
-    # 故障请求延时为5s，所以小于5000ms的不是根因
-    if span.duration < 5000 and not span.isError:
-        return False
+    # 当前span就是根因
+    if span.service.startswith(chaos_service):
+        return True, chaos_service
 
-    return True
+    # 没有exit span
+    if exit_list == None:
+        return False, ''
+
+    # 遍历 exit span 的 peer 判断是否请求的故障服务
+    for es in exit_list:
+        if es.spanType != 'Exit':
+            continue
+        if es.peer.startswith(chaos_service):
+            return True, chaos_service
+
+    return False, ''
 
 
 def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], operation_map: dict):
@@ -416,7 +434,7 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
         if span.spanType != 'Local':
             continue
 
-        if spanMap.get(span.parentSpanId) is None:
+        if span.parentSpanId != '-1' and spanMap.get(span.parentSpanId) is None:
             return None, str_set
         else:
             local_span_children = spanChildrenMap[span.spanId]
@@ -440,9 +458,11 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
         if span.spanType in ['Exit', 'Producer', 'Local']:
             continue
 
-        if check_abnormal_span(span):
+        has_chaos, root = check_abnormal_span(
+            span, spanChildrenMap.get(span.spanId))
+        if has_chaos:
             is_abnormal = 1
-            chaos_root = chaos_dict.get(time.localtime(span.startTime).tm_hour)
+            chaos_root = root
 
         # get the parent server span id
         if span.parentSpanId == '-1':
