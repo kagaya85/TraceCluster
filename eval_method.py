@@ -242,7 +242,7 @@ def oc_svm_classify(emb_train, emb_test, y_train, y_test):
     emb_train, y_train = np.array(emb_train), np.array(y_train)
     emb_test, y_test = np.array(emb_test), np.array(y_test)
 
-    clf = OneClassSVM(nu=0.05)
+    clf = OneClassSVM(nu=0.01)
     clf.fit(emb_train)
     y_pred_train = clf.predict(emb_train)
     y_pred_test = clf.predict(emb_test)

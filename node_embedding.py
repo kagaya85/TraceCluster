@@ -145,7 +145,7 @@ def deepwalk_embedding(edgelist_filename, output_filename):
 
 
 if __name__ == '__main__':
-    file_name = "/tmp/pycharm_project_683/data/preprocessed/trainticket/bert_2022-01-12_10-36-30/0.json"
+    file_name = "D:\code\Data\TraceCluster\\new_data\\new_data.json"
     weighted = False
     if weighted:
         name = ""

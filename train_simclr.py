@@ -18,18 +18,9 @@ from torch_geometric.nn import PNAConv, BatchNorm, global_add_pool, global_mean_
 from sklearn.metrics import f1_score, recall_score, precision_score
 from torch.utils.data import Subset
 from simclr import SIMCLR
+from utils import get_target_label_idx
 
-from aug_dataset_big import TraceDataset
-
-
-# def get_target_label_idx(labels, targets):
-#     """
-#         Get the indices of labels that are included in targets.
-#         :param labels: array of labels
-#         :param targets: list/tuple of target labels
-#         :return: list with indices of target labels
-#         """
-#     return np.argwhere(np.isin(labels, targets)).flatten().tolist()
+from aug_dataset import TraceDataset
 
 
 def main():
@@ -38,11 +29,11 @@ def main():
     epochs = 20
     normal_classes = [0]
     abnormal_classes = [1]
-    batch_size = 64
+    batch_size = 32
     num_workers = 10
     num_layers = 2
-    gnn_type = 'CGConv'  # GATConv  TransformerConv  CGConv
-    pooling_type = 'add'  # mean  add
+    gnn_type = 'TransformerConv'  # GATConv  TransformerConv  CGConv
+    pooling_type = 'mean'  # mean  add
 
     aug = 'random'
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -161,17 +152,6 @@ def main():
     logger.info(f"save model to {save_model_path}")
     torch.save(model.state_dict(), save_model_path)
 
-    # ys, preds = [], []
-    # for data in test_loader:
-    #     data = data.to(device)
-    #     ys.append(data.y.cpu())
-    #     out = model(data.x, data.edge_index, data.edge_attr, data.batch)
-    #     preds.append((out > 0).float().cpu())
-    #
-    # y, pred = torch.cat(ys, dim=0).numpy(), torch.cat(preds, dim=0).numpy()
-    # print(f1_score(y, pred) if pred.sum() > 0 else 0)
-    # print(recall_score(y, pred) if pred.sum() > 0 else 0)
-    # print(precision_score(y, pred) if pred.sum() > 0 else 0)
     exit()
 
 

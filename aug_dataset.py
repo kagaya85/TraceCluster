@@ -1,3 +1,8 @@
+import math
+import time
+from tqdm import tqdm
+from collections import Counter
+
 import torch
 from torch_geometric.data import Dataset, InMemoryDataset
 from torch_geometric.data.data import Data
@@ -14,13 +19,13 @@ from itertools import repeat, product
 from torch_geometric.data.separate import separate
 from typing import List, Tuple, Union
 from copy import deepcopy
+from aug_method import *
 
 
 class TraceDataset(InMemoryDataset):
     def __init__(self, root, transform=None, pre_transform=None, aug=None):
         super(TraceDataset, self).__init__(
             root, transform, pre_transform)
-        self.data, self.slices = torch.load(self.processed_paths[0])
         self.aug = aug
 
 
@@ -30,7 +35,11 @@ class TraceDataset(InMemoryDataset):
 
     @property
     def span_type_features(self):
-        return ['timeScale', 'isParallel', 'callType']
+        return ['timeScale', 'isParallel', 'callType', 'isError']
+
+    @property
+    def edge_features(self):
+        return self.z_score_num_features + self.span_type_features
 
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
@@ -40,14 +49,67 @@ class TraceDataset(InMemoryDataset):
 
     @property
     def processed_file_names(self) -> Union[str, List[str], Tuple]:
-        return ["processed.pt"]
+        file_list = []
+        for file in os.listdir(self.processed_dir):
+            if os.path.splitext(file)[1] == '.pt':
+                if file in ['pre_filter.pt', 'pre_transform.pt']:
+                    continue
+                file_list.append(file)
+
+        return file_list
+
+    @property
+    def processed_dir(self):
+        name = 'processed'
+        return osp.join(self.root, name)
+
+    @property
+    def normal_idx(self):
+        with open(self.processed_dir + '\data_info.json', "r") as f:    # file name not list
+            data_info = json.load(f)
+            normal_idx = data_info['normal']
+        return normal_idx
+
+    @property
+    def abnormal_idx(self):
+        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+            data_info = json.load(f)
+            abnormal_idx = data_info['abnormal']
+        return abnormal_idx
+
+    @property
+    def trace_classes(self):
+        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+            data_info = json.load(f)
+            trace_classes = data_info['trace_classes']
+        return trace_classes
+
+    @property
+    def url_status_classes(self):
+        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+            data_info = json.load(f)
+            url_status_classes = data_info['url_status_classes']
+        return url_status_classes
+
+    @property
+    def url_classes(self):
+        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+            data_info = json.load(f)
+            url_classes = data_info['url_classes']
+        return url_classes
 
     def download(self):
         pass
 
     def process(self):
 
-        data_list = []
+        idx = 0
+        normal_idx = []
+        abnormal_idx = []
+        class_list = []  # url status node_num
+        url_status_class_list = []  # url status
+        url_class_list = []
+        # data_list = []
         num_features_stat = self._get_num_features_stat()
         operation_embedding = self._operation_embedding()
 
@@ -73,6 +135,20 @@ class TraceDataset(InMemoryDataset):
                 print("Feature dismatch! num_edges_edge_feats: {}, num_edges_edge_index: {}, trace_id: {}".format(
                     num_edges_edge_feats, num_edges_edge_index, trace_id))
 
+            # define class based on root url, normal/abnormal, node num
+            trace_class = trace["edges"]["0"][0]["operation"] + str(trace['abnormal']) + str(node_feats.size(0))
+            if trace_class not in class_list:
+                class_list.append(trace_class)
+            # define url status class based on root url, normal/abnormal
+            url_status_class = trace["edges"]["0"][0]["operation"] + str(trace['abnormal'])
+            if url_status_class not in url_status_class_list:
+                url_status_class_list.append(url_status_class)
+
+            # define url status class based on root url, normal/abnormal
+            root_url_class = trace["edges"]["0"][0]["operation"]
+            if root_url_class not in url_class_list:
+                url_class_list.append(root_url_class)
+
             data = Data(
                 x=node_feats,
                 edge_index=edge_index,
@@ -82,17 +158,26 @@ class TraceDataset(InMemoryDataset):
                 time_stamp=trace["edges"]["0"][0]["startTime"],
                 # time_stamp=list(trace["edges"].items())[0][1][0]["startTime"],
                 y=trace['abnormal'],
-                root_url=trace["edges"]["0"][0]["operation"]
+                root_url=trace["edges"]["0"][0]["operation"],
+                trace_class=class_list.index(trace_class),
+                url_status_class=url_status_class_list.index(url_status_class),
+                url_class=url_class_list.index(root_url_class)
             )
-            data_list.append(data)
+            # data_list.append(data)
 
             # test
             # if data.trace_id == '1e3c47720fe24523938fff342ebe6c0d.35.16288656971030003':
             #    data.edge_attr = data.edge_attr * 1000
 
-            # filename = osp.join(self.processed_dir, 'data_{}.pt'.format(idx))
-            # torch.save(data, filename)
-            # idx += 1
+            if trace['abnormal'] == 0:
+                normal_idx.append(idx)
+            elif trace['abnormal'] == 1:
+                abnormal_idx.append(idx)
+
+            filename = osp.join(self.processed_dir, 'data_{}.pt'.format(idx))
+            torch.save(data, filename)
+            idx += 1
+
             # data_list.append(data)
 
         # if self.pre_filter is not None:
@@ -101,8 +186,19 @@ class TraceDataset(InMemoryDataset):
         # if self.pre_transform is not None:
         #     data_list = [self.pre_transform(data) for data in data_list]
 
-        datas, slices = self.collate(data_list)
-        torch.save((datas, slices), self.processed_paths[0])
+        # datas, slices = self.collate(data_list)
+        # torch.save((datas, slices), self.processed_paths[0])
+
+        datainfo = {'normal': normal_idx,
+                    'abnormal': abnormal_idx,
+                    'trace_classes': class_list,
+                    'url_status_classes': url_status_class_list,
+                    'url_classes': url_class_list}
+
+        with open(self.processed_dir+'\data_info.json', 'w', encoding='utf-8') as json_file:
+            json.dump(datainfo, json_file)
+            print('write data info success')
+
 
     def _operation_embedding(self):
         """
@@ -167,7 +263,10 @@ class TraceDataset(InMemoryDataset):
                     feat.append(to[feature])
 
                 for feature in self.span_type_features:
-                    feat.append(float(to[feature]))
+                    if feature == 'isError':
+                        feat.append(0.0 if to[feature] is False else 1.0)
+                    else:
+                        feat.append(float(to[feature]))
 
                 edge_feats.append(feat)
 
@@ -201,41 +300,11 @@ class TraceDataset(InMemoryDataset):
         z_socre = (raw - feature_stat[0]) / feature_stat[1]
         return z_socre
 
-    def get(self, idx: int) -> Data:
-        if self.len() == 1:
-            return copy.copy(self.data)
+    _dispatcher = {}
 
-        if not hasattr(self, '_data_list') or self._data_list is None:
-            self._data_list = self.len() * [None]
-        elif self._data_list[idx] is not None:
-            return copy.copy(self._data_list[idx])
-
-        data = separate(
-            cls=self.data.__class__,
-            batch=self.data,
-            idx=idx,
-            slice_dict=self.slices,
-            decrement=False,
-        )
-
-        data_1 = separate(
-            cls=self.data.__class__,
-            batch=self.data,
-            idx=idx,
-            slice_dict=self.slices,
-            decrement=False,
-        )
-
-        data_2 = separate(
-            cls=self.data.__class__,
-            batch=self.data,
-            idx=idx,
-            slice_dict=self.slices,
-            decrement=False,
-        )
-
-        # self._data_list[idx] = copy.copy(data)
-
+    def get(self, idx: int):
+        data = torch.load(
+            osp.join(self.processed_dir, 'data_{}.pt'.format(idx)))
 
         """
         edge_index = data.edge_index
@@ -250,18 +319,35 @@ class TraceDataset(InMemoryDataset):
         #data.edge_index = torch.cat((data.edge_index, sl), dim=1)
 
         if self.aug == 'dnodes':    # 删除部分点
-            data_aug = drop_nodes(deepcopy(data))
+            data = drop_nodes(data)
         elif self.aug == 'pedges':    # 删除 or 增加部分边
-            data_aug = permute_edges(deepcopy(data))
-        elif self.aug == 'subgraph':    #
-            data_aug = subgraph(deepcopy(data))
-        elif self.aug == 'mask_nodes':    # 属性屏蔽
-            data_aug_1 = mask_nodes(data_1)
-            data_aug_2 = mask_nodes(data_2)
-
-            print(data_aug_1.x)
-            print(data_aug_2.x)
-
+            data = permute_edges(data)
+        elif self.aug == 'subgraph':    # 随机选初始点扩张固定节点数子图
+            data_aug_1 = subgraph(deepcopy(data))
+            data_aug_2 = subgraph(deepcopy(data))
+        elif self.aug == 'permute_edges_for_subgraph':  # 随机删一条边，选较大子图
+            data_aug_1 = permute_edges_for_subgraph(deepcopy(data))
+            data_aug_2 = permute_edges_for_subgraph(deepcopy(data))
+        elif self.aug == 'mask_nodes':    # 结点属性屏蔽
+            data_aug_1 = mask_nodes(deepcopy(data))
+            data_aug_2 = mask_nodes(deepcopy(data))
+        elif self.aug == 'mask_edges':    # 边属性屏蔽
+            data_aug_1 = mask_edges(deepcopy(data))
+            data_aug_2 = mask_edges(deepcopy(data))
+        elif self.aug == 'mask_nodes_and_edges':    # 结点与边属性屏蔽
+            data_aug_1 = mask_nodes(deepcopy(data))
+            data_aug_1 = mask_edges(data_aug_1)
+            data_aug_2 = mask_nodes(deepcopy(data))
+            data_aug_2 = mask_edges(data_aug_2)
+        elif self.aug == "request_and_response_duration_time_error_injection":  # request_and_response_duration时间异常对比
+            data_aug_1 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
+            data_aug_2 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
+        elif self.aug == 'subSpan_duration_time_error_injection':   # subSpan_duration时间异常
+            data_aug_1 = time_error_injection(deepcopy(data), root_cause='subSpan_duration')
+            data_aug_2 = time_error_injection(deepcopy(data), root_cause='subSpan_duration')
+        elif self.aug == 'response_code_error_injection':
+            data_aug_1 = response_code_injection(deepcopy(data))
+            data_aug_2 = response_code_injection(deepcopy(data))
         elif self.aug == 'none':
             """
             if data.edge_index.max() > data.x.size()[0]:
@@ -270,224 +356,82 @@ class TraceDataset(InMemoryDataset):
                 assert False
             """
             # data_aug_1 = pickle.loads(pickle.dumps(data))
-            data_aug_1 = deepcopy(data)
+            # data_aug_1 = data
             # data_aug_2 = pickle.loads(pickle.dumps(data))
             #data_aug.x = torch.ones((data.edge_index.max()+1, 1))
-            data_aug_2 = deepcopy(data)
-
-        elif self.aug == 'random2':
-            n = np.random.randint(2)
-            if n == 0:
-                data_aug = drop_nodes(deepcopy(data))
-            elif n == 1:
-                data_aug = subgraph(deepcopy(data))
-            else:
-                print('sample error')
-                assert False
-
-        elif self.aug == 'random3':
-            n = np.random.randint(3)
-            if n == 0:
-                data_aug = drop_nodes(deepcopy(data))
-            elif n == 1:
-                data_aug = permute_edges(deepcopy(data))
-            elif n == 2:
-                data_aug = mask_nodes(deepcopy(data))
-            else:
-                print('sample error')
-                assert False
-
-        elif self.aug == 'random4':
+            # data_aug_2 = data
+            return data
+        elif self.aug == 'random':
             n = np.random.randint(4)
-            if n == 0:
-                data_aug = drop_nodes(deepcopy(data))
-            elif n == 1:
-                data_aug = permute_edges(deepcopy(data))
-            elif n == 2:
-                data_aug = subgraph(deepcopy(data))
+            if n < 3:
+                # view aug
+                data_aug_1 = self._get_view_aug(data)
+                data_aug_2 = self._get_view_aug(data)
             elif n == 3:
-                data_aug = mask_nodes(deepcopy(data))
-            else:
-                print('sample error')
-                assert False
-
+                # anomaly aug
+                data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
         else:
-            print('augmentation error')
+            print('no need for augmentation ')
             assert False
 
-        # print(data, data_aug)
-        # assert False
-
         return data, data_aug_1, data_aug_2
-        # return data, data_aug_1
 
+    def len(self) -> int:
 
+        return len(self.processed_file_names)
 
-def drop_nodes(data):
+    def _get_view_aug(self, data):
+        n = np.random.randint(4)
+        if n == 0:
+            data_aug = mask_nodes(deepcopy(data))
+        elif n == 1:
+            data_aug = mask_edges(deepcopy(data))
+        elif n == 2:
+            data_aug = mask_nodes(deepcopy(data))
+            data_aug = mask_edges(data_aug)
+        elif n == 3:
+            data_aug = permute_edges_for_subgraph(deepcopy(data))
+        # elif n == 4:
+        #     data_aug = subgraph(deepcopy(data))
+        else:
+            print('sample error')
+            assert False
+        return data_aug
 
-    node_num, _ = data.x.size()    # x: num_node * num_node_features
-    _, edge_num = data.edge_index.size()    # edge_index: 2 * edge_num
-    drop_num = int(node_num / 10)
-
-    # index  从 [0, node_num) 个点中选 drop_num 个点，并返回点的索引列表
-    idx_drop = np.random.choice(node_num, drop_num, replace=False)
-    # 不被删除的点的索引列表，保留点的索引列表
-    idx_nondrop = [n for n in range(node_num) if not n in idx_drop]
-    idx_dict = {idx_nondrop[n]: n for n in list(
-        range(node_num - drop_num))}    # ???????  干嘛呢
-
-    # data.x = data.x[idx_nondrop]
-    edge_index = data.edge_index.numpy()
-
-    edge_dict = {(edge_index[0][n], edge_index[1][n]): n for n in range(
-        edge_num)}    # (from, to): edge_index colum idx
-
-    #node_num = 4
-    # edge_index = [[-1,0,1,2],
-    # [0,1,2,0]]
-    #edge_index = torch.tensor(edge_index, dtype=torch.long)
-    #idx_drop = [0, 1]
-
-    adj = torch.zeros((node_num, node_num))
-    # 根据 edge_index，在有边的地方置为 1，没有边的地方保持 0，得到未 drop 的邻接矩阵
-    adj[edge_index[0], edge_index[1]] = 1
-    adj[idx_drop, :] = 0
-    adj[:, idx_drop] = 0
-    edge_index = adj.nonzero(as_tuple=False).t()
-
-    data.edge_index = edge_index
-
-    edge_index = data.edge_index.numpy()
-    edge_attr = []
-    for idx_edge in range(data.edge_index.size(1)):
-        idx_column = edge_dict[(edge_index[0][idx_edge],
-                                edge_index[1][idx_edge])]
-        edge_attr.append(data.edge_attr[idx_column].numpy())
-
-    edge_attr = np.asarray(edge_attr)
-    data.edge_attr = torch.tensor(edge_attr, dtype=torch.float)
-
-    # edge_index = [[idx_dict[edge_index[0, n]], idx_dict[edge_index[1, n]]] for n in range(edge_num) if (not edge_index[0, n] in idx_drop) and (not edge_index[1, n] in idx_drop)]
-    # edge_index = [[edge_index[0, n], edge_index[1, n]] for n in range(edge_num) if (not edge_index[0, n] in idx_drop) and (not edge_index[1, n] in idx_drop)] + [[n, n] for n in idx_nondrop]
-    # data.edge_index = torch.tensor(edge_index).transpose_(0, 1)
-
-    return data
-
-
-def permute_edges(data):
-
-    node_num, _ = data.x.size()    # [node_num, 300]
-    _, edge_num = data.edge_index.size()    # [2, edge_num]
-    permute_num = int(edge_num / 10)
-
-    edge_index = data.edge_index.numpy()
-    edge_dict = {(edge_index[0][n], edge_index[1][n]): n for n in range(
-        edge_num)}    # (from, to): edge_index colum idx
-
-    edge_index = data.edge_index.transpose(
-        0, 1).numpy()    # [[from1, to1], [from2, to2]...]
-
-    # 选择 permute_num 条边，[[from1, to1], [from2, to2]...]
-    # permute_num 表示向量个数，2 表示每个向量的维度，(permute_num, 2) 表示维度。node_num 表示选择范围（从哪里选）
-    idx_add = np.random.choice(node_num, (permute_num, 2))
-    # idx_add = [[idx_add[0, n], idx_add[1, n]] for n in range(permute_num) if not (idx_add[0, n], idx_add[1, n]) in edge_index]
-
-    # edge_index = np.concatenate((np.array([edge_index[n] for n in range(edge_num) if not n in np.random.choice(edge_num, permute_num, replace=False)]), idx_add), axis=0)
-    # edge_index = np.concatenate((edge_index[np.random.choice(edge_num, edge_num-permute_num, replace=False)], idx_add), axis=0)
-
-    # 删除边，删除 permute_num 条边，保留 edge_num-permute_num 条边
-    edge_index = edge_index[np.random.choice(
-        edge_num, edge_num-permute_num, replace=False)]
-    # edge_index = [edge_index[n] for n in range(edge_num) if not n in np.random.choice(edge_num, permute_num, replace=False)] + idx_add
-    data.edge_index = torch.tensor(edge_index).transpose_(0, 1)
-
-    edge_index = data.edge_index.numpy()
-    edge_attr = []
-    for idx_edge in range(data.edge_index.size(1)):
-        idx_column = edge_dict[(edge_index[0][idx_edge],
-                                edge_index[1][idx_edge])]
-        edge_attr.append(data.edge_attr[idx_column].numpy())
-
-    edge_attr = np.asarray(edge_attr)
-    data.edge_attr = torch.tensor(edge_attr, dtype=torch.float)
-
-    return data
-
-
-def subgraph(data):
-
-    node_num, _ = data.x.size()
-    _, edge_num = data.edge_index.size()
-    sub_num = int(node_num * 0.2)    # 子图大小，子图中点的个数
-
-    edge_index = data.edge_index.numpy()
-    edge_dict = {(edge_index[0][n], edge_index[1][n]): n for n in range(
-        edge_num)}    # (from, to): edge_index colum idx
-
-    idx_sub = [np.random.randint(node_num, size=1)[0]]    # 选中一个点作为起始点，放入子图集合
-    # 选中的起点可到达的终点集合，即邻居
-    idx_neigh = set([n for n in edge_index[1][edge_index[0] == idx_sub[0]]])
-
-    count = 0
-    while len(idx_sub) <= sub_num:
-        count = count + 1
-        if count > node_num:
-            break
-        if len(idx_neigh) == 0:    # 选中的点没有下游点
-            break
-        sample_node = np.random.choice(list(idx_neigh))    # 选择选中点的一个邻居，作为新选中点
-        if sample_node in idx_sub:    # 新选中的点已经被选过
-            continue
-        idx_sub.append(sample_node)    # 将新选中点加入子图集合
-        idx_neigh.union(    # 新选中点的邻居节点集合
-            set([n for n in edge_index[1][edge_index[0] == idx_sub[-1]]]))
-
-    idx_drop = [n for n in range(node_num) if not n in idx_sub]    # 丢弃非子图集合的节点
-    idx_nondrop = idx_sub    # 保留节点为子图集合节点
-    idx_dict = {idx_nondrop[n]: n for n in list(range(len(idx_nondrop)))}
-
-    # data.x = data.x[idx_nondrop]
-    edge_index = data.edge_index.numpy()
-
-    adj = torch.zeros((node_num, node_num))
-    adj[edge_index[0], edge_index[1]] = 1
-    adj[idx_drop, :] = 0
-    adj[:, idx_drop] = 0
-    edge_index = adj.nonzero(as_tuple=False).t()
-
-    data.edge_index = edge_index
-
-    edge_index = data.edge_index.numpy()
-    edge_attr = []
-    for idx_edge in range(data.edge_index.size(1)):
-        idx_column = edge_dict[(edge_index[0][idx_edge],
-                                edge_index[1][idx_edge])]
-        edge_attr.append(data.edge_attr[idx_column].numpy())
-
-    edge_attr = np.asarray(edge_attr)
-    data.edge_attr = torch.tensor(edge_attr, dtype=torch.float)
-
-    # edge_index = [[idx_dict[edge_index[0, n]], idx_dict[edge_index[1, n]]] for n in range(edge_num) if (not edge_index[0, n] in idx_drop) and (not edge_index[1, n] in idx_drop)]
-    # edge_index = [[edge_index[0, n], edge_index[1, n]] for n in range(edge_num) if (not edge_index[0, n] in idx_drop) and (not edge_index[1, n] in idx_drop)] + [[n, n] for n in idx_nondrop]
-    # data.edge_index = torch.tensor(edge_index).transpose_(0, 1)
-
-    return data
-
-
-def mask_nodes(data):
-
-    node_num, feat_dim = data.x.size()
-    mask_num = int(node_num / 1)
-
-    idx_mask = np.random.choice(node_num, mask_num, replace=False)
-    data.x[idx_mask] = torch.tensor(np.random.normal(
-        loc=0.5, scale=0.5, size=(mask_num, feat_dim)), dtype=torch.float32)
-
-    return data
-
+    def _get_anomaly_aug(self, data):
+        n = np.random.randint(3)
+        if n == 0:
+            data_aug_1 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
+            data_aug_2 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
+        elif n == 1:
+            data_aug_1 = time_error_injection(deepcopy(data), root_cause='subSpan_duration')
+            data_aug_2 = time_error_injection(deepcopy(data), root_cause='subSpan_duration')
+        elif n == 2:
+            data_aug_1 = response_code_injection(deepcopy(data))
+            data_aug_2 = response_code_injection(deepcopy(data))
+        else:
+            print('sample error')
+            assert False
+        return data_aug_1, data_aug_2
 
 
 if __name__ == '__main__':
     print("start...")
-    dataset = TraceDataset(root="./data")
-    print('finish...')
+    dataset = TraceDataset(root="../Data/TraceCluster/new_data_inmem")
+    dataset.aug = "mask_nodes"
+    # data = dataset.get(0)
+    # dataset1 = deepcopy(dataset)
+    # dataset1.aug = "response_code_error_injection"
+    # data_aug_1 = dataset1.get(0)
+    # print(data, '\n', data.edge_attr)
+    # print(data_aug_1, '\n', data_aug_1.edge_attr)
+    start_time = time.time()
+    node_count = []
+    for i in tqdm(range(len(dataset))):
+        data, _, _ = dataset.get(i)
+        node_count.append(data.num_nodes)
+        # if i % 10 == 0:
+        #     print(i)
+    print(Counter(node_count))
+    print(time.time()-start_time)
+
