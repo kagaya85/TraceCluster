@@ -30,16 +30,16 @@ class TraceDataset(InMemoryDataset):
 
 
     @property
-    def z_score_num_features(self):
-        return ['childrenSpanNum', 'requestAndResponseDuration', 'subspanDuration', 'rawDuration', 'subspanNum']
+    def kpi_features(self):
+        return ['requestAndResponseDuration', 'workDuration', 'rawDuration']  # workDuration   subspanDuration
 
     @property
-    def span_type_features(self):
-        return ['timeScale', 'isParallel', 'callType', 'isError']
+    def span_features(self):
+        return ['timeScale', 'childrenSpanNum', 'subspanNum', 'isParallel', 'callType', 'isError']
 
     @property
     def edge_features(self):
-        return self.z_score_num_features + self.span_type_features
+        return self.kpi_features + self.span_features
 
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
@@ -220,7 +220,7 @@ class TraceDataset(InMemoryDataset):
 
         for key in operations_info.keys():
             stat_map = {}
-            for feature in self.z_score_num_features:
+            for feature in self.kpi_features:
                 ops = operations_info[key][feature]
                 ops_mean = np.mean(ops)
                 ops_std = np.std(ops)
@@ -257,12 +257,12 @@ class TraceDataset(InMemoryDataset):
             for to in to_list:
                 feat = []
 
-                for feature in self.z_score_num_features:
-                    # feature_num = self._z_score(to[feature], num_features_stat[to['operation']][feature])
-                    # feat.append(feature_num)
-                    feat.append(to[feature])
+                for feature in self.kpi_features:
+                    feature_num = self._z_score(to[feature], num_features_stat[to['operation']][feature])
+                    feat.append(feature_num)
+                    # feat.append(to[feature])
 
-                for feature in self.span_type_features:
+                for feature in self.span_features:
                     if feature == 'isError':
                         feat.append(0.0 if to[feature] is False else 1.0)
                     else:
@@ -297,7 +297,10 @@ class TraceDataset(InMemoryDataset):
         """
         calculate z-score
         """
-        z_socre = (raw - feature_stat[0]) / feature_stat[1]
+        if feature_stat[1] == 0:
+            z_socre = (raw - feature_stat[0]) / 1
+        else:
+            z_socre = (raw - feature_stat[0]) / feature_stat[1]
         return z_socre
 
     _dispatcher = {}
@@ -417,8 +420,8 @@ class TraceDataset(InMemoryDataset):
 
 if __name__ == '__main__':
     print("start...")
-    dataset = TraceDataset(root="../Data/TraceCluster/new_data_inmem")
-    dataset.aug = "mask_nodes"
+    dataset = TraceDataset(root="../Data/TraceCluster/2_06_new_data")
+    # dataset.aug = "mask_nodes"
     # data = dataset.get(0)
     # dataset1 = deepcopy(dataset)
     # dataset1.aug = "response_code_error_injection"
@@ -426,12 +429,12 @@ if __name__ == '__main__':
     # print(data, '\n', data.edge_attr)
     # print(data_aug_1, '\n', data_aug_1.edge_attr)
     start_time = time.time()
-    node_count = []
-    for i in tqdm(range(len(dataset))):
-        data, _, _ = dataset.get(i)
-        node_count.append(data.num_nodes)
+    # node_count = []
+    # for i in tqdm(range(len(dataset))):
+    #     data, _, _ = dataset.get(i)
+    #     node_count.append(data.num_nodes)
         # if i % 10 == 0:
         #     print(i)
-    print(Counter(node_count))
+    # print(Counter(node_count))
     print(time.time()-start_time)
 
