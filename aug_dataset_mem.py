@@ -320,14 +320,7 @@ class TraceDataset(InMemoryDataset):
         # sl = torch.tensor([[n, n] for n in range(node_num)]).t()
         # data.edge_index = torch.cat((data.edge_index, sl), dim=1)
 
-        if self.aug == 'dnodes':  # 删除部分点
-            data = drop_nodes(data)
-        elif self.aug == 'pedges':  # 删除 or 增加部分边
-            data = permute_edges(data)
-        elif self.aug == 'subgraph':  # 随机选初始点扩张固定节点数子图
-            data_aug_1 = subgraph(deepcopy(data))
-            data_aug_2 = subgraph(deepcopy(data))
-        elif self.aug == 'permute_edges_for_subgraph':  # 随机删一条边，选较大子图
+        if self.aug == 'permute_edges_for_subgraph':  # 随机删一条边，选较大子图
             data_aug_1 = permute_edges_for_subgraph(deepcopy(data))
             data_aug_2 = permute_edges_for_subgraph(deepcopy(data))
         elif self.aug == 'mask_nodes':  # 结点属性屏蔽
@@ -372,6 +365,11 @@ class TraceDataset(InMemoryDataset):
             elif n == 3:
                 # anomaly aug
                 data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
+        elif self.aug == 'anomaly_random':
+            data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
+        elif self.aug == 'view_random':
+            data_aug_1 = self._get_view_aug(data)
+            data_aug_2 = self._get_view_aug(data)
         else:
             print('no need for augmentation ')
             assert False

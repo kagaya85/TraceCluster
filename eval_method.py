@@ -8,7 +8,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import GridSearchCV, KFold, StratifiedKFold
 from sklearn.svm import SVC, LinearSVC, OneClassSVM
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, IsolationForest
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn import preprocessing
@@ -238,11 +238,11 @@ def linearsvc_classify(x, y, search):
 
     return np.mean(accuracies_val), np.mean(accuracies)
 
-def oc_svm_classify(emb_train, emb_test, y_train, y_test):
+def oc_svm_classify(emb_train, emb_test, y_train, y_test, nu):
     emb_train, y_train = np.array(emb_train), np.array(y_train)
     emb_test, y_test = np.array(emb_test), np.array(y_test)
 
-    clf = OneClassSVM(nu=0.01)
+    clf = OneClassSVM(nu=nu)
     clf.fit(emb_train)
     y_pred_train = clf.predict(emb_train)
     y_pred_test = clf.predict(emb_test)
@@ -308,6 +308,47 @@ def lof_detection(emb_train, emb_test, y_train, y_test, trace_ids):
 
     return
 
+
+def isforest_classify(emb_train, emb_test, y_train, y_test):
+    emb_train, y_train = np.array(emb_train), np.array(y_train)
+    emb_test, y_test = np.array(emb_test), np.array(y_test)
+
+    clf = IsolationForest()
+    clf.fit(emb_train)
+    y_pred_train = clf.predict(emb_train)
+    y_pred_test = clf.predict(emb_test)
+
+    for i in range(len(y_pred_test)):
+        if y_pred_test[i] == -1:
+            y_pred_test[i] = 1
+        elif y_pred_test[i] == 1:
+            y_pred_test[i] = 0
+
+    for i in range(len(y_pred_train)):
+        if y_pred_train[i] == -1:
+            y_pred_train[i] = 1
+        elif y_pred_train[i] == 1:
+            y_pred_train[i] = 0
+
+    acc_test = accuracy_score(y_test, y_pred_test)
+    acc_train = accuracy_score(y_train, y_pred_train)
+
+    recall_test = recall_score(y_test, y_pred_test)
+    recall_train = recall_score(y_train, y_pred_train)
+
+    precision_test = precision_score(y_test, y_pred_test)
+    precision_train = precision_score(y_train, y_pred_train)
+
+    print('IsolationForest Test Acc is %.5f' % acc_test)
+    print('IsolationForest Train Acc is %.5f' % acc_train)
+
+    print('IsolationForest Test Recall is %.5f' % recall_test)
+    print('IsolationForest Train Recall is %.5f' % recall_train)
+
+    print('IsolationForest Test precision is %.5f' % precision_test)
+    print('IsolationForest Train precision is %.5f' % precision_train)
+
+    return
 
 
 def evaluate_embedding(embeddings, labels, search=True):

@@ -32,7 +32,7 @@ def main():
     batch_size = 32
     num_workers = 10
     num_layers = 2
-    gnn_type = 'TransformerConv'  # GATConv  TransformerConv  CGConv
+    gnn_type = 'CGConv'  # GATConv  TransformerConv  CGConv
     pooling_type = 'mean'  # mean  add
 
     aug = 'random'

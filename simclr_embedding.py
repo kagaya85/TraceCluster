@@ -1,21 +1,16 @@
 import torch
 import json
-import logging
-import random
-import matplotlib.pyplot as plt
+
 import numpy as np
 
 from simclr import SIMCLR
 from aug_dataset_mem import TraceDataset
 from torch.utils.data import Subset
 from torch_geometric.loader import DataLoader
-from sklearn.svm import SVC, LinearSVC, OneClassSVM
-from sklearn.manifold import TSNE
-from eval_method import oc_svm_classify, lof_detection, evaluate_embedding
 from utils import get_target_label_idx
 
 def main():
-    model_path = '../Data/TraceCluster/log/50epoch-CGConv-mean/'
+    model_path = '../Data/TraceCluster/log/02_06_20epoch_CGConv_mean_no_anomaly_z-score/'
     batch_size = 128
     normal_classes = [0]
     abnormal_classes = [1]
@@ -81,20 +76,18 @@ def main():
     emb_train, y_train, trace_class_train, url_status_class_train, url_class_list_train = model.encoder.get_embeddings(train_dataloader)
     emb_test, y_test, trace_class_test, url_status_class_test, url_class_list_test = model.encoder.get_embeddings(eval_dataloader)
 
-    # oc_svm_classify(emb_train, emb_test, y_train, y_test)
-    # lof_detection(emb_train, emb_test, y_train, y_test, [])
-    # evaluate_embedding(np.concatenate([emb_train, emb_test]), np.concatenate([y_train, y_test]), search=True)
+    np.save(model_path + 'emb_train', emb_train)
+    np.save(model_path + 'y_train', y_train)
+    np.save(model_path + 'trace_class_train', trace_class_train)
+    np.save(model_path + 'url_status_class_train', url_status_class_train)
+    np.save(model_path + 'url_class_list_train', url_class_list_train)
 
-    tsne = TSNE()
-    data_embedding = np.concatenate([emb_train, emb_test])
-    labels = np.concatenate([y_train, y_test])
-    trace_class = np.concatenate([trace_class_train, trace_class_test])
-    url_status_class = np.concatenate([url_status_class_train, url_status_class_test])
-    url_class_list = np.concatenate([url_class_list_train, url_class_list_test])
-    x = tsne.fit_transform(data_embedding)
-    plt.scatter(x[:, 0], x[:, 1], c=labels, marker='o', s=10, cmap=plt.cm.Spectral)
-    plt.show()
-    # plt.savefig(xp_path + '/t-sne-test.jpg')
+    np.save(model_path + 'emb_test', emb_test)
+    np.save(model_path + 'y_test', y_test)
+    np.save(model_path + 'trace_class_test', trace_class_test)
+    np.save(model_path + 'url_status_class_test', url_status_class_test)
+    np.save(model_path + 'url_class_list_test', url_class_list_test)
+
 
 
 if __name__ == '__main__':

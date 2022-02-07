@@ -24,7 +24,7 @@ class CGNNet(nn.Module):
         self.convs = ModuleList()
         self.batch_norms = ModuleList()
         for _ in range(num_layers):
-            conv = CGConv(channels=20, dim=8)
+            conv = CGConv(channels=20, dim=9)
             self.convs.append(conv)
             self.batch_norms.append(BatchNorm(20))
 
@@ -67,11 +67,11 @@ class CGNNet(nn.Module):
 if __name__ == '__main__':
     learning_rate = 0.001
     epochs = 20
-    dataset = TraceDataset(root='../Data/TraceCluster/data', aug='none')
+    dataset = TraceDataset(root='../Data/TraceCluster/2_06_new_data_inmem', aug='none')
     normal_classes = [0]
     abnormal_classes = [1]
 
-    # target_class = dataset.url_classes.index('POST:/api/v1/travelservice/trips/left_parallel')
+    # target_class = dataset.url_classes.index('GET:/api/v1/cancelservice/cancel/{orderId}/{loginId}')
     # target_idx = get_target_label_idx(dataset.data.url_class.clone().data.cpu().numpy(), target_class)
     #
     # normal_idx = get_target_label_idx(dataset.data.y.clone().data.cpu().numpy(), normal_classes)
@@ -143,36 +143,37 @@ if __name__ == '__main__':
     print(precision_score(y, pred) if pred.sum() > 0 else 0)
 
     # check graph representation
-    dataloader = DataLoader(dataset, batch_size=128, shuffle=True)
-    model.eval()
-
-    ret = []
-    y = []
-    trace_class = []
-    url_status_class = []
-    url_class_list = []
-    trace_ids = []
-    with torch.no_grad():
-        for data in tqdm(dataloader):
-            # data = data[0]
-            data.to(device)
-            x = model(data.x, data.edge_index, data.edge_attr, data.batch)
-
-            ret.append(x.cpu().numpy())
-            y.append(data.y.cpu().numpy())
-            trace_class.append(data.trace_class.cpu().numpy())
-            url_status_class.append(data.url_status_class.cpu().numpy())
-            url_class_list.append(data.url_class.cpu().numpy())
-    ret = np.concatenate(ret, 0)
-    y = np.concatenate(y, 0)
-    trace_class = np.concatenate(trace_class, 0)
-    url_status_class = np.concatenate(url_status_class, 0)
-    url_class_list = np.concatenate(url_class_list, 0)
-
-    tsne = TSNE()
-    x = tsne.fit_transform(ret)
-    plt.scatter(x[:, 0], x[:, 1], c=y, marker='o', s=10, cmap=plt.cm.Spectral)
-    plt.show()
+    # visual_dataset = Subset(dataset, train_normal + train_abnormal + test_abnormal + test_normal)
+    # dataloader = DataLoader(visual_dataset, batch_size=128, shuffle=True)
+    # model.eval()
+    #
+    # ret = []
+    # y = []
+    # trace_class = []
+    # url_status_class = []
+    # url_class_list = []
+    # trace_ids = []
+    # with torch.no_grad():
+    #     for data in tqdm(dataloader):
+    #         # data = data[0]
+    #         data.to(device)
+    #         x = model(data.x, data.edge_index, data.edge_attr, data.batch)
+    #
+    #         ret.append(x.cpu().numpy())
+    #         y.append(data.y.cpu().numpy())
+    #         trace_class.append(data.trace_class.cpu().numpy())
+    #         url_status_class.append(data.url_status_class.cpu().numpy())
+    #         url_class_list.append(data.url_class.cpu().numpy())
+    # ret = np.concatenate(ret, 0)
+    # y = np.concatenate(y, 0)
+    # trace_class = np.concatenate(trace_class, 0)
+    # url_status_class = np.concatenate(url_status_class, 0)
+    # url_class_list = np.concatenate(url_class_list, 0)
+    #
+    # tsne = TSNE()
+    # x = tsne.fit_transform(ret)
+    # plt.scatter(x[:, 0], x[:, 1], c=y, marker='o', s=10, cmap=plt.cm.Spectral)
+    # plt.show()
 
 
     exit()
