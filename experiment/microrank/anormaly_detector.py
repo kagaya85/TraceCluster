@@ -19,8 +19,8 @@ import time
 '''
 
 
-def get_slo(start_time, end_time):
-    span_list = get_span(start_time, end_time)
+def get_slo():
+    span_list = get_span()
     operation_list = get_service_operation_list(span_list)
     slo = get_operation_slo(
         service_operation_list=operation_list, span_list=span_list)
@@ -41,8 +41,8 @@ def get_slo(start_time, end_time):
 '''
 
 
-def system_anormaly_detect(start_time, end_time, slo, operation_list):
-    span_list = get_span(start_time, end_time)
+def system_anormaly_detect(slo, operation_list):
+    span_list = get_span()
     if len(span_list) == 0:
         print("Error: Current span list is empty ")
         return False
@@ -129,20 +129,3 @@ def trace_list_partition(operation_count, slo):
             normal_list.append(traceid)
 
     return abnormal_list, normal_list
-
-
-if __name__ == '__main__':
-    def timestamp(datetime):
-        timeArray = time.strptime(datetime, "%Y-%m-%d %H:%M:%S")
-        ts = int(time.mktime(timeArray)) * 1000
-        # print(ts)
-        return ts
-
-    date = '2020-08-23'
-    start = '2020-08-23 14:56:43'
-    end = '2020-08-23 14:57:44'
-
-    slo = get_slo(date, start_time=timestamp(start), end_time=timestamp(end))
-    flag = system_anormaly_detect(date, start_time=timestamp(
-        start), end_time=timestamp(end), slo=slo)
-    print(flag)

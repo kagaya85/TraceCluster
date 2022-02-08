@@ -11,9 +11,16 @@ from ...preprocess import load_span, Span
 
 root_index = '-1'
 
+span_list = []
+is_wechat = True
 
-def get_span() -> List[DataFrame]:
-    span_list = load_span()
+
+def get_span() -> List[Span]:
+    global span_list
+    if len(span_list) == 0:
+        span_data = pd.concat(load_span(is_wechat), axis=0, ignore_index=True)
+        span_list = [Span(raw_span) for _, raw_span in span_data.iterrows()]
+
     return span_list
 
 

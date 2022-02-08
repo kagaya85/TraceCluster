@@ -29,19 +29,6 @@ def timestamp(datetime):
     return ts
 
 
-# need to replace
-start = '2020-10-11 22:18:00'
-end = '2020-10-11 22:19:00'
-
-span_list = get_span(start=timestamp(start), end=timestamp(end))
-# print(span_list)
-operation_list = get_service_operation_list(span_list)
-print(operation_list)
-slo = get_operation_slo(
-    service_operation_list=operation_list, span_list=span_list)
-print(slo)
-
-
 def calculate_spectrum_without_delay_list(anomaly_result, normal_result, anomaly_list_len, normal_list_len,
                                           top_max, normal_num_list, anomaly_num_list, spectrum_method):
     spectrum = {}
@@ -241,9 +228,18 @@ def online_anomaly_detect_RCA(slo, operation_list):
                                                                          normal_num_list=normal_num_list,
                                                                          spectrum_method="dstar2")
             print(top_list, score_list)
-            # sleep 5min after a fault
-            time.sleep(240)
-        time.sleep(60)
+            return
+        #     # sleep 5min after a fault
+        #     time.sleep(240)
+        # time.sleep(60)
 
 
-online_anomaly_detect_RCA(slo, operation_list)
+if __name__ == '__naim__':
+    span_list = get_span()
+    # print(span_list)
+    operation_list = get_service_operation_list(span_list)
+    print(operation_list)
+    slo = get_operation_slo(
+        service_operation_list=operation_list, span_list=span_list)
+    print(slo)
+    online_anomaly_detect_RCA(slo, operation_list)
