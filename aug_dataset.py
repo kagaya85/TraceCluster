@@ -35,7 +35,7 @@ class TraceDataset(InMemoryDataset):
 
     @property
     def span_features(self):
-        return ['timeScale', 'childrenSpanNum', 'subspanNum', 'isParallel', 'callType', 'isError']
+        return ['timeScale', 'isParallel', 'callType', 'isError']  #  'childrenSpanNum', 'subspanNum',
 
     @property
     def edge_features(self):
@@ -119,7 +119,7 @@ class TraceDataset(InMemoryDataset):
 
         for trace_id, trace in tqdm(raw_data.items()):
             node_feats = self._get_node_features(trace, operation_embedding)
-            edge_feats = self._get_edge_features(trace, num_features_stat)
+            edge_feats, edge_feats_stat = self._get_edge_features(trace, num_features_stat)
             edge_index = self._get_adjacency_info(trace)
 
             # dim check
@@ -161,7 +161,8 @@ class TraceDataset(InMemoryDataset):
                 root_url=trace["edges"]["0"][0]["operation"],
                 trace_class=class_list.index(trace_class),
                 url_status_class=url_status_class_list.index(url_status_class),
-                url_class=url_class_list.index(root_url_class)
+                url_class=url_class_list.index(root_url_class),
+                edge_attr_stat=edge_feats_stat
             )
             # data_list.append(data)
 
@@ -253,13 +254,17 @@ class TraceDataset(InMemoryDataset):
         [Number of edges, Edge Feature size]
         """
         edge_feats = []
+        edge_feats_stat = []
         for from_id, to_list in trace["edges"].items():
             for to in to_list:
                 feat = []
+                feat_stat = []
 
                 for feature in self.kpi_features:
                     feature_num = self._z_score(to[feature], num_features_stat[to['operation']][feature])
                     feat.append(feature_num)
+                    feat_stat.append(num_features_stat[to['operation']][feature][0])
+                    feat_stat.append(num_features_stat[to['operation']][feature][1])
                     # feat.append(to[feature])
 
                 for feature in self.span_features:
@@ -269,9 +274,11 @@ class TraceDataset(InMemoryDataset):
                         feat.append(float(to[feature]))
 
                 edge_feats.append(feat)
+                edge_feats_stat.append(feat_stat)
 
+        edge_feats_stat = np.asarray(edge_feats_stat)
         edge_feats = np.asarray(edge_feats)
-        return torch.tensor(edge_feats, dtype=torch.float)
+        return torch.tensor(edge_feats, dtype=torch.float), torch.tensor(edge_feats_stat, dtype=torch.float)
 
     def _get_adjacency_info(self, trace):
         """
