@@ -65,35 +65,35 @@ class TraceDataset(InMemoryDataset):
 
     @property
     def normal_idx(self):
-        with open(self.processed_dir + '\data_info.json', "r") as f:    # file name not list
+        with open(self.processed_dir + '/data_info.json', "r") as f:    # file name not list
             data_info = json.load(f)
             normal_idx = data_info['normal']
         return normal_idx
 
     @property
     def abnormal_idx(self):
-        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+        with open(self.processed_dir + '/data_info.json', "r") as f:  # file name not list
             data_info = json.load(f)
             abnormal_idx = data_info['abnormal']
         return abnormal_idx
 
     @property
     def trace_classes(self):
-        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+        with open(self.processed_dir + '/data_info.json', "r") as f:  # file name not list
             data_info = json.load(f)
             trace_classes = data_info['trace_classes']
         return trace_classes
 
     @property
     def url_status_classes(self):
-        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+        with open(self.processed_dir + '/data_info.json', "r") as f:  # file name not list
             data_info = json.load(f)
             url_status_classes = data_info['url_status_classes']
         return url_status_classes
 
     @property
     def url_classes(self):
-        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+        with open(self.processed_dir + '/data_info.json', "r") as f:  # file name not list
             data_info = json.load(f)
             url_classes = data_info['url_classes']
         return url_classes
@@ -196,7 +196,7 @@ class TraceDataset(InMemoryDataset):
                     'url_status_classes': url_status_class_list,
                     'url_classes': url_class_list}
 
-        with open(self.processed_dir+'\data_info.json', 'w', encoding='utf-8') as json_file:
+        with open(self.processed_dir+'/data_info.json', 'w', encoding='utf-8') as json_file:
             json.dump(datainfo, json_file)
             print('write data info success')
 
@@ -205,7 +205,7 @@ class TraceDataset(InMemoryDataset):
         """
         get operation embedding
         """
-        with open(self.root + '\preprocessed\embeddings.json', 'r') as f:
+        with open(self.root + '/preprocessed/embeddings.json', 'r') as f:
             operations_embedding = json.load(f)
 
         return operations_embedding
@@ -216,7 +216,7 @@ class TraceDataset(InMemoryDataset):
         calculate features stat
         """
         operations_stat_map = {}
-        with open(self.root + '\preprocessed\operations.json', 'r') as f:
+        with open(self.root + '/preprocessed/operations.json', 'r') as f:
             operations_info = json.load(f)
 
         for key in operations_info.keys():
@@ -343,14 +343,20 @@ class TraceDataset(InMemoryDataset):
             data_aug_2 = mask_nodes(deepcopy(data))
             data_aug_2 = mask_edges(data_aug_2)
         elif self.aug == "request_and_response_duration_time_error_injection":  # request_and_response_duration时间异常对比
-            data_aug_1 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
-            data_aug_2 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
-        elif self.aug == 'subSpan_duration_time_error_injection':   # subSpan_duration时间异常
-            data_aug_1 = time_error_injection(deepcopy(data), root_cause='subSpan_duration')
-            data_aug_2 = time_error_injection(deepcopy(data), root_cause='subSpan_duration')
+            data_aug_1 = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration', edge_features=self.edge_features)
+            data_aug_2 = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration', edge_features=self.edge_features)
+        elif self.aug == 'work_duration_time_error_injection':   # subSpan_duration时间异常
+            data_aug_1 = time_error_injection(deepcopy(data), root_cause='workDuration', edge_features=self.edge_features)
+            data_aug_2 = time_error_injection(deepcopy(data), root_cause='workDuration', edge_features=self.edge_features)
         elif self.aug == 'response_code_error_injection':
-            data_aug_1 = response_code_injection(deepcopy(data))
-            data_aug_2 = response_code_injection(deepcopy(data))
+            data_aug_1 = response_code_injection(deepcopy(data), self.edge_features)
+            data_aug_2 = response_code_injection(deepcopy(data), self.edge_features)
+        elif self.aug == 'span_order_error_injection':      # span顺序错误，随机交换几个结点位置
+            data_aug_1 = span_order_error_injection(deepcopy(data))
+            data_aug_2 = span_order_error_injection(deepcopy(data))
+        elif self.aug == 'drop_several_nodes':      # 缺少span，去掉几个节点
+            data_aug_1 = drop_several_nodes(deepcopy(data))
+            data_aug_2 = drop_several_nodes(deepcopy(data))
         elif self.aug == 'none':
             """
             if data.edge_index.max() > data.x.size()[0]:
@@ -425,15 +431,16 @@ class TraceDataset(InMemoryDataset):
 
 if __name__ == '__main__':
     print("start...")
-    dataset = TraceDataset(root="../Data/TraceCluster/2_06_new_data")
-    # dataset.aug = "mask_nodes"
-    # data = dataset.get(0)
+    dataset = TraceDataset(root=r"/data/cyr/traceCluster")
+    dataset.aug = "drop_several_nodes"
+    data, data_aug_1, data_aug_2 = dataset.get(5000)
     # dataset1 = deepcopy(dataset)
     # dataset1.aug = "response_code_error_injection"
     # data_aug_1 = dataset1.get(0)
-    # print(data, '\n', data.edge_attr)
-    # print(data_aug_1, '\n', data_aug_1.edge_attr)
-    start_time = time.time()
+    print(data, '\n', data.edge_attr, data.edge_index)
+    print(data_aug_1, '\n', data_aug_1.edge_attr)
+    print(data_aug_2, '\n', data_aug_2.edge_attr)
+    # start_time = time.time()
     # node_count = []
     # for i in tqdm(range(len(dataset))):
     #     data, _, _ = dataset.get(i)
@@ -441,5 +448,5 @@ if __name__ == '__main__':
         # if i % 10 == 0:
         #     print(i)
     # print(Counter(node_count))
-    print(time.time()-start_time)
+    # print(time.time()-start_time)
 
