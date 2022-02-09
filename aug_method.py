@@ -407,3 +407,16 @@ def drop_several_nodes(data):
     return data
 
 
+def add_nodes(data):
+    node_num = data.x.size(0)
+    edge_num = data.edge_index.size(1)
+    add_num = math.ceil(node_num / 2)
+    add_pos = np.random.choice(node_num-1, add_num, replace=False)
+    add_pos += 1
+    idx = node_num
+    for pos in add_pos:
+        data.x = torch.cat((data.x, torch.tensor(np.asarray([data.x[pos].numpy()]))), 0)
+        data.edge_index = torch.cat((data.edge_index, torch.tensor(np.asarray([[pos], [idx]]))), 1)
+        data.edge_attr = torch.cat((data.edge_attr, torch.tensor(np.asarray([data.edge_attr[random.randint(1, edge_num-1)].numpy()]))), 0)
+        idx += 1
+    return data

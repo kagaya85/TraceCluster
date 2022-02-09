@@ -357,6 +357,9 @@ class TraceDataset(InMemoryDataset):
         elif self.aug == 'drop_several_nodes':      # 缺少span，去掉几个节点
             data_aug_1 = drop_several_nodes(deepcopy(data))
             data_aug_2 = drop_several_nodes(deepcopy(data))
+        elif self.aug == 'add_nodes':       # 增加span
+            data_aug_1 = add_nodes(deepcopy(data))
+            data_aug_2 = add_nodes(deepcopy(data))
         elif self.aug == 'none':
             """
             if data.edge_index.max() > data.x.size()[0]:
@@ -432,7 +435,7 @@ class TraceDataset(InMemoryDataset):
 if __name__ == '__main__':
     print("start...")
     dataset = TraceDataset(root=r"/data/cyr/traceCluster")
-    dataset.aug = "drop_several_nodes"
+    dataset.aug = "add_nodes"
     data, data_aug_1, data_aug_2 = dataset.get(5000)
     # dataset1 = deepcopy(dataset)
     # dataset1.aug = "response_code_error_injection"
