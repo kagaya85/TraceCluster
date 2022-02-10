@@ -142,59 +142,14 @@ def calculate_spectrum_without_delay_list(anomaly_result, normal_result, anomaly
 
 def online_anomaly_detect_RCA(slo, operation_list):
     while True:
-        current_time = datetime.datetime.strptime(datetime.datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S")-datetime.timedelta(minutes=1)
+        # current_time = datetime.datetime.strptime(datetime.datetime.now().strftime(
+        #     "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S")-datetime.timedelta(minutes=1)
 
-        start_time = current_time - datetime.timedelta(seconds=60)
-        anormaly_flag = system_anormaly_detect(start_time=timestamp(start_time),
-                                               end_time=timestamp(current_time), slo=slo, operation_list=operation_list)
+        # start_time = current_time - datetime.timedelta(seconds=60)
+        anormaly_flag = system_anormaly_detect(
+            slo=slo, operation_list=operation_list)
         if anormaly_flag:
-            detect_time = current_time
-            start_time = detect_time - datetime.timedelta(seconds=5)
-            end_time = detect_time + datetime.timedelta(seconds=55)
-            year = str(time.strptime(str(detect_time),
-                       "%Y-%m-%d %H:%M:%S").tm_year)
-            mon = time.strptime(str(detect_time), "%Y-%m-%d %H:%M:%S").tm_mon
-            day = time.strptime(str(detect_time), "%Y-%m-%d %H:%M:%S").tm_mday
-            hour = time.strptime(str(detect_time), "%Y-%m-%d %H:%M:%S").tm_hour
-            minute = time.strptime(
-                str(detect_time), "%Y-%m-%d %H:%M:%S").tm_min
-            if mon > 9:
-                mon = str(mon)
-            else:
-                mon = "0" + str(mon)
-
-            if day > 9:
-                day = str(day)
-            else:
-                day = "0" + str(day)
-
-            if minute >= 1:
-                if hour > 9:
-                    hour = str(hour)
-                else:
-                    hour = "0" + str(hour)
-            else:
-                if hour - 1 > 9:
-                    hour = hour - 1
-                    hour = str(hour)
-                elif hour == 0:
-                    hour = "23"
-                    current_day = time.strptime(
-                        str(detect_time), "%Y-%m-%d %H:%M:%S").tm_mday
-                    current_day = current_day - 1
-                    if current_day > 9:
-                        day = str(current_day)
-                    else:
-                        day = "0" + str(current_day)
-                else:
-                    hour = hour - 1
-                    hour = "0" + str(hour)
-            # date = year + "-" + mon + "-" + day
-            # print("checkpoint", date)
-
-            middle_span_list = get_span(
-                timestamp(start_time), timestamp(end_time))
+            middle_span_list = get_span()
             operation_count = get_operation_duration_data(
                 operation_list, middle_span_list)
             anomaly_list, normal_list = trace_list_partition(

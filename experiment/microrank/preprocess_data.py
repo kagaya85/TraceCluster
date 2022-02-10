@@ -193,15 +193,15 @@ def get_operation_duration_data(operation_list: List[str], span_list: List[Span]
             length += 1
 
             if span.service == "frontend" and tag == "Entry":
-                operation_dict[trace_id]['duration'] += span['duration']
+                operation_dict[trace_id]['duration'] += span.duration
 
         else:
             trace_id = span.traceId
             length = 0
             operation_dict[trace_id][operation_name] += 1
 
-            if span.service == "frontend" and tag == "server":
-                operation_dict[trace_id]['duration'] += span['duration']
+            if span.service == "frontend" and tag == "Entry":
+                operation_dict[trace_id]['duration'] += span.duration
 
     return operation_dict
 
