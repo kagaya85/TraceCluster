@@ -174,7 +174,7 @@ def mask_edges(data):
 
 def response_code_injection(data, edge_features):
     edge_num, feat_dim = data.edge_attr.size()
-    inject_num = random.randint(1, edge_num - 1)
+    inject_num = random.randint(1, edge_num)
     idx_mask = np.random.choice(edge_num, inject_num, replace=False)
     for i in idx_mask:
         data.edge_attr[i][edge_features.index('isError')] = 1
@@ -417,6 +417,7 @@ def add_nodes(data):
     for pos in add_pos:
         data.x = torch.cat((data.x, torch.tensor(np.asarray([data.x[pos].numpy()]))), 0)
         data.edge_index = torch.cat((data.edge_index, torch.tensor(np.asarray([[pos], [idx]]))), 1)
-        data.edge_attr = torch.cat((data.edge_attr, torch.tensor(np.asarray([data.edge_attr[random.randint(1, edge_num-1)].numpy()]))), 0)
+        data.edge_attr = torch.cat(
+            (data.edge_attr, torch.tensor(np.asarray([data.edge_attr[random.randint(0, edge_num-1)].numpy()]))), 0)
         idx += 1
     return data
