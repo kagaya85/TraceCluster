@@ -381,7 +381,9 @@ class TraceDataset(InMemoryDataset):
                 data_aug_2 = self._get_view_aug(data)
             elif n == 3:
                 # anomaly aug
-                data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
+                data_aug_1 = self._get_anomaly_aug(data)
+                data_aug_2 = self._get_anomaly_aug(data)
+                # data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
         elif self.aug == 'anomaly_random':
             data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
         elif self.aug == 'view_random':
@@ -415,21 +417,50 @@ class TraceDataset(InMemoryDataset):
             assert False
         return data_aug
 
+    # def _get_anomaly_aug(self, data):
+    #     n = np.random.randint(6)
+    #     if n == 0:
+    #         data_aug_1 = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration', edge_features=self.edge_features)
+    #         data_aug_2 = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration', edge_features=self.edge_features)
+    #     elif n == 1:
+    #         data_aug_1 = time_error_injection(deepcopy(data), root_cause='workDuration', edge_features=self.edge_features)
+    #         data_aug_2 = time_error_injection(deepcopy(data), root_cause='workDuration', edge_features=self.edge_features)
+    #     elif n == 2:
+    #         data_aug_1 = response_code_injection(deepcopy(data), self.edge_features)
+    #         data_aug_2 = response_code_injection(deepcopy(data), self.edge_features)
+    #     elif n == 3:
+    #         data_aug_1 = span_order_error_injection(deepcopy(data))
+    #         data_aug_2 = span_order_error_injection(deepcopy(data))
+    #     elif n == 4:
+    #         data_aug_1 = drop_several_nodes(deepcopy(data))
+    #         data_aug_2 = drop_several_nodes(deepcopy(data))
+    #     elif n == 5:
+    #         data_aug_1 = add_nodes(deepcopy(data))
+    #         data_aug_2 = add_nodes(deepcopy(data))
+    #     else:
+    #         print('sample error')
+    #         assert False
+    #     return data_aug_1, data_aug_2
+
     def _get_anomaly_aug(self, data):
-        n = np.random.randint(3)
+        n = np.random.randint(6)
         if n == 0:
-            data_aug_1 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
-            data_aug_2 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
+            data_aug = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration', edge_features=self.edge_features)
         elif n == 1:
-            data_aug_1 = time_error_injection(deepcopy(data), root_cause='subSpan_duration')
-            data_aug_2 = time_error_injection(deepcopy(data), root_cause='subSpan_duration')
+            data_aug = time_error_injection(deepcopy(data), root_cause='workDuration', edge_features=self.edge_features)
         elif n == 2:
-            data_aug_1 = response_code_injection(deepcopy(data))
-            data_aug_2 = response_code_injection(deepcopy(data))
+            data_aug = response_code_injection(deepcopy(data), self.edge_features)
+        elif n == 3:
+            data_aug = span_order_error_injection(deepcopy(data))
+        elif n == 4:
+            data_aug = drop_several_nodes(deepcopy(data))
+        elif n == 5:
+            data_aug = add_nodes(deepcopy(data))
         else:
             print('sample error')
             assert False
-        return data_aug_1, data_aug_2
+        return data_aug
+
 
 
 if __name__ == '__main__':

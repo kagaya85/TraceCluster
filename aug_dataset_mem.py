@@ -52,35 +52,35 @@ class TraceDataset(InMemoryDataset):
 
     @property
     def normal_idx(self):
-        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+        with open(self.processed_dir + '/data_info.json', "r") as f:  # file name not list
             data_info = json.load(f)
             normal_idx = data_info['normal']
         return normal_idx
 
     @property
     def abnormal_idx(self):
-        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+        with open(self.processed_dir + '/data_info.json', "r") as f:  # file name not list
             data_info = json.load(f)
             abnormal_idx = data_info['abnormal']
         return abnormal_idx
 
     @property
     def trace_classes(self):
-        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+        with open(self.processed_dir + '/data_info.json', "r") as f:  # file name not list
             data_info = json.load(f)
             trace_classes = data_info['trace_classes']
         return trace_classes
 
     @property
     def url_status_classes(self):
-        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+        with open(self.processed_dir + '/data_info.json', "r") as f:  # file name not list
             data_info = json.load(f)
             url_status_classes = data_info['url_status_classes']
         return url_status_classes
 
     @property
     def url_classes(self):
-        with open(self.processed_dir + '\data_info.json', "r") as f:  # file name not list
+        with open(self.processed_dir + '/data_info.json', "r") as f:  # file name not list
             data_info = json.load(f)
             url_classes = data_info['url_classes']
         return url_classes
@@ -185,7 +185,7 @@ class TraceDataset(InMemoryDataset):
                     'url_status_classes': url_status_class_list,
                     'url_classes': url_class_list}
 
-        with open(self.processed_dir + '\data_info.json', 'w', encoding='utf-8') as json_file:
+        with open(self.processed_dir + '/data_info.json', 'w', encoding='utf-8') as json_file:
             json.dump(datainfo, json_file)
             print('write data info success')
 
@@ -193,7 +193,7 @@ class TraceDataset(InMemoryDataset):
         """
         get operation embedding
         """
-        with open(self.root + '\preprocessed\embeddings.json', 'r') as f:
+        with open(self.root + '/preprocessed/embeddings.json', 'r') as f:
             operations_embedding = json.load(f)
 
         return operations_embedding
@@ -203,7 +203,7 @@ class TraceDataset(InMemoryDataset):
         calculate features stat
         """
         operations_stat_map = {}
-        with open(self.root + '\preprocessed\operations.json', 'r') as f:
+        with open(self.root + '/preprocessed/operations.json', 'r') as f:
             operations_info = json.load(f)
 
         for key in operations_info.keys():
@@ -371,7 +371,9 @@ class TraceDataset(InMemoryDataset):
                 data_aug_2 = self._get_view_aug(data)
             elif n == 3:
                 # anomaly aug
-                data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
+                data_aug_1 = self._get_anomaly_aug(data)
+                data_aug_2 = self._get_anomaly_aug(data)
+                # data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
         elif self.aug == 'anomaly_random':
             data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
         elif self.aug == 'view_random':
@@ -401,21 +403,49 @@ class TraceDataset(InMemoryDataset):
             assert False
         return data_aug
 
+    # def _get_anomaly_aug(self, data):
+    #     n = np.random.randint(6)
+    #     if n == 0:
+    #         data_aug_1 = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration', edge_features=self.edge_features)
+    #         data_aug_2 = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration', edge_features=self.edge_features)
+    #     elif n == 1:
+    #         data_aug_1 = time_error_injection(deepcopy(data), root_cause='workDuration', edge_features=self.edge_features)
+    #         data_aug_2 = time_error_injection(deepcopy(data), root_cause='workDuration', edge_features=self.edge_features)
+    #     elif n == 2:
+    #         data_aug_1 = response_code_injection(deepcopy(data), self.edge_features)
+    #         data_aug_2 = response_code_injection(deepcopy(data), self.edge_features)
+    #     elif n == 3:
+    #         data_aug_1 = span_order_error_injection(deepcopy(data))
+    #         data_aug_2 = span_order_error_injection(deepcopy(data))
+    #     elif n == 4:
+    #         data_aug_1 = drop_several_nodes(deepcopy(data))
+    #         data_aug_2 = drop_several_nodes(deepcopy(data))
+    #     elif n == 5:
+    #         data_aug_1 = add_nodes(deepcopy(data))
+    #         data_aug_2 = add_nodes(deepcopy(data))
+    #     else:
+    #         print('sample error')
+    #         assert False
+    #     return data_aug_1, data_aug_2
+
     def _get_anomaly_aug(self, data):
-        n = np.random.randint(3)
+        n = np.random.randint(6)
         if n == 0:
-            data_aug_1 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
-            data_aug_2 = time_error_injection(deepcopy(data), root_cause='request_and_response_duration')
+            data_aug = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration', edge_features=self.edge_features)
         elif n == 1:
-            data_aug_1 = time_error_injection(deepcopy(data), root_cause='subSpan_duration')
-            data_aug_2 = time_error_injection(deepcopy(data), root_cause='subSpan_duration')
+            data_aug = time_error_injection(deepcopy(data), root_cause='workDuration', edge_features=self.edge_features)
         elif n == 2:
-            data_aug_1 = response_code_injection(deepcopy(data))
-            data_aug_2 = response_code_injection(deepcopy(data))
+            data_aug = response_code_injection(deepcopy(data), self.edge_features)
+        elif n == 3:
+            data_aug = span_order_error_injection(deepcopy(data))
+        elif n == 4:
+            data_aug = drop_several_nodes(deepcopy(data))
+        elif n == 5:
+            data_aug = add_nodes(deepcopy(data))
         else:
             print('sample error')
             assert False
-        return data_aug_1, data_aug_2
+        return data_aug
 
 
 if __name__ == '__main__':
