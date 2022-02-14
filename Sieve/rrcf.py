@@ -66,7 +66,7 @@ class RCTree:
     """
 
     def __init__(self, X=None, index_labels=None, precision=9, 
-                 random_state=None):
+                 random_state=None, embedding_method=None):
         # Random number generation with provided seed
         if isinstance(random_state, int):
             self.rng = np.random.RandomState(random_state)
@@ -74,6 +74,8 @@ class RCTree:
             self.rng = random_state
         else:
             self.rng = np.random
+        # Initialize embedding method
+        self.embeddingMethod = embedding_method
         # Initialize dict for leaves
         self.leaves = {}
         # Initialize tree root
@@ -181,7 +183,7 @@ class RCTree:
         # Determine value for split
         p = -0.5
         # Otherwise ...
-        if invalid_dims.size == 0:
+        if invalid_dims.size == 0 or self.embeddingMethod == 'ourMethod':
             # Calculate all dimension weights
             # Compute l
             l = xmax - xmin
