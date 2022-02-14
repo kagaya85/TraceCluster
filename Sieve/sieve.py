@@ -28,7 +28,7 @@ def arguments():
     # ========================================
     # Set tree parameters
     # ========================================
-    parser.add_argument('--num_trees', type=int, default=2)     # 50
+    parser.add_argument('--num_trees', type=int, default=50)
     parser.add_argument('--tree_size', type=int, default=128)
     parser.add_argument('--windowSize_k', type=int, default=50)
     parser.add_argument('--threshold_h', type=int, default=0.3)
