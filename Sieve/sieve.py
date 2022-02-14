@@ -28,7 +28,7 @@ def arguments():
     # ========================================
     # Set tree parameters
     # ========================================
-    parser.add_argument('--num_trees', type=int, default=50)
+    parser.add_argument('--num_trees', type=int, default=2)     # 50
     parser.add_argument('--tree_size', type=int, default=128)
     parser.add_argument('--windowSize_k', type=int, default=50)
     parser.add_argument('--threshold_h', type=int, default=0.3)
@@ -108,7 +108,9 @@ def main():
     res_f = open('./Sieve/result.txt', 'w')
 
     print('Start !')
+    index = 0
     for data in tqdm(dataloader):
+        index = index + 1
         if args.embedding == 'STV':
             res_content = data['trace_id'] + '\t' + str(data['trace_bool']) + '\t' + data['error_trace_type']
             # ========================================
@@ -167,9 +169,9 @@ def main():
                 # Has new dimension
                 else:
                     # Extend leaves
-                    for leaf_index, leaf_value in tree.leaves.items():
-                        tree.leaves[leaf_index].x = np.append(tree.leaves[leaf_index].x, [-1]*(len(newNode)-tree.ndim))
-                        tree.leaves[leaf_index].b = tree.leaves[leaf_index].x.reshape(1, -1)
+                    for leaf_key, leaf_value in tree.leaves.items():
+                        tree.leaves[leaf_key].x = np.append(tree.leaves[leaf_key].x, [-1]*(len(newNode)-len(tree.leaves[leaf_key].x)))
+                        tree.leaves[leaf_key].b = tree.leaves[leaf_key].x.reshape(1, -1)
                 
                     tree.ndim = len(newNode)
 
@@ -201,7 +203,10 @@ def main():
                 # ========================================
                 # Calculate attention score
                 # ========================================
-                scoreSum = scoreSum + max(tree.leaves[leaf_index].d for leaf_index in tree.leaves.keys()) / tree.leaves[max(tree.leaves.keys())].d
+                if max(tree.leaves[leaf_index].d for leaf_index in tree.leaves.keys()) == 0:
+                    scoreSum = scoreSum + 0
+                else:
+                    scoreSum = scoreSum + max(tree.leaves[leaf_index].d for leaf_index in tree.leaves.keys()) / tree.leaves[max(tree.leaves.keys())].d
 
             # Final score of a path vector
             scoreAvg = scoreSum / len(forest)
@@ -222,7 +227,11 @@ def main():
                     p = 1 / (1 + np.exp(2*np.mean(avg_attentionScore)-avg_attentionScore[-1]))
                 # Otherwise ...
                 elif Var_k1 - Var_k <= threshold_h:
-                    p = avg_attentionScore[-1] / np.sum(avg_attentionScore)
+                    if not(np.any(avg_attentionScore)):
+                        # avg_attentionScore is all zeros
+                        p = -1
+                    else:
+                        p = avg_attentionScore[-1] / np.sum(avg_attentionScore)
                 # If p is no less than the random number, Sieve samples the trace
                 if p >= np.random.uniform(0, 1):
                     # Sample the trace

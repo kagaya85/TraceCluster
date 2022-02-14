@@ -959,7 +959,7 @@ class RCTree:
             if node.l:
                 self._get_bbox_top_down(node.l)
             if node.r:
-                self._get_bbox_top_down(node.r)
+                self._get_bbox_top_down(node.r) 
             bbox = self._lr_branch_bbox(node)
             node.b = bbox
 
