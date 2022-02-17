@@ -121,9 +121,9 @@ def trace_list_partition(operation_count, slo):
     normal_list = []  # normal traceid list
     abnormal_list = []  # abnormal traceid list
     for traceid in operation_count:
-        normal = trace_anormaly_detect(
+        abnormal = trace_anormaly_detect(
             operation_list=operation_count[traceid], slo=slo)
-        if normal:
+        if abnormal:
             abnormal_list.append(traceid)
         else:
             normal_list.append(traceid)

@@ -134,52 +134,52 @@ def calculate_spectrum_without_delay_list(anomaly_result, normal_result, anomaly
 
 
 def online_anomaly_detect_RCA(slo, operation_list):
-    while True:
-        # current_time = datetime.datetime.strptime(datetime.datetime.now().strftime(
-        #     "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S")-datetime.timedelta(minutes=1)
+# while True:
+    # current_time = datetime.datetime.strptime(datetime.datetime.now().strftime(
+    #     "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S")-datetime.timedelta(minutes=1)
 
-        # start_time = current_time - datetime.timedelta(seconds=60)
-        anormaly_flag = system_anormaly_detect(
-            slo=slo, operation_list=operation_list)
-        if anormaly_flag:
-            middle_span_list = get_span()
-            operation_count = get_operation_duration_data(
-                operation_list, middle_span_list)
-            anomaly_list, normal_list = trace_list_partition(
-                operation_count=operation_count, slo=slo)
+    # start_time = current_time - datetime.timedelta(seconds=60)
+    anormaly_flag = system_anormaly_detect(
+        slo=slo, operation_list=operation_list)
 
-            print("anomaly_list", len(anomaly_list))
-            print("normal_list", len(normal_list))
-            print("total", len(normal_list) + len(anomaly_list))
+    if anormaly_flag:
+        middle_span_list = get_span()
+        operation_count = get_operation_duration_data(
+            operation_list, middle_span_list)
+        anomaly_list, normal_list = trace_list_partition(
+            operation_count=operation_count, slo=slo)
 
-            if len(anomaly_list) == 0 or len(normal_list) == 0:
-                continue
-            operation_operation, operation_trace, trace_operation, pr_trace \
-                = get_pagerank_graph(normal_list, middle_span_list)
+        print("anomaly_list", len(anomaly_list))
+        print("normal_list", len(normal_list))
+        print("total", len(normal_list) + len(anomaly_list))
 
-            normal_trace_result, normal_num_list = trace_pagerank(operation_operation, operation_trace, trace_operation,
-                                                                  pr_trace, False)
-
-            a_operation_operation, a_operation_trace, a_trace_operation, a_pr_trace \
-                = get_pagerank_graph(anomaly_list, middle_span_list)
-            anomaly_trace_result, anomaly_num_list = trace_pagerank(a_operation_operation, a_operation_trace,
-                                                                    a_trace_operation, a_pr_trace,
-                                                                    True)
-            top_list, score_list = calculate_spectrum_without_delay_list(anomaly_result=anomaly_trace_result,
-                                                                         normal_result=normal_trace_result,
-                                                                         anomaly_list_len=len(
-                                                                             anomaly_list),
-                                                                         normal_list_len=len(
-                                                                             normal_list),
-                                                                         top_max=5,
-                                                                         anomaly_num_list=anomaly_num_list,
-                                                                         normal_num_list=normal_num_list,
-                                                                         spectrum_method="dstar2")
-            print(top_list, score_list)
+        if len(anomaly_list) == 0 or len(normal_list) == 0:
+            print('list is empty')
             return
-        #     # sleep 5min after a fault
-        #     time.sleep(240)
-        # time.sleep(60)
+        operation_operation, operation_trace, trace_operation, pr_trace \
+            = get_pagerank_graph(normal_list, middle_span_list)
+
+        normal_trace_result, normal_num_list = trace_pagerank(operation_operation, operation_trace, trace_operation,
+                                                                pr_trace, False)
+
+        a_operation_operation, a_operation_trace, a_trace_operation, a_pr_trace \
+            = get_pagerank_graph(anomaly_list, middle_span_list)
+        anomaly_trace_result, anomaly_num_list = trace_pagerank(a_operation_operation, a_operation_trace,
+                                                                a_trace_operation, a_pr_trace,
+                                                                True)
+        top_list, score_list = calculate_spectrum_without_delay_list(anomaly_result=anomaly_trace_result,
+                                                                        normal_result=normal_trace_result,
+                                                                        anomaly_list_len=len(
+                                                                            anomaly_list),
+                                                                        normal_list_len=len(
+                                                                            normal_list),
+                                                                        top_max=5,
+                                                                        anomaly_num_list=anomaly_num_list,
+                                                                        normal_num_list=normal_num_list,
+                                                                        spectrum_method="dstar2")
+        print(top_list, score_list)
+        return
+
 
 
 def main():

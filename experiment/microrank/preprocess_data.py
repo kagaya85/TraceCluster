@@ -1,15 +1,12 @@
-from curses.ascii import SP
-import re
-import json
-import time
-import numpy as np
-from copy import deepcopy
-import pandas as pd
-from pandas.core.frame import DataFrame
-from typing import List, Callable, Dict
 import sys
-sys.path.append("../..") 
-from preprocess import load_span, Span
+from typing import List, Callable, Dict
+from pandas.core.frame import DataFrame
+import pandas as pd
+from copy import deepcopy
+import numpy as np
+import time
+sys.path.append("../..")
+from preprocess import load_span, Span, mm_root_map
 
 root_index = '-1'
 
@@ -17,14 +14,54 @@ span_list = []
 is_wechat = True
 
 
+def fix_root(span_list: List[Span]):
+    cur_tid = ''
+    has_root = False
+    spans = []
+    for span in span_list:
+        if span.traceId != cur_tid:
+            cur_tid = span.traceId
+            if has_root == False:
+                root = mm_root_map[cur_tid]
+                root_span = Span()
+                root_span.spanId = root['spanid']
+                root_span.parentSpanId = '-1'
+                root_span.traceId = cur_tid
+                root_span.spanType = 'Entry'
+                root_span.startTime = root['start_time']
+                root_span.duration = root['cost_time']
+                root_span.service = root['ossid']
+                root_span.operation = root['cmdid']
+                root_span.code = root['code']
+                spans.append(root_span)
+
+            has_root = False
+
+        spans.append(span)        
+    return spans
+
+
 def get_span() -> List[Span]:
     global span_list
     if len(span_list) == 0:
         span_data = pd.concat(load_span(is_wechat), axis=0, ignore_index=True)
+        span_data = span_data.groupby('TraceId').apply(lambda x:x.sort_values('StartTime', ascending=True)).reset_index(drop=True)
         span_list = [Span(raw_span) for _, raw_span in span_data.iterrows()]
+        if is_wechat:
+            span_list = fix_root(span_list)
 
     return span_list
 
+
+def is_root_span(span: Span):
+    if is_wechat:
+        root_span_id = mm_root_map[span.traceId]['spanid']
+        if span.spanType == 'Entry' and span.spanId == root_span_id:
+            return True
+
+        return False
+    else:
+        return span.parentSpanId == '-1'
 
 '''
   Query all the service_operation from the input span_list
@@ -71,6 +108,7 @@ def get_operation_slo(service_operation_list: List[str], span_list: List[Span]):
     filter_data = {}
     temp = {}
     normal_trace = True
+    root_id = ''
 
     def check_filter_data():
         for spanid in temp:
@@ -88,11 +126,16 @@ def get_operation_slo(service_operation_list: List[str], span_list: List[Span]):
             temp[spanid]['duration'] = span.duration
             temp[spanid]['operation'] = span.operation
 
-            if span.spanType == 'Entry' and span.service == "frontend":
+            if is_root_span(span):
                 temp[spanid]['parent'] = root_index
+                root_id = spanid
             else:
                 parentId = span.parentSpanId
+                if parentId not in temp:
+                    parentId = root_id
+
                 temp[spanid]['parent'] = parentId
+
                 if parentId in temp:
                     temp[parentId]['duration'] -= temp[spanid]['duration']
                 else:
@@ -109,16 +152,18 @@ def get_operation_slo(service_operation_list: List[str], span_list: List[Span]):
             temp[spanid] = deepcopy(template)
             temp[spanid]['duration'] = span.duration
             temp[spanid]['operation'] = span.operation
-            if span.spanType == 'Entry' and span.service == "frontend":
+            if is_root_span(span):
                 temp[spanid]['parent'] = root_index
+                root_id = spanid
             else:
                 parentId = span.parentSpanId
+                if parentId not in temp:
+                    parentId = root_id
                 temp[spanid]['parent'] = parentId
                 if parentId in temp:
                     temp[parentId]['duration'] -= temp[spanid]['duration']
                 else:
                     normal_trace = False
-        
 
     # The last trace
     if len(temp) > 1:
@@ -184,26 +229,22 @@ def get_operation_duration_data(operation_list: List[str], span_list: List[Span]
                 operation_dict[trace_id][operation] = 0
             operation_dict[trace_id]['duration'] = 0
 
-    length = 0
     for span in span_list:
-        tag = span.spanType
         operation_name = span.operation
 
-        init_dict(span.spanId)
+        init_dict(span.traceId)
 
         if trace_id == span.traceId:
             operation_dict[trace_id][operation_name] += 1
-            length += 1
 
-            if span.service == "frontend" and tag == "Entry":
+            if is_root_span(span):
                 operation_dict[trace_id]['duration'] += span.duration
 
         else:
             trace_id = span.traceId
-            length = 0
             operation_dict[trace_id][operation_name] += 1
 
-            if span.service == "frontend" and tag == "Entry":
+            if is_root_span(span):
                 operation_dict[trace_id]['duration'] += span.duration
 
     return operation_dict

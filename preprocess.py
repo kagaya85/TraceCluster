@@ -65,7 +65,7 @@ ITEM = Item()
 
 
 class Span:
-    def __init__(self, raw_span: dict) -> None:
+    def __init__(self, raw_span: dict = None) -> None:
         """
         convert raw span to span object
         """
