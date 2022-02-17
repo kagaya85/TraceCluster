@@ -145,15 +145,19 @@ mm_data_path_list = [
     # '11-18/call_graph_2021-11-18_61266.csv'
     # '11-22/call_graph_2021-11-22_23629.csv'
     # '11-29/call_graph_2021-11-29_23629.csv',
-    # '12-3/call_graph_2021-12-03_24486.csv'
-    '12-3/call_graph_2021-12-03_23629.csv'
+    # '12-3/call_graph_2021-12-03_24486.csv',
+    # '12-3/call_graph_2021-12-03_23629.csv',
+    # 'trace_mmfindersynclogicsvr/call_graph_2022-01-17_23629.csv',
+    'trace_mmfindersynclogicsvr/call_graph_2022-01-18_23629.csv',
 ]
 
 # wechat trace root data list
 mm_trace_root_list = [
     # '11-29/click_stream_2021-11-29_23629.csv',
-    # '12-3/click_stream_2021-12-03_24486.csv'
-    '12-3/click_stream_2021-12-03_23629.csv'
+    # '12-3/click_stream_2021-12-03_24486.csv',
+    # '12-3/click_stream_2021-12-03_23629.csv',
+    # 'trace_mmfindersynclogicsvr/click_stream_2022-01-17_23629.csv',
+    'trace_mmfindersynclogicsvr/click_stream_2022-01-18_23629.csv',
 ]
 
 # see https://openmsg.yuque.com/openmsg/wechat/smhizg#1Gpq

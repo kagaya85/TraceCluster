@@ -25,7 +25,7 @@ time_now_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
 # wecath data flag
 is_wechat = False
 use_request = False
-cache_file = './secrets/cache.json'
+cache_file = '/home/kagaya/work/TraceCluster/secrets/cache.json'
 embedding_name = ''
 
 
@@ -119,6 +119,15 @@ def load_span(is_wechat: bool) -> List[DataFrame]:
     """
     load raw sapn data from pathList
     """
+    if is_wechat:
+        global cache, mmapis, service_url, operation_url, sn
+        cache = load_name_cache()
+        if use_request:
+            mmapis = get_mmapi()
+            service_url = mmapis['api']['getApps']
+            operation_url = mmapis['api']['getModuleInterface']
+            sn = mmapis['sn']
+
     raw_spans = []
 
     if is_wechat:
@@ -128,6 +137,7 @@ def load_span(is_wechat: bool) -> List[DataFrame]:
         global mm_root_map
         for path in mm_trace_root_list:
             path = os.path.join(data_root, 'wechat', path)
+            print(f"loading wechat clickstrem data from {path}")
             clickstreams = pd.read_csv(path)
             for _, root in clickstreams.iterrows():
                 mm_root_map[root['GraphIdBase64']] = {
@@ -842,15 +852,6 @@ def main():
     is_wechat = args.wechat
     use_request = args.use_request
     embedding_name = args.embedding
-
-    if is_wechat:
-        global cache, mmapis, service_url, operation_url, sn
-        cache = load_name_cache()
-        if use_request:
-            mmapis = get_mmapi()
-            service_url = mmapis['api']['getApps']
-            operation_url = mmapis['api']['getModuleInterface']
-            sn = mmapis['sn']
 
     print(f"parallel processing number: {args.cores}")
 

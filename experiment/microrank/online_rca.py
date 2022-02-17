@@ -1,9 +1,5 @@
 import numpy as np
 import math
-import json
-import os
-import sys
-import datetime
 from anormaly_detector import trace_list_partition
 from anormaly_detector import system_anormaly_detect
 from preprocess_data import get_operation_duration_data
@@ -15,11 +11,8 @@ from pagerank import trace_pagerank
 from anormaly_detector import trace_list_partition
 from anormaly_detector import system_anormaly_detect
 import time
-import datetime
 from dateutil.parser import parse
-import json
-import csv
-import codecs
+
 
 
 def timestamp(datetime):
@@ -189,12 +182,16 @@ def online_anomaly_detect_RCA(slo, operation_list):
         # time.sleep(60)
 
 
-if __name__ == '__naim__':
+def main():
     span_list = get_span()
     # print(span_list)
     operation_list = get_service_operation_list(span_list)
-    print(operation_list)
+    print('operation list:', operation_list)
     slo = get_operation_slo(
         service_operation_list=operation_list, span_list=span_list)
-    print(slo)
+    print('slo:', slo)
     online_anomaly_detect_RCA(slo, operation_list)
+
+
+if __name__ == '__main__':
+    main()

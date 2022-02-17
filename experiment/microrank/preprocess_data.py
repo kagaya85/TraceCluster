@@ -7,7 +7,9 @@ from copy import deepcopy
 import pandas as pd
 from pandas.core.frame import DataFrame
 from typing import List, Callable, Dict
-from ...preprocess import load_span, Span
+import sys
+sys.path.append("../..") 
+from preprocess import load_span, Span
 
 root_index = '-1'
 
@@ -116,6 +118,7 @@ def get_operation_slo(service_operation_list: List[str], span_list: List[Span]):
                     temp[parentId]['duration'] -= temp[spanid]['duration']
                 else:
                     normal_trace = False
+        
 
     # The last trace
     if len(temp) > 1:
