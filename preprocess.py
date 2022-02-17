@@ -178,11 +178,11 @@ def load_span(is_wechat: bool) -> List[DataFrame]:
             # convert to dataframe
             for i, s in tqdm(mmspans):
                 spans[ITEM.SPAN_ID].append(
-                    str(s['CalleeNodeID']) + str(['CalleeOssID']) + str(['CalleeCmdID']))
+                    str(s['CalleeNodeID']) + str(s['CalleeOssID']) + str(s['CalleeCmdID']))
                 spans[ITEM.PARENT_SPAN_ID].append(
                     str(s['CallerNodeID']) + str(s['CallerOssID']) + str(s['CallerCmdID']))
                 spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
-                spans[ITEM.SPAN_TYPE].append('EntrySpan')
+                spans[ITEM.SPAN_TYPE].append('Entry')
                 spans[ITEM.START_TIME].append(s['TimeStamp'])
                 spans[ITEM.DURATION].append(int(s['CostTime']))
 
