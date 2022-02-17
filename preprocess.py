@@ -141,9 +141,13 @@ def load_span(is_wechat: bool) -> List[DataFrame]:
             clickstreams = pd.read_csv(path)
             for _, root in clickstreams.iterrows():
                 mm_root_map[root['GraphIdBase64']] = {
+                    'spanid': str(root['CallerNodeID']) + str(root['CallerOssID']) + str(root['CallerCmdID']),
                     'ossid': root['CallerOssID'],
+                    'cmdid': root['CallerCmdID'],
+                    'nodeid': root['CallerNodeID'],
                     'code': root['RetCode'],
                     'start_time': root['TimeStamp'],
+                    'cost_time': root['CostTime'],
                 }
 
         # load trace info
@@ -548,7 +552,7 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
 
     # add root node
     if traceId in mm_root_map.keys():
-        root_span_id = '0'
+        root_span_id = mm_root_map[traceId]['spanid']
         root_ossid = mm_root_map[traceId]['ossid']
         root_code = mm_root_map[traceId]['code']
         root_start_time = mm_root_map[traceId]['start_time']
