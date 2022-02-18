@@ -2,7 +2,6 @@ from preprocess_data import get_operation_slo
 from preprocess_data import get_span
 from preprocess_data import get_operation_duration_data
 from preprocess_data import get_service_operation_list
-import time
 
 '''
    Input long time trace data and get the slo of operation
@@ -66,10 +65,10 @@ def system_anormaly_detect(slo, operation_list):
 
     print("anormaly_trace", anormaly_trace)
     print("total_trace", total_trace)
-    print()
     if anormaly_trace > 8:
         anormaly_rate = float(anormaly_trace) / total_trace
         print("anormaly_rate", anormaly_rate)
+        print()
         return True
 
     else:
@@ -99,7 +98,7 @@ def trace_anormaly_detect(operation_list, slo):
         expect_duration += operation_list[operation] * \
             (slo[operation][0] + slo[operation][1])
 
-    if real_duration > expect_duration + 50:
+    if real_duration > expect_duration:
         return True
     else:
         return False

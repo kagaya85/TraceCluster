@@ -148,8 +148,7 @@ mm_data_path_list = [
     # '12-3/call_graph_2021-12-03_24486.csv',
     # '12-3/call_graph_2021-12-03_23629.csv',
     # 'trace_mmfindersynclogicsvr/call_graph_2022-01-17_23629.csv',
-    # 'trace_mmfindersynclogicsvr/call_graph_2022-01-18_23629.csv',
-    'trace_mmfindersynclogicsvr/tmp.csv'
+    'trace_mmfindersynclogicsvr/call_graph_2022-01-18_23629.csv',
 ]
 
 # wechat trace root data list

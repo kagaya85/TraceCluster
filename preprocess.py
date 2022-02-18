@@ -10,7 +10,7 @@ import numpy as np
 import argparse
 from tqdm import tqdm
 import utils
-from typing import List, Callable, Dict
+from typing import List, Callable, Dict, Tuple
 from multiprocessing import cpu_count, Manager, current_process
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import requests
@@ -115,125 +115,140 @@ def arguments():
     return parser.parse_args()
 
 
+def load_mm_span(clickstream_list: List[str], callgraph_list: List[str]) -> Tuple[dict, List[DataFrame]]:
+    # wechat data
+    raw_spans = []
+    root_map = {}
+
+    global cache, mmapis, service_url, operation_url, sn
+    if not cache:
+        cache = load_name_cache()
+    if use_request:
+        mmapis = get_mmapi()
+        service_url = mmapis['api']['getApps']
+        operation_url = mmapis['api']['getModuleInterface']
+        sn = mmapis['sn']
+
+    # load root info
+    for path in clickstream_list:
+        path = os.path.join(data_root, 'wechat', path)
+        print(f"loading wechat clickstrem data from {path}")
+        clickstreams = pd.read_csv(path)
+        for _, root in clickstreams.iterrows():
+            root_map[root['GraphIdBase64']] = {
+                'spanid': str(root['CallerNodeID']) + str(root['CallerOssID']) + str(root['CallerCmdID']),
+                'ossid': root['CallerOssID'],
+                'cmdid': root['CallerCmdID'],
+                'nodeid': root['CallerNodeID'],
+                'code': root['RetCode'],
+                'start_time': root['TimeStamp'],
+                'cost_time': root['CostTime'],
+            }
+
+    # load trace info
+    for filepath in callgraph_list:
+        filepath = os.path.join(data_root, 'wechat', filepath)
+        print(f"loading wechat span data from {filepath}")
+        if filepath.endswith('.json'):
+            with open(filepath, 'r') as f:
+                raw_data = json.load(f)
+            mmspans = raw_data['data']
+        elif filepath.endswith('.csv'):
+            raw_data = pd.read_csv(filepath).drop_duplicates()
+            mmspans = raw_data.iterrows()
+        else:
+            print(f'invalid file type: {filepath}')
+            continue
+
+        spans = {
+            ITEM.SPAN_ID: [],
+            ITEM.PARENT_SPAN_ID: [],
+            ITEM.TRACE_ID: [],
+            ITEM.SPAN_TYPE: [],
+            ITEM.START_TIME: [],
+            ITEM.DURATION: [],
+            ITEM.SERVICE: [],
+            ITEM.PEER: [],
+            ITEM.OPERATION: [],
+            ITEM.IS_ERROR: [],
+            ITEM.CODE: [],
+        }
+
+        # convert to dataframe
+        for i, s in tqdm(mmspans):
+            spans[ITEM.SPAN_ID].append(
+                str(s['CalleeNodeID']) + str(s['CalleeOssID']) + str(s['CalleeCmdID']))
+            spans[ITEM.PARENT_SPAN_ID].append(
+                str(s['CallerNodeID']) + str(s['CallerOssID']) + str(s['CallerCmdID']))
+            spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
+            spans[ITEM.SPAN_TYPE].append('Entry')
+            spans[ITEM.START_TIME].append(s['TimeStamp'])
+            spans[ITEM.DURATION].append(int(s['CostTime']))
+
+            # 尝试替换id为name
+            service_name = get_service_name(s['CalleeOssID'])
+            if service_name == "":
+                spans[ITEM.SERVICE].append(str(s['CalleeOssID']))
+            else:
+                spans[ITEM.SERVICE].append(service_name)
+
+            spans[ITEM.OPERATION].append(
+                get_operation_name(s['CalleeCmdID'], service_name))
+
+            peer_service_name = get_service_name(s['CallerOssID'])
+            peer_cmd_name = get_operation_name(
+                s['CallerCmdID'], peer_service_name)
+
+            if peer_service_name == "":
+                spans[ITEM.PEER].append(
+                    '/'.join([str(s['CallerOssID']), peer_cmd_name]))
+            else:
+                spans[ITEM.PEER].append(
+                    '/'.join([peer_service_name, peer_cmd_name]))
+
+            error_code = s['NetworkRet'] if s['NetworkRet'] != 0 else s['ServiceRet']
+            spans[ITEM.IS_ERROR].append(utils.int2Bool(error_code))
+            spans[ITEM.CODE].append(str(error_code))
+
+        df = DataFrame(spans)
+        raw_spans.extend(data_partition(df))
+
+        return root_map, raw_spans
+
+
+def load_sw_span(data_path_list: List[str]) -> List[DataFrame]:
+    raw_spans = []
+    # skywalking data
+    for filepath in data_path_list:
+        filepath = os.path.join(data_root, 'trainticket', filepath)
+        print(f"loading skywalking span data from {filepath}")
+
+        data_type = {ITEM.START_TIME: np.uint64, ITEM.END_TIME: np.uint64}
+        spans = pd.read_csv(
+            filepath, dtype=data_type
+        ).drop_duplicates().dropna()
+        spans[ITEM.DURATION] = spans[ITEM.END_TIME] - \
+            spans[ITEM.START_TIME]
+
+        spans[ITEM.SERVICE] = spans[ITEM.SERVICE].map(
+            lambda x: remove_tail_id(x))
+        raw_spans.extend(data_partition(spans, 10240))
+    
+    return raw_spans
+
+
 def load_span(is_wechat: bool) -> List[DataFrame]:
     """
     load raw sapn data from pathList
     """
-    if is_wechat:
-        global cache, mmapis, service_url, operation_url, sn
-        cache = load_name_cache()
-        if use_request:
-            mmapis = get_mmapi()
-            service_url = mmapis['api']['getApps']
-            operation_url = mmapis['api']['getModuleInterface']
-            sn = mmapis['sn']
-
     raw_spans = []
 
     if is_wechat:
-        # wechat data
-
-        # load root info
         global mm_root_map
-        for path in mm_trace_root_list:
-            path = os.path.join(data_root, 'wechat', path)
-            print(f"loading wechat clickstrem data from {path}")
-            clickstreams = pd.read_csv(path)
-            for _, root in clickstreams.iterrows():
-                mm_root_map[root['GraphIdBase64']] = {
-                    'spanid': str(root['CallerNodeID']) + str(root['CallerOssID']) + str(root['CallerCmdID']),
-                    'ossid': root['CallerOssID'],
-                    'cmdid': root['CallerCmdID'],
-                    'nodeid': root['CallerNodeID'],
-                    'code': root['RetCode'],
-                    'start_time': root['TimeStamp'],
-                    'cost_time': root['CostTime'],
-                }
-
-        # load trace info
-        for filepath in mm_data_path_list:
-            filepath = os.path.join(data_root, 'wechat', filepath)
-            print(f"loading wechat span data from {filepath}")
-            if filepath.endswith('.json'):
-                with open(filepath, 'r') as f:
-                    raw_data = json.load(f)
-                mmspans = raw_data['data']
-            elif filepath.endswith('.csv'):
-                raw_data = pd.read_csv(filepath).drop_duplicates()
-                mmspans = raw_data.iterrows()
-            else:
-                print(f'invalid file type: {filepath}')
-                continue
-
-            spans = {
-                ITEM.SPAN_ID: [],
-                ITEM.PARENT_SPAN_ID: [],
-                ITEM.TRACE_ID: [],
-                ITEM.SPAN_TYPE: [],
-                ITEM.START_TIME: [],
-                ITEM.DURATION: [],
-                ITEM.SERVICE: [],
-                ITEM.PEER: [],
-                ITEM.OPERATION: [],
-                ITEM.IS_ERROR: [],
-                ITEM.CODE: [],
-            }
-
-            # convert to dataframe
-            for i, s in tqdm(mmspans):
-                spans[ITEM.SPAN_ID].append(
-                    str(s['CalleeNodeID']) + str(s['CalleeOssID']) + str(s['CalleeCmdID']))
-                spans[ITEM.PARENT_SPAN_ID].append(
-                    str(s['CallerNodeID']) + str(s['CallerOssID']) + str(s['CallerCmdID']))
-                spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
-                spans[ITEM.SPAN_TYPE].append('Entry')
-                spans[ITEM.START_TIME].append(s['TimeStamp'])
-                spans[ITEM.DURATION].append(int(s['CostTime']))
-
-                # 尝试替换id为name
-                service_name = get_service_name(s['CalleeOssID'])
-                if service_name == "":
-                    spans[ITEM.SERVICE].append(str(s['CalleeOssID']))
-                else:
-                    spans[ITEM.SERVICE].append(service_name)
-
-                spans[ITEM.OPERATION].append(
-                    get_operation_name(s['CalleeCmdID'], service_name))
-
-                peer_service_name = get_service_name(s['CallerOssID'])
-                peer_cmd_name = get_operation_name(
-                    s['CallerCmdID'], peer_service_name)
-
-                if peer_service_name == "":
-                    spans[ITEM.PEER].append(
-                        '/'.join([str(s['CallerOssID']), peer_cmd_name]))
-                else:
-                    spans[ITEM.PEER].append(
-                        '/'.join([peer_service_name, peer_cmd_name]))
-
-                error_code = s['NetworkRet'] if s['NetworkRet'] != 0 else s['ServiceRet']
-                spans[ITEM.IS_ERROR].append(utils.int2Bool(error_code))
-                spans[ITEM.CODE].append(str(error_code))
-
-            df = DataFrame(spans)
-            raw_spans.extend(data_partition(df))
+        mm_root_map, raw_spans = load_mm_span(mm_trace_root_list, mm_data_path_list)
 
     else:
-        # skywalking data
-        for filepath in data_path_list:
-            filepath = os.path.join(data_root, 'trainticket', filepath)
-            print(f"loading skywalking span data from {filepath}")
-
-            data_type = {ITEM.START_TIME: np.uint64, ITEM.END_TIME: np.uint64}
-            spans = pd.read_csv(
-                filepath, dtype=data_type
-            ).drop_duplicates().dropna()
-            spans[ITEM.DURATION] = spans[ITEM.END_TIME] - \
-                spans[ITEM.START_TIME]
-
-            spans[ITEM.SERVICE] = spans[ITEM.SERVICE].map(
-                lambda x: remove_tail_id(x))
-            raw_spans.extend(data_partition(spans, 10240))
+        raw_spans = load_sw_span(data_path_list)
 
     return raw_spans
 
