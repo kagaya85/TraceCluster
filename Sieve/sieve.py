@@ -12,6 +12,8 @@ import rrcf
 
 from simclr import SIMCLR
 from aug_dataset_mem import TraceDataset
+from torch.utils.data import Subset
+import time
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -21,7 +23,7 @@ def arguments():
     parser.add_argument('--embedding', dest='embedding',
                         help='select the embedding method of traces, eg. STV and ourMethod', type=str, default='STV')
     parser.add_argument('--dataset', dest='dataset',
-                        help='use other preprocessed data dirpath, eg. ./newData or ./newData/outfiles2022-02-13_21-04-20', default="./newData/outfiles2022-02-13_21-04-20")
+                        help='use other preprocessed data dirpath, eg. ./newData or ./newData/outfiles2022-02-13_21-04-20', default="./newData")
     parser.add_argument('--batch_size', dest='batch_size', type=int, default=1, help='batch size')
     parser.add_argument('--model_path', dest='model_path',
                         default='./newData/20epoch_CGConv_add_new_anomaly_view_0.5_new_data/', help='weights save path')
@@ -52,7 +54,7 @@ def main():
     X = []    # before path vector or after
 
     all_path = []
-    all_trace = {}
+    all_trace = []
     normal_trace = {}
     abnormal_trace = {}
     # url_trace = {}
@@ -71,8 +73,8 @@ def main():
     if args.embedding == 'STV':
         print("embedding method:", args.embedding)
 
-        dataloader = load_dataset(args.dataset)    # trace list
-    
+        dataloader = load_dataset()    # trace list
+
     elif args.embedding == 'ourMethod':
         print("embedding method:", args.embedding)
         
@@ -81,9 +83,6 @@ def main():
 
         # init dataset
         dataset = TraceDataset(root=args.dataset, aug='none')    # shuffle
-
-        # init dataloader
-        dataloader = DataLoader(dataset, batch_size=batch_size)
 
         # load the pre-trained model
         with open(args.model_path + 'train_info.json', "r") as f:  # file name not list
@@ -98,6 +97,62 @@ def main():
             train_idx = model_info['train_idx']
             # test_idx = model_info['test_idx']
 
+        # 需要注释掉
+        # normal_idx = dataset.normal_idx
+        # abnormal_idx = dataset.abnormal_idx
+        # 需要注释掉
+        # test body (Maintenance stage)
+        # test body 1 (normal & abnormal)
+        # test_body_idx = list(random.sample(set(normal_idx).difference(set(train_idx)), 800) + random.sample(set(abnormal_idx).difference(set(train_idx)), 200))
+        # np.random.shuffle(test_body_idx)
+        # test body 2 (root_url)
+        # test_body_idx = []
+        # for url_class in tqdm(range(len(dataset.url_classes))):
+        #     url_idx = [[index for index, data in enumerate(dataset) if data.y==0 and data.url_class==url_class],
+        #                [index for index, data in enumerate(dataset) if data.y==1 and data.url_class==url_class]]
+        #     test_body_idx = test_body_idx + \
+        #                     random.sample(url_idx[0], int(8*1000/(10*len(dataset.url_classes))) if int(8*1000/(10*len(dataset.url_classes))) <= len(url_idx[0]) else len(url_idx[0])) + \
+        #                     random.sample(url_idx[1], int(2*1000/(10*len(dataset.url_classes))) if int(2*1000/(10*len(dataset.url_classes))) <= len(url_idx[1]) else len(url_idx[1]))
+        # np.random.shuffle(test_body_idx)
+        # test body 3 (node_num)
+        # node_num_class_list = []
+        # for data in dataset:
+        #     if data.x.size(0) not in node_num_class_list:
+        #         node_num_class_list.append(data.x.size(0))
+        # test_body_idx = []
+        # for node_num_class in tqdm(range(len(node_num_class_list))):
+        #     node_num_idx = [[index for index, data in enumerate(dataset) if data.y==0 and data.x.size(0)==node_num_class_list[node_num_class]],
+        #                     [index for index, data in enumerate(dataset) if data.y==1 and data.x.size(0)==node_num_class_list[node_num_class]]]
+        #     test_body_idx = test_body_idx + \
+        #                     random.sample(node_num_idx[0], int(9*1000/(10*len(node_num_class_list))) if int(9*1000/(10*len(node_num_class_list))) <= len(node_num_idx[0]) else len(node_num_idx[0])) + \
+        #                     random.sample(node_num_idx[1], int(1*1000/(10*len(node_num_class_list))) if int(1*1000/(10*len(node_num_class_list))) <= len(node_num_idx[1]) else len(node_num_idx[1]))
+        # np.random.shuffle(test_body_idx)
+        # test head (Construction stage)
+        # test_head_idx = list(random.sample(set(normal_idx).difference(set(test_body_idx + train_idx)), tree_size))
+        # test_idx = test_head_idx + test_body_idx
+        
+        # 需要注释掉
+        # idx_fw = open('./Sieve/test_idx_nodenum_y.txt', 'w')
+        # idx_fw.write(str(test_idx).replace('[', '').replace(']', ''))
+        # idx_fw.close()
+
+
+        # idx_fr = open('./Sieve/test_idx_nodenum_y.txt', 'r')
+        # S = idx_fr.read()
+        # idx_fr.close()
+        # test_idx = [int(index_item) for index_item in S.split(', ')]
+
+        # 需要注释掉
+        # traceID_list = [dataItem.trace_id for dataItem in dataset[test_idx]]
+        # traceID_fw = open('./Sieve/test_traceID.txt', 'w')
+        # traceID_fw.write(str(traceID_list).replace('[', '').replace(']', '').replace('\'', ''))
+        # traceID_fw.close()
+
+        # eval_dataset = Subset(dataset, test_idx)
+
+        # init dataloader
+        dataloader = DataLoader(dataset, batch_size=batch_size)    # eval_dataset
+
         model = SIMCLR(num_layers=num_layers, input_dim=dataset.num_node_features, output_dim=output_dim,
                    num_edge_attr=dataset.num_edge_features, gnn_type=gnn_type,
                    pooling_type=pooling_type).to(device)
@@ -105,21 +160,20 @@ def main():
         model.eval()
 
     # open test result
-    res_f = open('./Sieve/result.txt', 'w')
+    time_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
+    res_f = open('./Sieve/result_' + args.embedding + '_' + time_str + '.txt', 'w')
 
     print('Start !')
-    index = 0
     for data in tqdm(dataloader):
-        index = index + 1
         if args.embedding == 'STV':
-            res_content = data['trace_id'] + '\t' + str(data['trace_bool']) + '\t' + data['error_trace_type']
+            res_content = data['trace_id'] + '\t' + str(data['trace_bool'])
             # ========================================
             # Path vector encoder
             # ========================================
             # all_trace 需要在维护阶段每次清空，每次仅保留当前的 trace 信息。这里的 all_trace 也就是 X，下一步需要确定 embedding 的位置 ！！！！！！
             if isMaintenanceStage == True:
-                all_trace = {}
-            all_path, all_trace, normal_trace, abnormal_trace = process_one_trace(data, all_path, all_trace, normal_trace, abnormal_trace)
+                all_trace = []
+            all_path, all_trace = process_one_trace(data, all_path, all_trace)
 
         elif args.embedding == 'ourMethod':
             res_content = data[0].trace_id + '\t' + str(data[0].y.numpy()[0]) + '\t' + data[0].root_url
