@@ -96,7 +96,7 @@ def trace_anormaly_detect(operation_list, slo):
         if operation == "duration":
             continue
         expect_duration += operation_list[operation] * \
-            (slo[operation][0] + slo[operation][1])
+            (slo[operation][0] + 1.5 * slo[operation][1])
 
     if real_duration > expect_duration:
         return True

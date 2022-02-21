@@ -176,7 +176,8 @@ def online_anomaly_detect_RCA(slo, operation_list):
                                                                         anomaly_num_list=anomaly_num_list,
                                                                         normal_num_list=normal_num_list,
                                                                         spectrum_method="dstar2")
-        print(top_list, score_list)
+        print('top_list:', top_list)
+        print('score_list:', score_list)
         return
 
 

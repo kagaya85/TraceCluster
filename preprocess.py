@@ -137,9 +137,9 @@ def load_mm_span(clickstream_list: List[str], callgraph_list: List[str]) -> Tupl
         for _, root in clickstreams.iterrows():
             root_map[root['GraphIdBase64']] = {
                 'spanid': str(root['CallerNodeID']) + str(root['CallerOssID']) + str(root['CallerCmdID']),
-                'ossid': root['CallerOssID'],
-                'cmdid': root['CallerCmdID'],
-                'nodeid': root['CallerNodeID'],
+                'ossid': str(root['CallerOssID']),
+                'cmdid': str(root['CallerCmdID']),
+                'nodeid': str(root['CallerNodeID']),
                 'code': root['RetCode'],
                 'start_time': root['TimeStamp'],
                 'cost_time': root['CostTime'],
