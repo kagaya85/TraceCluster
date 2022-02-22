@@ -1,4 +1,5 @@
 import csv
+import math
 import os
 import time
 import torch
@@ -13,7 +14,7 @@ from sklearn.metrics import roc_auc_score
 import yappi
 
 # Device configuration
-from dataset import DealDataset, get_num_classes
+from dataset import TraceDataset
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -30,7 +31,7 @@ def judge_bool(out_time, recon_time_seq, distance_max, distance_min, out_node, o
             e = (out_time[i, j] - recon_time_seq[i, j]) ** 2
             if e > e_max:
                 e_max = e
-        scores.append(e_max)
+        scores.append(e_max.cpu())
         time_value.append(float(e_max))
         if e_max > distance_max:
             bool_count[i] = 0
@@ -50,15 +51,15 @@ def judge_bool(out_time, recon_time_seq, distance_max, distance_min, out_node, o
 
 
 def collate_fn(batch):
-    batch = sorted(batch, key=lambda i: len(i.api_seq), reverse=True)
-    data_length = [len(row.api_seq) for row in batch]
-    api_batch = [row.api_seq for row in batch]
-    recon_api_batch = rnn.pad_sequence([row.api_seq for row in batch], batch_first=True)
-    time_batch = [row.time_seq for row in batch]
-    recon_time_batch = rnn.pad_sequence([row.time_seq for row in batch], batch_first=True)
-    origin_data_batch = [row.original_api_seq for row in batch]
-    error_trace_batch = [row.y for row in batch]
-    trace_id_batch = [row.trace_id for row in batch]
+    batch = sorted(batch, key=lambda i: len(i[0]), reverse=True)
+    data_length = [len(row[0]) for row in batch]
+    api_batch = [row[0] for row in batch]
+    recon_api_batch = rnn.pad_sequence([row[0] for row in batch], batch_first=True)
+    time_batch = [row[2] for row in batch]
+    recon_time_batch = rnn.pad_sequence([row[2] for row in batch], batch_first=True)
+    origin_data_batch = [row[1] for row in batch]
+    error_trace_batch = [row[4] for row in batch]
+    trace_id_batch = [row[3] for row in batch]
     return api_batch, recon_api_batch, time_batch, recon_time_batch, data_length, origin_data_batch, error_trace_batch, trace_id_batch
 
 class Model(nn.Module):
@@ -103,7 +104,7 @@ if __name__ == '__main__':
     batch_size = 64
     learning_rate = 0.0001
     # input_size = 1
-    model_path = 'model/Adam_batch_size=64_epoch=20.pt'
+    model_path = 'model/Adam_batch_size=64_epoch=50.pt'
     parser = argparse.ArgumentParser()
     parser.add_argument('-num_layers', default=1, type=int)
     parser.add_argument('-hidden_size', default=64, type=int)
@@ -113,10 +114,10 @@ if __name__ == '__main__':
     hidden_size = args.hidden_size
     num_candidates = args.num_candidates
 
-    train_data = DealDataset(root="./train")
-    normal_test_data = DealDataset(root='./test/normal')
-    abnormal_test_data = DealDataset(root='./test/abnormal')
-    num_classes, _ = get_num_classes()
+    train_data = TraceDataset(root=r'/data/cyr/traceCluster_01,normal')
+    normal_test_data = TraceDataset(root=r'/data/cyr/traceCluster_01,chaos_normal')
+    abnormal_test_data = TraceDataset(root=r'/data/cyr/traceCluster_01,chaos_abnormal')
+    num_classes, _ = train_data.get_interface_num()
     input_size = num_classes
     model = Model(input_size, num_layers, num_classes).to(device)
     model.load_state_dict(torch.load(model_path))
@@ -154,11 +155,11 @@ if __name__ == '__main__':
 
             for i in range(len(out_time)):
                 for j in range(data_length[i]):
-                    squared_error_distances.append([(out_time[i, j] - recon_time_seq[i, j]) ** 2])
+                    squared_error_distances.append([((out_time[i, j] - recon_time_seq[i, j]) ** 2).cpu()])
 
     gmm = GaussianMixture(random_state=0).fit(squared_error_distances)
-    distance_max = gmm.means_[0][0] + 1.96 * ((gmm.covariances_[0][0][0] / len(squared_error_distances)) ** 0.5)
-    distance_min = gmm.means_[0][0] - 1.96 * ((gmm.covariances_[0][0][0] / len(squared_error_distances)) ** 0.5)
+    distance_max = gmm.means_[0][0] + 1.96 * ((math.sqrt(gmm.covariances_[0][0][0]) / len(squared_error_distances)) ** 0.5)
+    distance_min = gmm.means_[0][0] - 1.96 * ((math.sqrt(gmm.covariances_[0][0][0]) / len(squared_error_distances)) ** 0.5)
     print("Finish calculate gaussian distribute")
     print(distance_max)
     print("test-model error")
@@ -200,6 +201,7 @@ if __name__ == '__main__':
 
     elapsed_time = time.time() - test_start_time
     print('elapsed_time: {:.3f}s'.format(elapsed_time))
+    # print(labels, scores)
     test_auc = roc_auc_score(labels, scores)
     print('auc: {:.3f}'.format(test_auc))
     # Compute precision, recall and F1-measure

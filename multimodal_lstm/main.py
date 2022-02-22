@@ -16,7 +16,7 @@ import multiprocessing
 import yappi
 
 # Device configuration
-from dataset_mem import TraceDataset
+from dataset import TraceDataset
 # from dataset import DealDataset, get_num_classes
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -52,15 +52,15 @@ def judge_bool(out_time, recon_time_seq, distance_max, distance_min, out_node, o
 
 
 def collate_fn(batch):
-    batch = sorted(batch, key=lambda i: len(i.api_seq), reverse=True)
-    data_length = [len(row.api_seq) for row in batch]
-    api_batch = [row.api_seq for row in batch]
-    recon_api_batch = rnn.pad_sequence([row.api_seq for row in batch], batch_first=True)
-    time_batch = [row.time_seq for row in batch]
-    recon_time_batch = rnn.pad_sequence([row.time_seq for row in batch], batch_first=True)
-    origin_data_batch = [row.original_api_seq for row in batch]
-    error_trace_batch = [row.y for row in batch]
-    trace_id_batch = [row.trace_id for row in batch]
+    batch = sorted(batch, key=lambda i: len(i[0]), reverse=True)
+    data_length = [len(row[0]) for row in batch]
+    api_batch = [row[0] for row in batch]
+    recon_api_batch = rnn.pad_sequence([row[0] for row in batch], batch_first=True)
+    time_batch = [row[2] for row in batch]
+    recon_time_batch = rnn.pad_sequence([row[2] for row in batch], batch_first=True)
+    origin_data_batch = [row[1] for row in batch]
+    error_trace_batch = [row[4] for row in batch]
+    trace_id_batch = [row[3] for row in batch]
     return api_batch, recon_api_batch, time_batch, recon_time_batch, data_length, origin_data_batch, error_trace_batch, trace_id_batch
 
 
@@ -121,7 +121,7 @@ if __name__ == '__main__':
     hidden_size = args.hidden_size
     num_candidates = args.num_candidates
 
-    train_data = TraceDataset(root=r"/data/cyr/traceCluster")
+    train_data = TraceDataset(root=r"/data/cyr/traceCluster_01,normal")
     train_data.aug = 'none'
     # normal_test_data = DealDataset(root='./test/normal')
     # abnormal_test_data = DealDataset(root='./test/abnormal')
@@ -132,7 +132,7 @@ if __name__ == '__main__':
     print("Start Load Train Data")
 
     train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, pin_memory=True,
-                                  collate_fn=collate_fn, num_workers=8)
+                                  collate_fn=collate_fn)
     print("End Load Train Data")
 
     # normal_test_dataloader = DataLoader(normal_test_data, batch_size=batch_size, shuffle=True, pin_memory=True, collate_fn=collate_fn)

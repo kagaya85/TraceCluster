@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 
 def get_api_seq_and_time_seq():
-    with open(r'/home/yanghong/data/trainticket/preprocessNew/normal.json', 'r') as file:
+    with open(r'/data/cyr/traceCluster_01/preprocessed/normal.json', 'r') as file:
         raw_data = json.load(file)
         trace_data = {}
         print('getting trace data (api and time seq)...')
@@ -15,7 +15,7 @@ def get_api_seq_and_time_seq():
             spans = []
             for span in trace['edges'].values():
                 spans.extend(span)
-            spans = sorted(spans, key=lambda span: span['startTime'])
+            spans = sorted(spans, key=lambda span: (span['startTime'], span['service']))
             service_seq.extend([span['service'] for span in spans])
             time_seq = [span['rawDuration'] for span in spans]
             trace_data[trace_id] = {'service_seq': service_seq, 'time_seq': time_seq}
@@ -25,7 +25,7 @@ def get_api_seq_and_time_seq():
 def get_api_dict():
     api_dict = {}
     idx = 0
-    with open(r'/home/yanghong/data/trainticket/preprocessNew/embeddings.json', 'r') as f:
+    with open(r'/data/cyr/traceCluster_01/preprocessed/embeddings.json', 'r') as f:
         data = json.load(f)
         for api in data.keys():
             api_dict[api] = idx
@@ -35,11 +35,19 @@ def get_api_dict():
 
 def get_common_seq_set(trace_data):
     seq_set = set()
+    trace_set = set()
     print('getting common seq set...')
+    # idx = 0
     for trace_id, trace in tqdm(trace_data.items()):
         # trace_set.add('->'.join(trace['service_seq']))
         for i in range(1, len(trace['service_seq'])):
             seq_set.add('->'.join(trace['service_seq'][:i + 1]))
+        # idx += 1
+        # if idx > 100:
+        #     break
+    # for trace in trace_set:
+    #     print(trace)
+    # sys.exit(0)
     return list(seq_set)
 
 

@@ -29,7 +29,7 @@ class TraceDataset(InMemoryDataset):
 
     @property
     def kpi_features(self):
-        return ['requestAndResponseDuration', 'workDuration', 'rawDuration']  # workDuration   subspanDuration
+        return ['requestAndResponseDuration', 'workDuration', 'rawDuration', 'clientRequestDuration', 'clientResponseDuration',]  # workDuration   subspanDuration
 
     @property
     def span_features(self):
@@ -42,7 +42,7 @@ class TraceDataset(InMemoryDataset):
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
         file_list = []
-        file_list.append(osp.join(self.root, 'preprocessed/0.json'))
+        file_list.append(osp.join(self.root, 'preprocessed/normal.json'))
         return file_list
 
     @property
@@ -217,7 +217,7 @@ class TraceDataset(InMemoryDataset):
         calculate features stat
         """
         operations_stat_map = {}
-        with open(self.root + '/preprocessed/operations.json', 'r') as f:
+        with open(self.root + '/preprocessed/normal_operations.json', 'r') as f:
             operations_info = json.load(f)
 
         for key in operations_info.keys():
@@ -484,7 +484,7 @@ class TraceDataset(InMemoryDataset):
 
 if __name__ == '__main__':
     print("start...")
-    dataset = TraceDataset(root=r"/data/cyr/traceCluster")
+    dataset = TraceDataset(root=r"/data/cyr/traceCluster_01")
     # dataset.aug = None
     # data = dataset.get(0)
     # dataset1 = deepcopy(dataset)

@@ -1,1 +1,1 @@
-python -m traceanomaly.main --trainpath ./train_ticket/train --normalpath ./train_ticket/test_normal --abnormalpath ./train_ticket/test_abnormal --outputpath result -c flow_type=rnvp
+python -m traceanomaly.main --trainpath ./data/train --normalpath ./data/test_normal --abnormalpath ./data/test_abnormal --outputpath /data/cyr/traceAnomaly/result -c flow_type=rnvp
