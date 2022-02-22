@@ -73,7 +73,17 @@ def main():
     if args.embedding == 'STV':
         print("embedding method:", args.embedding)
 
-        dataloader = load_dataset()    # trace list
+        dataloader_all = load_dataset()    # trace list
+
+        traceID_fr = open('./Sieve/test_traceID.txt', 'r')
+        S = traceID_fr.read()
+        traceID_list = [traceID for traceID in S.split(', ')]
+
+        dataloader = []
+        for traceID in traceID_list:
+            for data in dataloader_all:
+                if data['trace_id'] == traceID:
+                    dataloader.append(data)
 
     elif args.embedding == 'ourMethod':
         print("embedding method:", args.embedding)
