@@ -59,11 +59,21 @@ def data_process_for_trace_anomaly(trace_data, seq_set, filename):
         for trace_id, trace in tqdm(trace_data.items()):
             output_seq = ['0' for i in range(length)]
             for i in range(1, len(trace['service_seq'])):
-                output_seq[seq_set.index('->'.join(trace['service_seq'][:i + 1]))] = str(trace['time_seq'][i-1])
+                output_seq[seq_set.index('->'.join(trace['service_seq'][:i + 1]))] = str(trace['time_seq'][i - 1])
             file.write(trace_id + ':' + ','.join(output_seq) + '\n')
 
 
+def preprocess_for_npy(filename, output_filename):
+    data = np.load(filename)
+    idx = 0
+    with open(output_filename, 'w')as file:
+        for d in data:
+            embed = [str(i) for i in d]
+            file.write(str(idx) + ':' + ','.join(embed) + '\n')
+
+
 if __name__ == '__main__':
-    trace_data = get_api_seq_and_time_seq()
-    seq_set = get_common_seq_set(trace_data)
-    data_process_for_trace_anomaly(trace_data, seq_set, 'train')
+    # trace_data = get_api_seq_and_time_seq()
+    # seq_set = get_common_seq_set(trace_data)
+    # data_process_for_trace_anomaly(trace_data, seq_set, 'train')
+    preprocess_for_npy(r'/data/cyr/traceAnomaly/embeddings/emb_train.npy', r'/data/cyr/traceAnomaly/embeddings/test_train')
