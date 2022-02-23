@@ -13,22 +13,35 @@ def gen_span_key(span) -> str:
 
 
 def generate_graph(clickstream: DataFrame, spandata: DataFrame) -> list:
-    traceId_list = []
+    roots = {}
     graph = {}
-    for _, root in clickstream.iterrows():
-        traceId_list.append(root['GraphIdBase64'])
+    for _, cs in clickstream.iterrows():
+        roots[cs['GraphIdBase64']] = cs
 
     data = spandata.groupby(['GraphIdBase64'])
     print('calculating graph...')
     for traceId, spans in tqdm(data):
-        if traceId not in traceId_list:
+        root = roots.get(traceId)
+        if root is None:
             continue
 
-        for _, span in spans.iterrows():
+        spans = spans.to_dict(orient='records')
+
+        for span in spans:
+            # fix caller cmdid is 0
+            if span['CallerCmdID'] == 0:
+                nid = span['CallerNodeID']
+                for s in spans:
+                    if s['CalleeNodeID'] == nid:
+                        span['CallerCmdID'] = s['CalleeCmdID']
+                # 没有找到对应cmdid，去clickstream里找
+                if span['CallerCmdID'] == 0 and root['CallerNodeID'] == nid:
+                    span['CallerCmdID'] = root['CallerCmdID']
+
             cost_time = span['CostTime']
             exist_span = graph.get(gen_span_key(span))
 
-            if exist_span != None:
+            if exist_span is not None:
                 exist_span['count'] += 1
                 exist_span['cost_time_total'] += cost_time
                 if cost_time > exist_span['cost_time_max']:
