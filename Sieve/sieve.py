@@ -85,6 +85,11 @@ def main():
                 if data['trace_id'] == traceID:
                     dataloader.append(data)
 
+        class_fr = open('./newData/test_class.txt', 'r')
+        S = class_fr.read()
+        class_fr.close()
+        class_list = [class_item for class_item in S.split(', ')]
+
     elif args.embedding == 'ourMethod':
         print("embedding method:", args.embedding)
         
@@ -116,41 +121,68 @@ def main():
         # test_body_idx = list(random.sample(set(normal_idx).difference(set(train_idx)), 800) + random.sample(set(abnormal_idx).difference(set(train_idx)), 200))
         # np.random.shuffle(test_body_idx)
         # test body 2 (root_url)
-        test_body_idx = []
-        for url_class in tqdm(range(len(dataset.url_classes))):
-            url_idx = [[index for index, data in enumerate(dataset) if data.y==0 and data.url_class==url_class],
-                       [index for index, data in enumerate(dataset) if data.y==1 and data.url_class==url_class]]
-            test_body_idx = test_body_idx + \
-                            random.sample(url_idx[0], int(9*1000/(10*len(dataset.url_classes))) if int(9*1000/(10*len(dataset.url_classes))) <= len(url_idx[0]) else len(url_idx[0])) + \
-                            random.sample(url_idx[1], int(1*1000/(10*len(dataset.url_classes))) if int(1*1000/(10*len(dataset.url_classes))) <= len(url_idx[1]) else len(url_idx[1]))
-            # 需要注释掉
-            if int(9*1000/(10*len(dataset.url_classes))) > len(url_idx[0]) or int(1*1000/(10*len(dataset.url_classes))) > len(url_idx[1]):
-                print("url class name: ", url_class)
-        np.random.shuffle(test_body_idx)
-        # test body 3 (node_num)
-        # node_num_class_list = []
-        # for data in dataset:
-        #     if data.x.size(0) not in node_num_class_list:
-        #         node_num_class_list.append(data.x.size(0))
         # test_body_idx = []
-        # for node_num_class in tqdm(range(len(node_num_class_list))):
-        #     node_num_idx = [[index for index, data in enumerate(dataset) if data.y==0 and data.x.size(0)==node_num_class_list[node_num_class]],
-        #                     [index for index, data in enumerate(dataset) if data.y==1 and data.x.size(0)==node_num_class_list[node_num_class]]]
+        # for url_class in tqdm(range(len(dataset.url_classes))):
+        #     url_idx = [[index for index, data in enumerate(dataset) if data.y==0 and data.url_class==url_class],
+        #                [index for index, data in enumerate(dataset) if data.y==1 and data.url_class==url_class]]
         #     test_body_idx = test_body_idx + \
-        #                     random.sample(node_num_idx[0], int(9*1000/(10*len(node_num_class_list))) if int(9*1000/(10*len(node_num_class_list))) <= len(node_num_idx[0]) else len(node_num_idx[0])) + \
-        #                     random.sample(node_num_idx[1], int(1*1000/(10*len(node_num_class_list))) if int(1*1000/(10*len(node_num_class_list))) <= len(node_num_idx[1]) else len(node_num_idx[1]))
+        #                     random.sample(url_idx[0], int(9*1000/(10*len(dataset.url_classes))) if int(9*1000/(10*len(dataset.url_classes))) <= len(url_idx[0]) else len(url_idx[0])) + \
+        #                     random.sample(url_idx[1], int(1*1000/(10*len(dataset.url_classes))) if int(1*1000/(10*len(dataset.url_classes))) <= len(url_idx[1]) else len(url_idx[1]))
+        #     # 需要注释掉
+        #     if int(9*1000/(10*len(dataset.url_classes))) > len(url_idx[0]) or int(1*1000/(10*len(dataset.url_classes))) > len(url_idx[1]):
+        #         print("url class name: ", url_class)
         # np.random.shuffle(test_body_idx)
+        # test body 3 (node_num)
+        node_num_class_dict = {}
+        for data in dataset:
+            if str(data.x.size(0)) not in node_num_class_dict.keys():
+                node_num_class_dict[str(data.x.size(0))] = 1
+            else:
+                node_num_class_dict[str(data.x.size(0))] += 1
+        test_body_idx = []
+        for node_num_class in tqdm(['13', '50', '71', '93', '124']):    # tqdm(['9', '13', '50', '70', '71', '72', '73', '78', '93', '124']):    # tqdm(node_num_class_dict.keys()):
+            node_num_idx = [[index for index, data in enumerate(dataset) if data.y==0 and data.x.size(0)==int(node_num_class)],
+                            [index for index, data in enumerate(dataset) if data.y==1 and data.x.size(0)==int(node_num_class)]]
+            test_body_idx = test_body_idx + \
+                            random.sample(set(node_num_idx[0]).difference(set(train_idx)), 190) + \
+                            random.sample(set(node_num_idx[1]).difference(set(train_idx)), 10)    # normal:abnormal = 90:10
+                            # random.sample(node_num_idx[0], int(9*1000/(10*len(node_num_class_dict))) if int(9*1000/(10*len(node_num_class_dict))) <= len(node_num_idx[0]) else len(node_num_idx[0])) + \
+                            # random.sample(node_num_idx[1], int(1*1000/(10*len(node_num_class_dict))) if int(1*1000/(10*len(node_num_class_dict))) <= len(node_num_idx[1]) else len(node_num_idx[1]))
+            # 需要注释掉
+            # if 90 > len(set(node_num_idx[0]).difference(set(train_idx))) or 10 > len(set(node_num_idx[1]).difference(set(train_idx))):
+            #     print("class name: ", node_num_class)
+        np.random.shuffle(test_body_idx)
+        # test body 4 (node_num, root_url, normal & abnormal)
+        # node_num_class_dict = {}
+        # for data in dataset:
+        #     if str(data.x.size(0)) not in node_num_class_dict.keys():
+        #         node_num_class_dict[str(data.x.size(0))] = 1
+        #     else:
+        #         node_num_class_dict[str(data.x.size(0))] += 1
+        # node_num_max_key = max(zip(node_num_class_dict.values(), node_num_class_dict.keys()))[1]
+
+        # dataset_url_y_dict = {}
+        # for idx, data in enumerate(dataset):
+        #     if str(data.x.size(0)) == node_num_max_key:
+        #         url_status_class = data.root_url + '_' + str(data.y.numpy()[0])
+        #         if url_status_class not in dataset_url_y_dict.keys():
+        #             dataset_url_y_dict[url_status_class] = [idx]
+        #         else:
+        #             dataset_url_y_dict[url_status_class].append(idx)
         # test head (Construction stage)
-        test_head_idx = list(random.sample(set(normal_idx).difference(set(test_body_idx + train_idx)), tree_size))
+        root_url_list = []
+        for idx in test_body_idx:
+            root_url_list.append(dataset[idx].root_url)
+        candidate_test_head_idx = [index for index, data in enumerate(dataset) if data.y==0 and data.root_url in root_url_list and str(data.x.size(0)) in ['13', '50', '71', '93', '124']]
+        test_head_idx = list(random.sample(set(candidate_test_head_idx).difference(set(test_body_idx + train_idx)), tree_size + windowSize_k))
         test_idx = test_head_idx + test_body_idx
         
         # 需要注释掉
-        idx_fw = open('./newData/test_idx_url_y.txt', 'w')
+        idx_fw = open('./newData/test_idx.txt', 'w')
         idx_fw.write(str(test_idx).replace('[', '').replace(']', ''))
         idx_fw.close()
 
-
-        idx_fr = open('./newData/test_idx_url_y.txt', 'r')
+        idx_fr = open('./newData/test_idx.txt', 'r')
         S = idx_fr.read()
         idx_fr.close()
         test_idx = [int(index_item) for index_item in S.split(', ')]
@@ -160,6 +192,17 @@ def main():
         traceID_fw = open('./newData/test_traceID.txt', 'w')
         traceID_fw.write(str(traceID_list).replace('[', '').replace(']', '').replace('\'', ''))
         traceID_fw.close()
+
+        # 需要注释掉
+        class_list = [str(dataItem.x.size(0))+'_'+str(dataItem.y.numpy()[0]) for dataItem in dataset[test_idx]]
+        class_fw = open('./newData/test_class.txt', 'w')
+        class_fw.write(str(class_list).replace('[', '').replace(']', '').replace('\'', ''))
+        class_fw.close()
+
+        class_fr = open('./newData/test_class.txt', 'r')
+        S = class_fr.read()
+        class_fr.close()
+        class_list = [class_item for class_item in S.split(', ')]
 
         eval_dataset = Subset(dataset, test_idx)
 
@@ -177,8 +220,8 @@ def main():
     res_f = open('./Sieve/result_Sieve_' + args.embedding + '_' + time_str + '.txt', 'w')
 
     print('Start !')
-    for data in tqdm(dataloader):
-        if args.embedding == 'STV':
+    for index, data in tqdm(enumerate(dataloader)):
+        if args.embedding == 'STV': 
             res_content = data['trace_id'] + '\t' + str(data['trace_bool'])
             # ========================================
             # Path vector encoder
@@ -303,7 +346,7 @@ def main():
                 if p >= np.random.uniform(0, 1):
                     # Sample the trace
                     # print("Sample the trace ...")
-                    res_content = res_content + '\t' + str(p) + '\t' + "Sample" + '\n'
+                    res_content = res_content + '\t' + str(p) + '\t' + "Sample" + '\t' + class_list[index] + '\n'
                     res_f.write(res_content)
                 # Otherwise
                 else:
