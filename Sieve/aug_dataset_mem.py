@@ -43,7 +43,7 @@ class TraceDataset(InMemoryDataset):
     @property
     def raw_file_names(self) -> Union[str, List[str], Tuple]:
         file_list = []
-        file_list.append(osp.join(self.root, 'preprocessed/0.json'))
+        file_list.append(osp.join(self.root, 'preprocessed/data.json'))
         return file_list
 
     @property
