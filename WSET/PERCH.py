@@ -20,15 +20,21 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def create_dataset(embedding, dataset_path):
     global traceID_list
+    global class_list
     traceID_fr = open('./newData/test_traceID.txt', 'r')
     S = traceID_fr.read()
     traceID_fr.close()
     traceID_list = [traceID for traceID in S.split(', ')]
 
-    idx_fr = open('./newData/test_idx_url_y.txt', 'r')
+    idx_fr = open('./newData/test_idx.txt', 'r')
     S = idx_fr.read()
     idx_fr.close()
     test_idx = [int(index_item) for index_item in S.split(', ')]
+
+    class_fr = open('./newData/test_class.txt', 'r')
+    S = class_fr.read()
+    class_fr.close()
+    class_list = [class_item for class_item in S.split(', ')]
 
     dataset = []
 
@@ -168,8 +174,8 @@ if __name__ == '__main__':
     # open test result
     time_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
     res_f = open('./WSET/result_PERCH_' + args.embedding + '_' + time_str + '.txt', 'w')
-    for traceID in traceID_list:
-        res_content = traceID + '\t' + results[traceID][0] + '\t' + str(results[traceID][1]) + '\t' + results[traceID][2] + '\n'
+    for index, traceID in enumerate(traceID_list):
+        res_content = traceID + '\t' + results[traceID][0] + '\t' + str(results[traceID][1]) + '\t' + results[traceID][2] + '\t' + class_list[index] if results[traceID][2]=="Sample" else "" + '\n'
         res_f.write(res_content)
     res_f.close()
 
