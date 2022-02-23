@@ -122,7 +122,7 @@ def create_dataset(embedding, dataset_path):
 def arguments():
     parser = argparse.ArgumentParser(description="PERCH argumentes")
     parser.add_argument('--embedding', dest='embedding',
-                        help='select the embedding method of traces, eg. original and ourMethod', type=str, default='ourMethod')
+                        help='select the embedding method of traces, eg. original and ourMethod', type=str, default='original')
     parser.add_argument('--dataset', dest='dataset',
                         help='use other preprocessed data dirpath, eg. ./newData or ./newData/outfiles2022-02-13_21-04-20', default="./newData")
     parser.add_argument('--model_path', dest='model_path',
@@ -142,7 +142,7 @@ if __name__ == '__main__':
         root = root.insert(pt, collapsibles=None, L=float('inf'))
 
     print("Finish creating cluster tree.")
-    Graphviz.write_tree('tree.dot', root)
+    Graphviz.write_tree('./WSET/tree.dot', root)
 
     results = {}
     # 实验一：计算每个trace被采样的概率
@@ -154,14 +154,22 @@ if __name__ == '__main__':
         while n is not None:
             p = p / (len(n.siblings()) + 1)
             n = n.parent
-        results[trace_id] = (label, p)
+        # If p is no less than the random number, PERCH samples the trace
+        if p >= np.random.uniform(0, 1):
+            # Sample the trace
+            sample_res = "Sample"
+        # Otherwise
+        else:
+            # Drop the trace
+            sample_res = "Drop"
+        results[trace_id] = (label, p, sample_res)
 
-    # 记录实验结果 trace_id    label    p
+    # 记录实验结果 trace_id    label    p    sample_res
     # open test result
     time_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
     res_f = open('./WSET/result_PERCH_' + args.embedding + '_' + time_str + '.txt', 'w')
     for traceID in traceID_list:
-        res_content = traceID + '\t' + results[traceID][0] + '\t' + str(results[traceID][1]) + '\n'
+        res_content = traceID + '\t' + results[traceID][0] + '\t' + str(results[traceID][1]) + '\t' + results[traceID][2] + '\n'
         res_f.write(res_content)
     res_f.close()
 

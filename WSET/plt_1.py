@@ -127,43 +127,53 @@ plt.show()
 oSieve = []
 abnormal = []
 x = []
-file_oSieve = open("./result_ourMethod_2022-02-22_15-26-40.txt",  "r")
+file_oSieve = open("./WSET/result_Sieve_STV_2022-02-22_15-36-15.txt",  "r")
 listOfLines = file_oSieve.readlines()
 file_oSieve.close()
 for idx, line in enumerate(listOfLines):
-    oSieve.append(float(line.strip().split('\t')[3]))
+    oSieve.append(float(line.strip().split('\t')[2]))
     x.append(idx+1)
     if line.split('\t')[1] == "1":
         abnormal.append(idx+1)
 
 # modified Sieve
 mSieve = []
-file_mSieve = open("./result_ourMethod_2022-02-22_15-26-40.txt",  "r")
+file_mSieve = open("./WSET/result_Sieve_ourMethod_2022-02-22_15-26-40.txt",  "r")
 listOfLines = file_mSieve.readlines()
 file_mSieve.close()
 for line in listOfLines:
     mSieve.append(float(line.strip().split('\t')[3]))
 
-# PERCH
-PERCH = []
-file_PERCH = open("./result_PERCH_2022-02-22_15-39-38.txt",  "r")
-listOfLines = file_PERCH.readlines()
-file_PERCH.close()
+# original PERCH
+oPERCH = []
+file_oPERCH = open("./WSET/result_PERCH_original_2022-02-23_14-40-32.txt",  "r")
+listOfLines = file_oPERCH.readlines()
+file_oPERCH.close()
 for idx, line in enumerate(listOfLines):
     if idx >= 178:
-        PERCH.append(float(line.strip().split('\t')[2]))
+        oPERCH.append(float(line.strip().split('\t')[2]))
+
+# modified PERCH
+mPERCH = []
+file_mPERCH = open("./WSET/result_PERCH_ourMethod_2022-02-23_14-35-11.txt",  "r")
+listOfLines = file_mPERCH.readlines()
+file_mPERCH.close()
+for idx, line in enumerate(listOfLines):
+    if idx >= 178:
+        mPERCH.append(float(line.strip().split('\t')[2]))
 
 
 figall=plt.figure(1)
 fig = figall.add_subplot(1,1,1)
 fig.grid(True)
-# fig.plot(x,oSieve,color='purple',label='oSieve',linewidth=1,alpha=0.6,marker='d')
+fig.plot(x,oSieve,color='purple',label='oSieve',linewidth=1,alpha=0.6,marker='d')
 fig.plot(x,mSieve,color='limegreen',label='mSieve',linewidth=1,alpha=0.6,marker='8')
-fig.plot(x,PERCH,color='orange',label='PERCH',linewidth=1,alpha=0.6,marker='s')
+fig.plot(x,oPERCH,color='orange',label='oPERCH',linewidth=1,alpha=0.6,marker='s')
+fig.plot(x,mPERCH,color='blue',label='mPERCH',linewidth=1,alpha=0.6,marker='*')
 fig.vlines(abnormal, 0, 1, linestyles='dashed', colors='red')
 legend = fig.legend()
 # fig.legend(loc=1,bbox_to_anchor=(1.05,1.0))
 fig.set_xlabel('samples')
 fig.set_ylabel('P')
-figall.savefig("result.png")
+figall.savefig("./WSET/result.png")
 figall.show()
