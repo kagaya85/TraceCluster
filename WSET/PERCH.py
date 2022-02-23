@@ -1,6 +1,6 @@
 import torch
 import json
-import tqdm
+from tqdm import tqdm
 import argparse
 import time
 import numpy as np
@@ -81,7 +81,7 @@ def create_dataset(embedding, dataset_path):
         print("embedding method:", embedding)
 
         # init dataset
-        dataset = TraceDataset(root=args.dataset, aug='none')    # shuffle
+        dataset_all = TraceDataset(root=dataset_path, aug='none')    # shuffle
         print("Finish reading traces.")
 
         # load the pre-trained model
@@ -98,13 +98,13 @@ def create_dataset(embedding, dataset_path):
             # test_idx = model_info['test_idx']
         print("Finish loading model info.")
 
-        eval_dataset = Subset(dataset, test_idx)
+        eval_dataset = Subset(dataset_all, test_idx)
 
         # init dataloader
         dataloader = DataLoader(eval_dataset, batch_size=1)    # eval_dataset
 
-        model = SIMCLR(num_layers=num_layers, input_dim=dataset.num_node_features, output_dim=output_dim,
-                   num_edge_attr=dataset.num_edge_features, gnn_type=gnn_type,
+        model = SIMCLR(num_layers=num_layers, input_dim=dataset_all.num_node_features, output_dim=output_dim,
+                   num_edge_attr=dataset_all.num_edge_features, gnn_type=gnn_type,
                    pooling_type=pooling_type).to(device)
         model.load_state_dict(torch.load(args.model_path + '{}_{}'.format(gnn_type, pooling_type) + ".model"))
         model.eval()
@@ -113,7 +113,7 @@ def create_dataset(embedding, dataset_path):
         for data in tqdm(dataloader):
             data = data.to(device)
             vector = model(data.x, data.edge_index, data.edge_attr, data.batch).tolist()[0]
-            dataset.append((np.array(vector), "abnormal" if data[0].y.numpy()[0]==1 else "normal", data[0].trace_id))
+            dataset.append((np.array(vector), "abnormal" if data[0].y.cpu().numpy()[0]==1 else "normal", data[0].trace_id))
         print("Finish building dataset, length: %d" % len(dataset))
 
     return dataset
@@ -159,7 +159,7 @@ if __name__ == '__main__':
     # 记录实验结果 trace_id    label    p
     # open test result
     time_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
-    res_f = open('./result_PERCH_' + args.embedding + '_' + time_str + '.txt', 'w')
+    res_f = open('./WSET/result_PERCH_' + args.embedding + '_' + time_str + '.txt', 'w')
     for traceID in traceID_list:
         res_content = traceID + '\t' + results[traceID][0] + '\t' + str(results[traceID][1]) + '\n'
         res_f.write(res_content)
