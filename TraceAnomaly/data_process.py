@@ -1,6 +1,6 @@
 import json
 import sys
-
+from TraceAnomaly.utils import get_unique_service_sequence
 import numpy as np
 from tqdm import tqdm
 
