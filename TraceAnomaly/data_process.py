@@ -5,8 +5,8 @@ import numpy as np
 from tqdm import tqdm
 
 
-def get_api_seq_and_time_seq():
-    with open(r'/data/cyr/traceCluster_01/preprocessed/normal.json', 'r') as file:
+def get_api_seq_and_time_seq(filename):
+    with open(filename, 'r') as file:
         raw_data = json.load(file)
         trace_data = {}
         print('getting trace data (api and time seq)...')
@@ -36,19 +36,11 @@ def get_api_dict():
 
 def get_common_seq_set(trace_data):
     seq_set = set()
-    trace_set = set()
     print('getting common seq set...')
-    # idx = 0
     for trace_id, trace in tqdm(trace_data.items()):
         # trace_set.add('->'.join(trace['service_seq']))
         for i in range(1, len(trace['service_seq'])):
             seq_set.add('->'.join(trace['service_seq'][:i + 1]))
-        # idx += 1
-        # if idx > 100:
-        #     break
-    # for trace in trace_set:
-    #     print(trace)
-    # sys.exit(0)
     return list(seq_set)
 
 
@@ -113,6 +105,23 @@ def preprocess_for_npy(filename, output_filename):
 
 
 if __name__ == '__main__':
-    trace_data = get_api_seq_and_time_seq()
+    root = r'/data/cyr/traceCluster_01/preprocessed/'
+    # get api seq and time seq
+    train_trace_data = get_api_seq_and_time_seq(root + 'normal.json')
+    _, train_trace_data = statistic_unique_trace_length(train_trace_data)
+    test_normal_trace_data = get_api_seq_and_time_seq(root + 'chaos_normal.json')
+    _, test_normal_trace_data = statistic_unique_trace_length(test_normal_trace_data)
+    test_abnormal_trace_data = get_api_seq_and_time_seq(root + 'chaos_abnormal.json')
+    _, test_abnormal_trace_data = statistic_unique_trace_length(test_abnormal_trace_data)
+    print(len(train_trace_data), len(test_normal_trace_data), len(test_abnormal_trace_data))
+    # merge 3 dict
+    trace_data = {}
+    trace_data.update(train_trace_data)
+    trace_data.update(test_normal_trace_data)
+    trace_data.update(test_abnormal_trace_data)
+    # get common seq_set
     seq_set = get_common_seq_set(trace_data)
-    data_process_for_trace_anomaly(trace_data, seq_set, 'train')
+    # data process for trace anomaly seperately
+    data_process_for_trace_anomaly(train_trace_data, seq_set, 'train')
+    data_process_for_trace_anomaly(test_normal_trace_data, seq_set, 'test_normal')
+    data_process_for_trace_anomaly(test_abnormal_trace_data, seq_set, 'test_abnormal')
