@@ -175,7 +175,7 @@ if __name__ == '__main__':
     time_str = str(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()))
     res_f = open('./WSET/result_PERCH_' + args.embedding + '_' + time_str + '.txt', 'w')
     for index, traceID in enumerate(traceID_list):
-        res_content = traceID + '\t' + results[traceID][0] + '\t' + str(results[traceID][1]) + '\t' + results[traceID][2] + '\t' + class_list[index] if results[traceID][2]=="Sample" else "" + '\n'
+        res_content = traceID + '\t' + results[traceID][0] + '\t' + str(results[traceID][1]) + '\t' + results[traceID][2] + ('\t' + class_list[index] if results[traceID][2]=="Sample" else "") + '\n'
         res_f.write(res_content)
     res_f.close()
 
