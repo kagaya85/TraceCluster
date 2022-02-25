@@ -33,7 +33,7 @@ def arguments():
     parser.add_argument('--num_trees', type=int, default=50)
     parser.add_argument('--tree_size', type=int, default=128)
     parser.add_argument('--windowSize_k', type=int, default=50)
-    parser.add_argument('--threshold_h', type=int, default=0.3)
+    parser.add_argument('--threshold_h', type=int, default=0.0001)    # 0.3
 
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=1,
                         help='batch size')    # 128
@@ -113,8 +113,8 @@ def main():
             # test_idx = model_info['test_idx']
 
         # 需要注释掉
-        normal_idx = dataset.normal_idx
-        abnormal_idx = dataset.abnormal_idx
+        # normal_idx = dataset.normal_idx
+        # abnormal_idx = dataset.abnormal_idx
         # 需要注释掉
         # test body (Maintenance stage)
         # test body 1 (normal & abnormal)
@@ -133,25 +133,25 @@ def main():
         #         print("url class name: ", url_class)
         # np.random.shuffle(test_body_idx)
         # test body 3 (node_num)
-        node_num_class_dict = {}
-        for data in dataset:
-            if str(data.x.size(0)) not in node_num_class_dict.keys():
-                node_num_class_dict[str(data.x.size(0))] = 1
-            else:
-                node_num_class_dict[str(data.x.size(0))] += 1
-        test_body_idx = []
-        for node_num_class in tqdm(['13', '50', '71', '93', '124']):    # tqdm(['9', '13', '50', '70', '71', '72', '73', '78', '93', '124']):    # tqdm(node_num_class_dict.keys()):
-            node_num_idx = [[index for index, data in enumerate(dataset) if data.y==0 and data.x.size(0)==int(node_num_class)],
-                            [index for index, data in enumerate(dataset) if data.y==1 and data.x.size(0)==int(node_num_class)]]
-            test_body_idx = test_body_idx + \
-                            random.sample(set(node_num_idx[0]).difference(set(train_idx)), 190) + \
-                            random.sample(set(node_num_idx[1]).difference(set(train_idx)), 10)    # normal:abnormal = 90:10
-                            # random.sample(node_num_idx[0], int(9*1000/(10*len(node_num_class_dict))) if int(9*1000/(10*len(node_num_class_dict))) <= len(node_num_idx[0]) else len(node_num_idx[0])) + \
-                            # random.sample(node_num_idx[1], int(1*1000/(10*len(node_num_class_dict))) if int(1*1000/(10*len(node_num_class_dict))) <= len(node_num_idx[1]) else len(node_num_idx[1]))
-            # 需要注释掉
-            # if 90 > len(set(node_num_idx[0]).difference(set(train_idx))) or 10 > len(set(node_num_idx[1]).difference(set(train_idx))):
-            #     print("class name: ", node_num_class)
-        np.random.shuffle(test_body_idx)
+        # node_num_class_dict = {}
+        # for data in dataset:
+        #     if str(data.x.size(0)) not in node_num_class_dict.keys():
+        #         node_num_class_dict[str(data.x.size(0))] = 1
+        #     else:
+        #         node_num_class_dict[str(data.x.size(0))] += 1
+        # test_body_idx = []
+        # for node_num_class in tqdm(['13', '50', '71', '93', '124']):    # tqdm(['9', '13', '50', '70', '71', '72', '73', '78', '93', '124']):    # tqdm(node_num_class_dict.keys()):
+        #     node_num_idx = [[index for index, data in enumerate(dataset) if data.y==0 and data.x.size(0)==int(node_num_class)],
+        #                     [index for index, data in enumerate(dataset) if data.y==1 and data.x.size(0)==int(node_num_class)]]
+        #     test_body_idx = test_body_idx + \
+        #                     random.sample(set(node_num_idx[0]).difference(set(train_idx)), 190) + \
+        #                     random.sample(set(node_num_idx[1]).difference(set(train_idx)), 10)    # normal:abnormal = 90:10
+        #                     # random.sample(node_num_idx[0], int(9*1000/(10*len(node_num_class_dict))) if int(9*1000/(10*len(node_num_class_dict))) <= len(node_num_idx[0]) else len(node_num_idx[0])) + \
+        #                     # random.sample(node_num_idx[1], int(1*1000/(10*len(node_num_class_dict))) if int(1*1000/(10*len(node_num_class_dict))) <= len(node_num_idx[1]) else len(node_num_idx[1]))
+        #     # 需要注释掉
+        #     # if 90 > len(set(node_num_idx[0]).difference(set(train_idx))) or 10 > len(set(node_num_idx[1]).difference(set(train_idx))):
+        #     #     print("class name: ", node_num_class)
+        # np.random.shuffle(test_body_idx)
         # test body 4 (node_num, root_url, normal & abnormal)
         # node_num_class_dict = {}
         # for data in dataset:
@@ -170,17 +170,17 @@ def main():
         #         else:
         #             dataset_url_y_dict[url_status_class].append(idx)
         # test head (Construction stage)
-        root_url_list = []
-        for idx in test_body_idx:
-            root_url_list.append(dataset[idx].root_url)
-        candidate_test_head_idx = [index for index, data in enumerate(dataset) if data.y==0 and data.root_url in root_url_list and str(data.x.size(0)) in ['13', '50', '71', '93', '124']]
-        test_head_idx = list(random.sample(set(candidate_test_head_idx).difference(set(test_body_idx + train_idx)), tree_size + windowSize_k))
-        test_idx = test_head_idx + test_body_idx
+        # root_url_list = []
+        # for idx in test_body_idx:
+        #     root_url_list.append(dataset[idx].root_url)
+        # candidate_test_head_idx = [index for index, data in enumerate(dataset) if data.y==0 and data.root_url in root_url_list and str(data.x.size(0)) in ['13', '50', '71', '93', '124']]
+        # test_head_idx = list(random.sample(set(candidate_test_head_idx).difference(set(test_body_idx + train_idx)), tree_size + windowSize_k))
+        # test_idx = test_head_idx + test_body_idx
         
         # 需要注释掉
-        idx_fw = open('./newData/test_idx.txt', 'w')
-        idx_fw.write(str(test_idx).replace('[', '').replace(']', ''))
-        idx_fw.close()
+        # idx_fw = open('./newData/test_idx.txt', 'w')
+        # idx_fw.write(str(test_idx).replace('[', '').replace(']', ''))
+        # idx_fw.close()
 
         idx_fr = open('./newData/test_idx.txt', 'r')
         S = idx_fr.read()
@@ -188,16 +188,16 @@ def main():
         test_idx = [int(index_item) for index_item in S.split(', ')]
 
         # 需要注释掉
-        traceID_list = [dataItem.trace_id for dataItem in dataset[test_idx]]
-        traceID_fw = open('./newData/test_traceID.txt', 'w')
-        traceID_fw.write(str(traceID_list).replace('[', '').replace(']', '').replace('\'', ''))
-        traceID_fw.close()
+        # traceID_list = [dataItem.trace_id for dataItem in dataset[test_idx]]
+        # traceID_fw = open('./newData/test_traceID.txt', 'w')
+        # traceID_fw.write(str(traceID_list).replace('[', '').replace(']', '').replace('\'', ''))
+        # traceID_fw.close()
 
         # 需要注释掉
-        class_list = [str(dataItem.x.size(0))+'_'+str(dataItem.y.numpy()[0]) for dataItem in dataset[test_idx]]
-        class_fw = open('./newData/test_class.txt', 'w')
-        class_fw.write(str(class_list).replace('[', '').replace(']', '').replace('\'', ''))
-        class_fw.close()
+        # class_list = [str(dataItem.x.size(0))+'_'+str(dataItem.y.numpy()[0]) for dataItem in dataset[test_idx]]
+        # class_fw = open('./newData/test_class.txt', 'w')
+        # class_fw.write(str(class_list).replace('[', '').replace(']', '').replace('\'', ''))
+        # class_fw.close()
 
         class_fr = open('./newData/test_class.txt', 'r')
         S = class_fr.read()
@@ -220,7 +220,7 @@ def main():
     res_f = open('./Sieve/result_Sieve_' + args.embedding + '_' + time_str + '.txt', 'w')
 
     print('Start !')
-    for index, data in tqdm(enumerate(dataloader)):
+    for index, data in tqdm(enumerate(dataloader), desc="All Samples: "):
         if args.embedding == 'STV': 
             res_content = data['trace_id'] + '\t' + str(data['trace_bool'])
             # ========================================
@@ -253,7 +253,7 @@ def main():
                 # Construction stage
                 # ========================================
                 # Create a forest
-                for _ in range(num_trees):
+                for _ in tqdm(range(num_trees), desc="Construction stage: "):
                     tree = rrcf.RCTree(X=X, embedding_method=args.embedding)
                     forest.append(tree)
                 isMaintenanceStage = True
