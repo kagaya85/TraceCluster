@@ -158,7 +158,10 @@ if __name__ == '__main__':
         p = 1
         n = leaf
         while n is not None:
-            p = p / (len(n.siblings()) + 1)
+            # method 1
+            # p = p / (len(n.siblings()) + 1)
+            # method 2
+            p = p / 2
             n = n.parent
         # If p is no less than the random number, PERCH samples the trace
         if p >= np.random.uniform(0, 1):
