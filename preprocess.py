@@ -149,16 +149,31 @@ def load_mm_span(clickstream_list: List[str], callgraph_list: List[str]) -> Tupl
     for filepath in callgraph_list:
         filepath = os.path.join(data_root, 'wechat', filepath)
         print(f"loading wechat span data from {filepath}")
-        if filepath.endswith('.json'):
-            with open(filepath, 'r') as f:
-                raw_data = json.load(f)
-            mmspans = raw_data['data']
-        elif filepath.endswith('.csv'):
-            raw_data = pd.read_csv(filepath).drop_duplicates()
-            mmspans = raw_data.iterrows()
-        else:
-            print(f'invalid file type: {filepath}')
-            continue
+
+        raw_data = pd.read_csv(filepath).drop_duplicates()
+        mmspans = []
+
+        gdata = raw_data.groupby(['GraphIdBase64'])
+        for traceId, spans in gdata:
+            root = root_map.get(traceId)
+            if root is None:
+                continue
+
+            spans = spans.to_dict(orient='records')
+
+            for span in spans:
+                # fix caller cmdid is 0
+                if span['CallerCmdID'] == 0:
+                    nid = span['CallerNodeID']
+                    for s in spans:
+                        if s['CalleeNodeID'] == nid:
+                            span['CallerCmdID'] = s['CalleeCmdID']
+                    # 没有找到对应cmdid，去clickstream里找
+                    if span['CallerCmdID'] == 0 and root['nodeid'] == nid:
+                        span['CallerCmdID'] = root['cmdid']
+            
+            mmspans.extend(spans)
+            
 
         spans = {
             ITEM.SPAN_ID: [],
@@ -175,7 +190,7 @@ def load_mm_span(clickstream_list: List[str], callgraph_list: List[str]) -> Tupl
         }
 
         # convert to dataframe
-        for i, s in tqdm(mmspans):
+        for _, s in tqdm(mmspans):
             spans[ITEM.SPAN_ID].append(
                 str(s['CalleeNodeID']) + str(s['CalleeOssID']) + str(s['CalleeCmdID']))
             spans[ITEM.PARENT_SPAN_ID].append(
@@ -538,12 +553,9 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
 
 
 def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
-    traceId = trace[0].traceId
-
     str_set = set()
     spanId2Idx = {}
     tailIdx = 0
-    parentNum = {}
     graph = []
     vertexs = {}
     edges = {}
@@ -553,7 +565,6 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
             spanId2Idx[span.parentSpanId] = tailIdx
             graph.append([])
             tailIdx = tailIdx + 1
-            parentNum[span.parentSpanId] = 0
 
         graph[spanId2Idx[span.parentSpanId]].append(span)
 
@@ -561,55 +572,7 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
             spanId2Idx[span.spanId] = tailIdx
             graph.append([])
             tailIdx = tailIdx + 1
-            parentNum[span.spanId] = 0
 
-        parentNum[span.spanId] = parentNum[span.spanId] + 1
-
-    # add root node
-    if traceId in mm_root_map.keys():
-        root_span_id = mm_root_map[traceId]['spanid']
-        root_ossid = mm_root_map[traceId]['ossid']
-        root_code = mm_root_map[traceId]['code']
-        root_start_time = mm_root_map[traceId]['start_time']
-        root_service_name = get_service_name(root_ossid)
-        if root_service_name == "":
-            root_service_name = str(root_ossid)
-
-        # check root number
-        root_spans = []
-        for spanId, num in parentNum.items():
-            if num == 0:
-                root_spans.append(spanId)
-
-        if len(root_spans) > 1:
-            # add root info
-            spanId2Idx[root_span_id] = tailIdx
-            graph.append([])
-            rspanId = root_span_id
-            for spanId in root_spans:
-                # add edge
-                root_duration = 0
-                for span in graph[spanId2Idx[spanId]]:
-                    root_duration = root_duration + span.duration
-
-                graph[tailIdx].append(Span({
-                    ITEM.TRACE_ID: traceId,
-                    ITEM.SPAN_ID: spanId,
-                    ITEM.PARENT_SPAN_ID: root_span_id,
-                    ITEM.START_TIME: root_start_time,
-                    ITEM.DURATION: root_duration,
-                    ITEM.SERVICE: "root",
-                    ITEM.OPERATION: "start",
-                    ITEM.SPAN_TYPE: 'EntrySpan',
-                    ITEM.PEER: "{}/{}".format(root_service_name, "start"),
-                    ITEM.CODE: 0,
-                    ITEM.IS_ERROR: False,
-                }))
-        else:
-            rspanId = root_spans[0]
-
-    vertexs[spanId2Idx[rspanId]] = [root_service_name, "start"]
-    str_set.add(root_service_name)
 
     for idx, spans in enumerate(graph):
         if len(spans) == 0:
@@ -629,7 +592,7 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
                 'service': span.service,
                 'operation': span.operation,
                 'peer': span.peer,
-                'isError': utils.any2bool(root_code),
+                'isError': span.isError,
             })
 
     graph = {
@@ -844,6 +807,30 @@ def min_max(x: float, min: float, max: float) -> float:
     """
     return (float(x) - float(min)) / (float(max) - float(min))
 
+def add_root(span_list: List[Span], mm_root_map: dict) -> List[Span]:
+    cur_tid = ''
+
+    spans = []
+    for span in span_list:
+        if span.traceId != cur_tid:
+            cur_tid = span.traceId
+
+            root = mm_root_map[cur_tid]
+            root_span = Span()
+            root_span.spanId = root['spanid']
+            root_span.parentSpanId = '-1'
+            root_span.traceId = cur_tid
+            root_span.spanType = 'Entry'
+            root_span.startTime = root['start_time']
+            root_span.duration = root['cost_time']
+            root_span.service = root['ossid']
+            root_span.operation = root['cmdid']
+            root_span.code = root['code']
+            spans.append(root_span)
+
+        spans.append(span)        
+    return spans
+
 
 def task(ns, idx, divide_word: bool = True):
     span_data = ns.sl[idx]
@@ -854,7 +841,10 @@ def task(ns, idx, divide_word: bool = True):
     operation_map = {}
     for trace_id, trace_data in tqdm(span_data.groupby([ITEM.TRACE_ID]), desc="processing #{:0>2d}".format(idx),
                                      position=pos):
-        trace = [Span(raw_span) for idx, raw_span in trace_data.iterrows()]
+        trace = [Span(raw_span) for _, raw_span in trace_data.iterrows()]
+        if is_wechat:
+            trace = add_root(trace, mm_root_map)
+            
         graph, sset = build_graph(trace_process(
             trace, divide_word), normalize, operation_map)
         if graph == None:

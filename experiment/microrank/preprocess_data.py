@@ -17,26 +17,24 @@ is_wechat = True
 
 def fix_root(span_list: List[Span], mm_root_map: dict):
     cur_tid = ''
-    has_root = False
+
     spans = []
     for span in span_list:
         if span.traceId != cur_tid:
             cur_tid = span.traceId
-            if has_root == False:
-                root = mm_root_map[cur_tid]
-                root_span = Span()
-                root_span.spanId = root['spanid']
-                root_span.parentSpanId = '-1'
-                root_span.traceId = cur_tid
-                root_span.spanType = 'Entry'
-                root_span.startTime = root['start_time']
-                root_span.duration = root['cost_time']
-                root_span.service = root['ossid']
-                root_span.operation = root['cmdid']
-                root_span.code = root['code']
-                spans.append(root_span)
 
-            has_root = False
+            root = mm_root_map[cur_tid]
+            root_span = Span()
+            root_span.spanId = root['spanid']
+            root_span.parentSpanId = '-1'
+            root_span.traceId = cur_tid
+            root_span.spanType = 'Entry'
+            root_span.startTime = root['start_time']
+            root_span.duration = root['cost_time']
+            root_span.service = root['ossid']
+            root_span.operation = root['cmdid']
+            root_span.code = root['code']
+            spans.append(root_span)
 
         spans.append(span)        
     return spans
