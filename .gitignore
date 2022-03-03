@@ -12,3 +12,4 @@ weights_DIM
 secrets
 *.jpg
 !img/*
+/TraceAnomaly/train_ticket/
