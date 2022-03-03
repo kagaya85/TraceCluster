@@ -1,0 +1,205 @@
+digraph TreeStructure {
+
+idNLZTBK3WYNNC[shape=egg;style=filled;color=lavenderblush4;label=<idNLZTBK3WYNNC<BR/>num pts: 50<BR/>purity: 0.100000<BR/><BR/>lavenderblush4<BR/>>]
+ROOTNODE[shape=star;style=filled;color=gold;label=<ROOT>]
+ROOTNODE->idNLZTBK3WYNNC
+idNLZTBK3WYNNC[shape=egg;style=filled;color=lavenderblush4;label=<idNLZTBK3WYNNC<BR/>num pts: 50<BR/>purity: 0.100000<BR/><BR/>lavenderblush4<BR/>>]
+ROOTNODE[shape=star;style=filled;color=gold;label=<ROOT>]
+ROOTNODE->idNLZTBK3WYNNC
+idSN4NBZ43EDEQ[shape=egg;style=filled;color=lavenderblush4;label=<idSN4NBZ43EDEQ<BR/>num pts: 25<BR/>purity: 0.200000<BR/><BR/>lavenderblush4<BR/><BR/>>]
+idNLZTBK3WYNNC->idSN4NBZ43EDEQ
+idOLYIRO2T93YF[shape=egg;style=filled;color=lavenderblush4;label=<idOLYIRO2T93YF<BR/>num pts: 25<BR/>purity: 0.200000<BR/><BR/>lavenderblush4<BR/><BR/>>]
+idNLZTBK3WYNNC->idOLYIRO2T93YF
+idWWRJYOE0UZAQ[shape=egg;style=filled;color=lavenderblush4;label=<idWWRJYOE0UZAQ<BR/>num pts: 15<BR/>purity: 0.333333<BR/><BR/>lavenderblush4<BR/><BR/>>]
+idSN4NBZ43EDEQ->idWWRJYOE0UZAQ
+idH6T4QS24KN8H[shape=egg;style=filled;color=lavenderblush4;label=<idH6T4QS24KN8H<BR/>num pts: 10<BR/>purity: 0.500000<BR/><BR/>lavenderblush4<BR/><BR/>>]
+idSN4NBZ43EDEQ->idH6T4QS24KN8H
+idRY7FL3V5B7U5[shape=egg;style=filled;color=lavenderblush4;label=<idRY7FL3V5B7U5<BR/>num pts: 10<BR/>purity: 0.500000<BR/><BR/>lavenderblush4<BR/><BR/>>]
+idOLYIRO2T93YF->idRY7FL3V5B7U5
+idEYG3GC85CJS8[shape=egg;style=filled;color=lavenderblush4;label=<idEYG3GC85CJS8<BR/>num pts: 15<BR/>purity: 0.333333<BR/><BR/>lavenderblush4<BR/><BR/>>]
+idOLYIRO2T93YF->idEYG3GC85CJS8
+idNJVR6ANIML95[shape=egg;style=filled;color=aquamarine;label=<idNJVR6ANIML95<BR/>num pts: 5<BR/>purity: 1.000000<BR/><BR/>aquamarine<BR/><BR/>>]
+idWWRJYOE0UZAQ->idNJVR6ANIML95
+idK59A8K5DYN29[shape=egg;style=filled;color=lavenderblush4;label=<idK59A8K5DYN29<BR/>num pts: 10<BR/>purity: 0.500000<BR/><BR/>lavenderblush4<BR/><BR/>>]
+idWWRJYOE0UZAQ->idK59A8K5DYN29
+idKRM5WAYSK0DT[shape=egg;style=filled;color=bisque;label=<idKRM5WAYSK0DT<BR/>num pts: 5<BR/>purity: 1.000000<BR/><BR/>bisque<BR/><BR/>>]
+idH6T4QS24KN8H->idKRM5WAYSK0DT
+idB33BEQG7BEV0[shape=egg;style=filled;color=blue;label=<idB33BEQG7BEV0<BR/>num pts: 5<BR/>purity: 1.000000<BR/><BR/>blue<BR/><BR/>>]
+idH6T4QS24KN8H->idB33BEQG7BEV0
+idTBX7MGN4XSWT[shape=egg;style=filled;color=blueviolet;label=<idTBX7MGN4XSWT<BR/>num pts: 5<BR/>purity: 1.000000<BR/><BR/>blueviolet<BR/><BR/>>]
+idRY7FL3V5B7U5->idTBX7MGN4XSWT
+idO3TF1N562MG6[shape=egg;style=filled;color=brown;label=<idO3TF1N562MG6<BR/>num pts: 5<BR/>purity: 1.000000<BR/><BR/>brown<BR/><BR/>>]
+idRY7FL3V5B7U5->idO3TF1N562MG6
+idX2MZRI2UFXKR[shape=egg;style=filled;color=lavenderblush4;label=<idX2MZRI2UFXKR<BR/>num pts: 10<BR/>purity: 0.500000<BR/><BR/>lavenderblush4<BR/><BR/>>]
+idEYG3GC85CJS8->idX2MZRI2UFXKR
+id5R40OWKY0TIT[shape=egg;style=filled;color=cadetblue;label=<id5R40OWKY0TIT<BR/>num pts: 5<BR/>purity: 1.000000<BR/><BR/>cadetblue<BR/><BR/>>]
+idEYG3GC85CJS8->id5R40OWKY0TIT
+idA4AJYT8H3GB6[shape=egg;style=filled;color=aquamarine;label=<idA4AJYT8H3GB6<BR/>num pts: 3<BR/>purity: 1.000000<BR/><BR/>aquamarine<BR/><BR/>>]
+idNJVR6ANIML95->idA4AJYT8H3GB6
+idIKZ434NSOKW4[shape=egg;style=filled;color=aquamarine;label=<idIKZ434NSOKW4<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>aquamarine<BR/><BR/>>]
+idNJVR6ANIML95->idIKZ434NSOKW4
+id61ZV819GERCS[shape=egg;style=filled;color=chartreuse;label=<id61ZV819GERCS<BR/>num pts: 5<BR/>purity: 1.000000<BR/><BR/>chartreuse<BR/><BR/>>]
+idK59A8K5DYN29->id61ZV819GERCS
+idYA7IO8U94FHF[shape=egg;style=filled;color=coral;label=<idYA7IO8U94FHF<BR/>num pts: 5<BR/>purity: 1.000000<BR/><BR/>coral<BR/><BR/>>]
+idK59A8K5DYN29->idYA7IO8U94FHF
+idSW9E3Y0L61WI[shape=egg;style=filled;color=bisque;label=<idSW9E3Y0L61WI<BR/>num pts: 4<BR/>purity: 1.000000<BR/><BR/>bisque<BR/><BR/>>]
+idKRM5WAYSK0DT->idSW9E3Y0L61WI
+idQ6GQ7MPGE7WR[shape=egg;style=filled;color=bisque;label=<idQ6GQ7MPGE7WR<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>bisque<BR/>29|5<BR/>>]
+idKRM5WAYSK0DT->idQ6GQ7MPGE7WR
+id87NO0ILJDUUV[shape=egg;style=filled;color=blue;label=<id87NO0ILJDUUV<BR/>num pts: 3<BR/>purity: 1.000000<BR/><BR/>blue<BR/><BR/>>]
+idB33BEQG7BEV0->id87NO0ILJDUUV
+idI0BFESB0EDPB[shape=egg;style=filled;color=blue;label=<idI0BFESB0EDPB<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>blue<BR/><BR/>>]
+idB33BEQG7BEV0->idI0BFESB0EDPB
+idQ0O669R9Y6KI[shape=egg;style=filled;color=blueviolet;label=<idQ0O669R9Y6KI<BR/>num pts: 3<BR/>purity: 1.000000<BR/><BR/>blueviolet<BR/><BR/>>]
+idTBX7MGN4XSWT->idQ0O669R9Y6KI
+idFI27SU0NW3HK[shape=egg;style=filled;color=blueviolet;label=<idFI27SU0NW3HK<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>blueviolet<BR/><BR/>>]
+idTBX7MGN4XSWT->idFI27SU0NW3HK
+idCWSWN6B51QVG[shape=egg;style=filled;color=brown;label=<idCWSWN6B51QVG<BR/>num pts: 4<BR/>purity: 1.000000<BR/><BR/>brown<BR/><BR/>>]
+idO3TF1N562MG6->idCWSWN6B51QVG
+idJEULQQ7YE1KB[shape=egg;style=filled;color=brown;label=<idJEULQQ7YE1KB<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>brown<BR/>32|6<BR/>>]
+idO3TF1N562MG6->idJEULQQ7YE1KB
+idHFLWPB52G1CR[shape=egg;style=filled;color=cornflowerblue;label=<idHFLWPB52G1CR<BR/>num pts: 5<BR/>purity: 1.000000<BR/><BR/>cornflowerblue<BR/><BR/>>]
+idX2MZRI2UFXKR->idHFLWPB52G1CR
+idQ2Q8DS079OLR[shape=egg;style=filled;color=crimson;label=<idQ2Q8DS079OLR<BR/>num pts: 5<BR/>purity: 1.000000<BR/><BR/>crimson<BR/><BR/>>]
+idX2MZRI2UFXKR->idQ2Q8DS079OLR
+id7BZLBSX8SYIC[shape=egg;style=filled;color=cadetblue;label=<id7BZLBSX8SYIC<BR/>num pts: 4<BR/>purity: 1.000000<BR/><BR/>cadetblue<BR/><BR/>>]
+id5R40OWKY0TIT->id7BZLBSX8SYIC
+idZS8ZE9V32SHT[shape=egg;style=filled;color=cadetblue;label=<idZS8ZE9V32SHT<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>cadetblue<BR/>37|7<BR/>>]
+id5R40OWKY0TIT->idZS8ZE9V32SHT
+idDDJHT2J4BT9L[shape=egg;style=filled;color=aquamarine;label=<idDDJHT2J4BT9L<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>aquamarine<BR/><BR/>>]
+idA4AJYT8H3GB6->idDDJHT2J4BT9L
+idZDW2TOFSXJ2Q[shape=egg;style=filled;color=aquamarine;label=<idZDW2TOFSXJ2Q<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>aquamarine<BR/>13|2<BR/>>]
+idA4AJYT8H3GB6->idZDW2TOFSXJ2Q
+idRZ4VVWO99K3B[shape=egg;style=filled;color=aquamarine;label=<idRZ4VVWO99K3B<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>aquamarine<BR/>12|2<BR/>>]
+idIKZ434NSOKW4->idRZ4VVWO99K3B
+idUTKHO9H01SXB[shape=egg;style=filled;color=aquamarine;label=<idUTKHO9H01SXB<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>aquamarine<BR/>11|2<BR/>>]
+idIKZ434NSOKW4->idUTKHO9H01SXB
+idLIOLEWXOGLEN[shape=egg;style=filled;color=chartreuse;label=<idLIOLEWXOGLEN<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>chartreuse<BR/>3|0<BR/>>]
+id61ZV819GERCS->idLIOLEWXOGLEN
+id0JLH7IXX2F5J[shape=egg;style=filled;color=chartreuse;label=<id0JLH7IXX2F5J<BR/>num pts: 4<BR/>purity: 1.000000<BR/><BR/>chartreuse<BR/><BR/>>]
+id61ZV819GERCS->id0JLH7IXX2F5J
+id7LVGW36ABNKM[shape=egg;style=filled;color=coral;label=<id7LVGW36ABNKM<BR/>num pts: 3<BR/>purity: 1.000000<BR/><BR/>coral<BR/><BR/>>]
+idYA7IO8U94FHF->id7LVGW36ABNKM
+idTWNCLUOPS92P[shape=egg;style=filled;color=coral;label=<idTWNCLUOPS92P<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>coral<BR/><BR/>>]
+idYA7IO8U94FHF->idTWNCLUOPS92P
+idL5029NIQB6DK[shape=egg;style=filled;color=bisque;label=<idL5029NIQB6DK<BR/>num pts: 3<BR/>purity: 1.000000<BR/><BR/>bisque<BR/><BR/>>]
+idSW9E3Y0L61WI->idL5029NIQB6DK
+idEW7ER7I2NNR1[shape=egg;style=filled;color=bisque;label=<idEW7ER7I2NNR1<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>bisque<BR/>26|5<BR/>>]
+idSW9E3Y0L61WI->idEW7ER7I2NNR1
+idRCXOA89WCHFP[shape=egg;style=filled;color=blue;label=<idRCXOA89WCHFP<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>blue<BR/>45|9<BR/>>]
+id87NO0ILJDUUV->idRCXOA89WCHFP
+idQO5JJZ25WEZN[shape=egg;style=filled;color=blue;label=<idQO5JJZ25WEZN<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>blue<BR/><BR/>>]
+id87NO0ILJDUUV->idQO5JJZ25WEZN
+idG1YVEJBOZRFG[shape=egg;style=filled;color=blue;label=<idG1YVEJBOZRFG<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>blue<BR/>48|9<BR/>>]
+idI0BFESB0EDPB->idG1YVEJBOZRFG
+idXL5UEAN4L1F5[shape=egg;style=filled;color=blue;label=<idXL5UEAN4L1F5<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>blue<BR/>49|9<BR/>>]
+idI0BFESB0EDPB->idXL5UEAN4L1F5
+idQ9US7LGLNVWD[shape=egg;style=filled;color=blueviolet;label=<idQ9US7LGLNVWD<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>blueviolet<BR/>40|8<BR/>>]
+idQ0O669R9Y6KI->idQ9US7LGLNVWD
+idWMVRDQYYNAQV[shape=egg;style=filled;color=blueviolet;label=<idWMVRDQYYNAQV<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>blueviolet<BR/><BR/>>]
+idQ0O669R9Y6KI->idWMVRDQYYNAQV
+idHVDR2QBWRTIP[shape=egg;style=filled;color=blueviolet;label=<idHVDR2QBWRTIP<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>blueviolet<BR/>44|8<BR/>>]
+idFI27SU0NW3HK->idHVDR2QBWRTIP
+id7C3K96BHD5CM[shape=egg;style=filled;color=blueviolet;label=<id7C3K96BHD5CM<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>blueviolet<BR/>41|8<BR/>>]
+idFI27SU0NW3HK->id7C3K96BHD5CM
+id9D5FNQHN63MP[shape=egg;style=filled;color=brown;label=<id9D5FNQHN63MP<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>brown<BR/><BR/>>]
+idCWSWN6B51QVG->id9D5FNQHN63MP
+id7XSPQ715IUPY[shape=egg;style=filled;color=brown;label=<id7XSPQ715IUPY<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>brown<BR/><BR/>>]
+idCWSWN6B51QVG->id7XSPQ715IUPY
+idGTSNUYCNG6EM[shape=egg;style=filled;color=cornflowerblue;label=<idGTSNUYCNG6EM<BR/>num pts: 4<BR/>purity: 1.000000<BR/><BR/>cornflowerblue<BR/><BR/>>]
+idHFLWPB52G1CR->idGTSNUYCNG6EM
+id3K3NIPPPRPNJ[shape=egg;style=filled;color=cornflowerblue;label=<id3K3NIPPPRPNJ<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>cornflowerblue<BR/>20|4<BR/>>]
+idHFLWPB52G1CR->id3K3NIPPPRPNJ
+id8O9PJ77IUP98[shape=egg;style=filled;color=crimson;label=<id8O9PJ77IUP98<BR/>num pts: 3<BR/>purity: 1.000000<BR/><BR/>crimson<BR/><BR/>>]
+idQ2Q8DS079OLR->id8O9PJ77IUP98
+id6YXHOXQU9ABB[shape=egg;style=filled;color=crimson;label=<id6YXHOXQU9ABB<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>crimson<BR/><BR/>>]
+idQ2Q8DS079OLR->id6YXHOXQU9ABB
+id1BHIVVEWAV18[shape=egg;style=filled;color=cadetblue;label=<id1BHIVVEWAV18<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>cadetblue<BR/><BR/>>]
+id7BZLBSX8SYIC->id1BHIVVEWAV18
+idL8W92LXY72C7[shape=egg;style=filled;color=cadetblue;label=<idL8W92LXY72C7<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>cadetblue<BR/><BR/>>]
+id7BZLBSX8SYIC->idL8W92LXY72C7
+idC490MM83IC8X[shape=egg;style=filled;color=aquamarine;label=<idC490MM83IC8X<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>aquamarine<BR/>10|2<BR/>>]
+idDDJHT2J4BT9L->idC490MM83IC8X
+idSOHWFWEGSII0[shape=egg;style=filled;color=aquamarine;label=<idSOHWFWEGSII0<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>aquamarine<BR/>14|2<BR/>>]
+idDDJHT2J4BT9L->idSOHWFWEGSII0
+idDTDQZ2RLLYFM[shape=egg;style=filled;color=chartreuse;label=<idDTDQZ2RLLYFM<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>chartreuse<BR/><BR/>>]
+id0JLH7IXX2F5J->idDTDQZ2RLLYFM
+id0J6HD3Z05T5T[shape=egg;style=filled;color=chartreuse;label=<id0J6HD3Z05T5T<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>chartreuse<BR/><BR/>>]
+id0JLH7IXX2F5J->id0J6HD3Z05T5T
+idT3U6AF8UBHCR[shape=egg;style=filled;color=coral;label=<idT3U6AF8UBHCR<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>coral<BR/><BR/>>]
+id7LVGW36ABNKM->idT3U6AF8UBHCR
+id11LXDU668EVJ[shape=egg;style=filled;color=coral;label=<id11LXDU668EVJ<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>coral<BR/>8|1<BR/>>]
+id7LVGW36ABNKM->id11LXDU668EVJ
+id0P1DFDT1ZD7L[shape=egg;style=filled;color=coral;label=<id0P1DFDT1ZD7L<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>coral<BR/>6|1<BR/>>]
+idTWNCLUOPS92P->id0P1DFDT1ZD7L
+id0Y1DUTT7VK7O[shape=egg;style=filled;color=coral;label=<id0Y1DUTT7VK7O<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>coral<BR/>5|1<BR/>>]
+idTWNCLUOPS92P->id0Y1DUTT7VK7O
+idCEWV1AJ22IHZ[shape=egg;style=filled;color=bisque;label=<idCEWV1AJ22IHZ<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>bisque<BR/><BR/>>]
+idL5029NIQB6DK->idCEWV1AJ22IHZ
+idJ5ZP2JF0TDNH[shape=egg;style=filled;color=bisque;label=<idJ5ZP2JF0TDNH<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>bisque<BR/>27|5<BR/>>]
+idL5029NIQB6DK->idJ5ZP2JF0TDNH
+idHRL9JKU83ADC[shape=egg;style=filled;color=blue;label=<idHRL9JKU83ADC<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>blue<BR/>47|9<BR/>>]
+idQO5JJZ25WEZN->idHRL9JKU83ADC
+idYD109VVDX4PD[shape=egg;style=filled;color=blue;label=<idYD109VVDX4PD<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>blue<BR/>46|9<BR/>>]
+idQO5JJZ25WEZN->idYD109VVDX4PD
+idX285BDYAMN8L[shape=egg;style=filled;color=blueviolet;label=<idX285BDYAMN8L<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>blueviolet<BR/>43|8<BR/>>]
+idWMVRDQYYNAQV->idX285BDYAMN8L
+idHNNJWJ3CDGI3[shape=egg;style=filled;color=blueviolet;label=<idHNNJWJ3CDGI3<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>blueviolet<BR/>42|8<BR/>>]
+idWMVRDQYYNAQV->idHNNJWJ3CDGI3
+idFAPJHQ6CUMOW[shape=egg;style=filled;color=brown;label=<idFAPJHQ6CUMOW<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>brown<BR/>30|6<BR/>>]
+id9D5FNQHN63MP->idFAPJHQ6CUMOW
+idWZT6HGENY3PY[shape=egg;style=filled;color=brown;label=<idWZT6HGENY3PY<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>brown<BR/>34|6<BR/>>]
+id9D5FNQHN63MP->idWZT6HGENY3PY
+idOZBD5KP6PXGW[shape=egg;style=filled;color=brown;label=<idOZBD5KP6PXGW<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>brown<BR/>33|6<BR/>>]
+id7XSPQ715IUPY->idOZBD5KP6PXGW
+idNRTHCYACQE8I[shape=egg;style=filled;color=brown;label=<idNRTHCYACQE8I<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>brown<BR/>31|6<BR/>>]
+id7XSPQ715IUPY->idNRTHCYACQE8I
+id36X28JOK37MR[shape=egg;style=filled;color=cornflowerblue;label=<id36X28JOK37MR<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>cornflowerblue<BR/><BR/>>]
+idGTSNUYCNG6EM->id36X28JOK37MR
+idR56FJQ6XHNBR[shape=egg;style=filled;color=cornflowerblue;label=<idR56FJQ6XHNBR<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>cornflowerblue<BR/><BR/>>]
+idGTSNUYCNG6EM->idR56FJQ6XHNBR
+id9KWJ1IJ18I3G[shape=egg;style=filled;color=crimson;label=<id9KWJ1IJ18I3G<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>crimson<BR/>19|3<BR/>>]
+id8O9PJ77IUP98->id9KWJ1IJ18I3G
+id0TEB7K712KRH[shape=egg;style=filled;color=crimson;label=<id0TEB7K712KRH<BR/>num pts: 2<BR/>purity: 1.000000<BR/><BR/>crimson<BR/><BR/>>]
+id8O9PJ77IUP98->id0TEB7K712KRH
+idN8F19F9WKR5T[shape=egg;style=filled;color=crimson;label=<idN8F19F9WKR5T<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>crimson<BR/>17|3<BR/>>]
+id6YXHOXQU9ABB->idN8F19F9WKR5T
+idD5BSUER0JGLO[shape=egg;style=filled;color=crimson;label=<idD5BSUER0JGLO<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>crimson<BR/>16|3<BR/>>]
+id6YXHOXQU9ABB->idD5BSUER0JGLO
+id3EQX4SDGVF3E[shape=egg;style=filled;color=cadetblue;label=<id3EQX4SDGVF3E<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>cadetblue<BR/>38|7<BR/>>]
+id1BHIVVEWAV18->id3EQX4SDGVF3E
+idYWB8KKFMJE50[shape=egg;style=filled;color=cadetblue;label=<idYWB8KKFMJE50<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>cadetblue<BR/>39|7<BR/>>]
+id1BHIVVEWAV18->idYWB8KKFMJE50
+idNTX3BFVVF9JO[shape=egg;style=filled;color=cadetblue;label=<idNTX3BFVVF9JO<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>cadetblue<BR/>36|7<BR/>>]
+idL8W92LXY72C7->idNTX3BFVVF9JO
+idK8RCQ9OK0XVN[shape=egg;style=filled;color=cadetblue;label=<idK8RCQ9OK0XVN<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>cadetblue<BR/>35|7<BR/>>]
+idL8W92LXY72C7->idK8RCQ9OK0XVN
+idRN6DG43J2FKS[shape=egg;style=filled;color=chartreuse;label=<idRN6DG43J2FKS<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>chartreuse<BR/>1|0<BR/>>]
+idDTDQZ2RLLYFM->idRN6DG43J2FKS
+id823MZ6QBZSTK[shape=egg;style=filled;color=chartreuse;label=<id823MZ6QBZSTK<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>chartreuse<BR/>4|0<BR/>>]
+idDTDQZ2RLLYFM->id823MZ6QBZSTK
+idA5P7ECUBWI84[shape=egg;style=filled;color=chartreuse;label=<idA5P7ECUBWI84<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>chartreuse<BR/>2|0<BR/>>]
+id0J6HD3Z05T5T->idA5P7ECUBWI84
+idNHS22PW9CTQ1[shape=egg;style=filled;color=chartreuse;label=<idNHS22PW9CTQ1<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>chartreuse<BR/>0|0<BR/>>]
+id0J6HD3Z05T5T->idNHS22PW9CTQ1
+idT16DR56VQDGF[shape=egg;style=filled;color=coral;label=<idT16DR56VQDGF<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>coral<BR/>9|1<BR/>>]
+idT3U6AF8UBHCR->idT16DR56VQDGF
+idJIN0189NZDZF[shape=egg;style=filled;color=coral;label=<idJIN0189NZDZF<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>coral<BR/>7|1<BR/>>]
+idT3U6AF8UBHCR->idJIN0189NZDZF
+idZTBESS7B77QQ[shape=egg;style=filled;color=bisque;label=<idZTBESS7B77QQ<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>bisque<BR/>28|5<BR/>>]
+idCEWV1AJ22IHZ->idZTBESS7B77QQ
+id98J5DGD0DPE2[shape=egg;style=filled;color=bisque;label=<id98J5DGD0DPE2<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>bisque<BR/>25|5<BR/>>]
+idCEWV1AJ22IHZ->id98J5DGD0DPE2
+id0G7T16Q0S0BD[shape=egg;style=filled;color=cornflowerblue;label=<id0G7T16Q0S0BD<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>cornflowerblue<BR/>21|4<BR/>>]
+id36X28JOK37MR->id0G7T16Q0S0BD
+idF9HOB9PZCIVU[shape=egg;style=filled;color=cornflowerblue;label=<idF9HOB9PZCIVU<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>cornflowerblue<BR/>24|4<BR/>>]
+id36X28JOK37MR->idF9HOB9PZCIVU
+idEBV0TLNY7L4G[shape=egg;style=filled;color=cornflowerblue;label=<idEBV0TLNY7L4G<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>cornflowerblue<BR/>23|4<BR/>>]
+idR56FJQ6XHNBR->idEBV0TLNY7L4G
+id2C23ZFF39NOQ[shape=egg;style=filled;color=cornflowerblue;label=<id2C23ZFF39NOQ<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>cornflowerblue<BR/>22|4<BR/>>]
+idR56FJQ6XHNBR->id2C23ZFF39NOQ
+idTP9YYKBRH8YV[shape=egg;style=filled;color=crimson;label=<idTP9YYKBRH8YV<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>crimson<BR/>15|3<BR/>>]
+id0TEB7K712KRH->idTP9YYKBRH8YV
+idOXND3BCB889P[shape=egg;style=filled;color=crimson;label=<idOXND3BCB889P<BR/>num pts: 1<BR/>purity: 1.000000<BR/><BR/>crimson<BR/>18|3<BR/>>]
+id0TEB7K712KRH->idOXND3BCB889P
+}

@@ -19,7 +19,7 @@ from itertools import repeat, product
 from torch_geometric.data.separate import separate
 from typing import List, Tuple, Union
 from copy import deepcopy
-from aug_method import *
+from aug_method_node import *
 
 
 class TraceDataset(Dataset):
@@ -28,14 +28,13 @@ class TraceDataset(Dataset):
             root, transform, pre_transform)
         self.aug = aug
 
-
     @property
     def kpi_features(self):
-        return ['requestAndResponseDuration', 'workDuration', 'rawDuration', 'clientRequestAndResponseDuration']  # workDuration   subspanDuration
+        return ['requestAndResponseDuration', 'workDuration', 'rawDuration']  # workDuration   subspanDuration
 
     @property
     def span_features(self):
-        return ['timeScale', 'isParallel', 'callType', 'isError', 'start2startTimeScale', 'end2endTimeScale']  #  'childrenSpanNum', 'subspanNum',
+        return ['timeScale', 'isParallel', 'callType', 'isError']  # 'childrenSpanNum', 'subspanNum',
 
     @property
     def edge_features(self):
@@ -65,7 +64,7 @@ class TraceDataset(Dataset):
 
     @property
     def normal_idx(self):
-        with open(self.processed_dir + '/data_info.json', "r") as f:    # file name not list
+        with open(self.processed_dir + '/data_info.json', "r") as f:  # file name not list
             data_info = json.load(f)
             normal_idx = data_info['normal']
         return normal_idx
@@ -114,55 +113,41 @@ class TraceDataset(Dataset):
         operation_embedding = self._operation_embedding()
 
         print('load preprocessed data file:', self.raw_file_names[0])
-        with open(self.raw_file_names[0], "r") as f:    # file name not list
+        with open(self.raw_file_names[0], "r") as f:  # file name not list
             raw_data = json.load(f)
 
         for trace_id, trace in tqdm(raw_data.items()):
-            node_feats = self._get_node_features(trace, operation_embedding)
-            edge_feats, edge_feats_stat = self._get_edge_features(trace, num_features_stat)
-            edge_index = self._get_adjacency_info(trace)
-
-            # dim check
-            num_nodes_node_feats, _ = node_feats.size()
-            num_nodes_edge_index = edge_index.max()+1    # 包括 0
-            if num_nodes_node_feats != num_nodes_edge_index:
-                print("Feature dismatch! num_nodes_node_feats: {}, num_nodes_edge_index: {}, trace_id: {}".format(
-                    num_nodes_node_feats, num_nodes_edge_index, trace_id))
-
-            num_edges_edge_feats, _ = edge_feats.size()
-            _, num_edges_edge_index = edge_index.size()
-            if num_edges_edge_feats != num_edges_edge_index:
-                print("Feature dismatch! num_edges_edge_feats: {}, num_edges_edge_index: {}, trace_id: {}".format(
-                    num_edges_edge_feats, num_edges_edge_index, trace_id))
+            edge_index, api_pair_map = self._get_adjacency_info(trace)
+            node_feats, node_feats_stat = self._get_node_features(trace, operation_embedding, num_features_stat,
+                                                                  api_pair_map)
 
             # define class based on root url, normal/abnormal, node num
-            trace_class = trace["edges"]["0"][0]["operation"] + str(trace['abnormal']) + str(node_feats.size(0))
+            trace_class = trace["vertexs"]["0"]["operation"] + str(trace['abnormal']) + str(node_feats.size(0))
             if trace_class not in class_list:
                 class_list.append(trace_class)
             # define url status class based on root url, normal/abnormal
-            url_status_class = trace["edges"]["0"][0]["operation"] + str(trace['abnormal'])
+            url_status_class = trace["vertexs"]["0"]["operation"] + str(trace['abnormal'])
             if url_status_class not in url_status_class_list:
                 url_status_class_list.append(url_status_class)
 
             # define url status class based on root url, normal/abnormal
-            root_url_class = trace["edges"]["0"][0]["operation"]
+            root_url_class = trace["vertexs"]["0"]["operation"]
             if root_url_class not in url_class_list:
                 url_class_list.append(root_url_class)
 
             data = Data(
                 x=node_feats,
                 edge_index=edge_index,
-                edge_attr=edge_feats,
-                trace_id=trace_id,    # add trace_id for cluster
+                trace_id=trace_id,  # add trace_id for cluster
                 # add time_stamp for DenStream
-                time_stamp=trace["edges"]["0"][0]["startTime"],
+                time_stamp=trace["vertexs"]["0"]["startTime"],
                 # time_stamp=list(trace["edges"].items())[0][1][0]["startTime"],
                 y=trace['abnormal'],
-                root_url=trace["edges"]["0"][0]["operation"],
+                root_url=trace["vertexs"]["0"]["operation"],
                 trace_class=class_list.index(trace_class),
                 url_status_class=url_status_class_list.index(url_status_class),
                 url_class=url_class_list.index(root_url_class),
-                edge_attr_stat=edge_feats_stat
+                node_attr_stat=node_feats_stat
             )
             # data_list.append(data)
 
@@ -196,10 +181,9 @@ class TraceDataset(Dataset):
                     'url_status_classes': url_status_class_list,
                     'url_classes': url_class_list}
 
-        with open(self.processed_dir+'/data_info.json', 'w', encoding='utf-8') as json_file:
+        with open(self.processed_dir + '/data_info.json', 'w', encoding='utf-8') as json_file:
             json.dump(datainfo, json_file)
             print('write data info success')
-
 
     def _operation_embedding(self):
         """
@@ -209,7 +193,6 @@ class TraceDataset(Dataset):
             operations_embedding = json.load(f)
 
         return operations_embedding
-
 
     def _get_num_features_stat(self):
         """
@@ -230,64 +213,46 @@ class TraceDataset(Dataset):
 
         return operations_stat_map
 
-
-    def _get_node_features(self, trace, operation_embedding):
+    def _get_node_features(self, trace, operation_embedding, num_features_stat, api_pair_map):
         """
         node features matrix
         This will return a matrix / 2d array of the shape
         [Number of Nodes, Node Feature size]
         """
         node_feats = []
+        node_feats_stat = []
+
         for span_id, attr in trace["vertexs"].items():
-            if span_id == '0':
-                node_feats.append(operation_embedding[attr])
+            feat = []
+            feat_stat = []
+
+            if span_id in api_pair_map.keys():
+                api_pair = api_pair_map[span_id]
             else:
-                node_feats.append(operation_embedding[attr[1]])
+                api_pair = 'root--->' + attr['operation']
+
+            feat.extend(operation_embedding[attr['service'] + '/' + attr['operation']])
+
+            for feature in self.kpi_features:
+
+                feature_num = self._z_score(attr[feature], num_features_stat[str(api_pair)][feature])
+                feat.append(feature_num)
+                feat_stat.append(num_features_stat[str(api_pair)][feature][0])
+                feat_stat.append(num_features_stat[str(api_pair)][feature][1])
+                # feat.append(to[feature])
+
+            for feature in self.span_features:
+                if feature == 'isError':
+                    feat.append(0.0 if attr[feature] is False else 1.0)
+                else:
+                    feat.append(float(attr[feature]))
+
+            node_feats.append(feat)
+            node_feats_stat.append(feat_stat)
 
         node_feats = np.asarray(node_feats)
-        return torch.tensor(node_feats, dtype=torch.float)
-
-    def _get_edge_features(self, trace, num_features_stat):
-        """
-        edge features matrix
-        This will return a matrix / 2d array of the shape
-        [Number of edges, Edge Feature size]
-        """
-        edge_feats = []
-        edge_feats_stat = []
-        for from_id, to_list in trace["edges"].items():
-            for to in to_list:
-                feat = []
-                feat_stat = []
-                if from_id == '0':
-                    api_pair = 'root--->' + trace["vertexs"][str(to["vertexId"])][1].replace(trace["vertexs"][str(to["vertexId"])][0]+'/','')
-                else:
-                    api_pair = trace["vertexs"][from_id][1].replace(
-                        trace["vertexs"][from_id][0] + '/', '') + '--->' + trace["vertexs"][str(to["vertexId"])][1].replace(
-                        trace["vertexs"][str(to["vertexId"])][0] + '/', '')
-
-                for feature in self.kpi_features:
-                    # feature_num = self._z_score(to[feature], num_features_stat[to['operation']][feature])
-                    feature_num = self._z_score(to[feature], num_features_stat[api_pair][feature])
-                    feat.append(feature_num)
-                    feat_stat.append(num_features_stat[api_pair][feature][0])
-                    feat_stat.append(num_features_stat[api_pair][feature][1])
-                    # feat_stat.append(num_features_stat[to['operation']][feature][0])
-                    # feat_stat.append(num_features_stat[to['operation']][feature][1])
-                    # feat.append(to[feature])
-
-                for feature in self.span_features:
-                    if feature == 'isError':
-                        feat.append(0.0 if to[feature] is False else 1.0)
-                    else:
-                        feat.append(float(to[feature]))
-
-                edge_feats.append(feat)
-                edge_feats_stat.append(feat_stat)
-
-        edge_feats_stat = np.asarray(edge_feats_stat)
-        edge_feats = np.asarray(edge_feats)
-        return torch.tensor(edge_feats, dtype=torch.float), torch.tensor(edge_feats_stat, dtype=torch.float)
+        node_feats_stat = np.asarray(node_feats_stat)
+        return torch.tensor(node_feats, dtype=torch.float), torch.tensor(node_feats_stat, dtype=torch.float)
 
     def _get_adjacency_info(self, trace):
         """
@@ -295,13 +260,15 @@ class TraceDataset(Dataset):
         [from1, from2, from3 ...] [to1, to2, to3 ...]
         """
         adj_list = [[], []]
+        api_pair_map = {}
         for from_id, to_list in trace["edges"].items():
-            for to in to_list:
-                to_id = to["vertexId"]
+            for to_id in to_list:
                 adj_list[0].append(int(from_id))
                 adj_list[1].append(int(to_id))
+                api_pair_map[str(to_id)] = trace['vertexs'][from_id]['operation'] + '--->' + trace['vertexs'][str(to_id)][
+                    'operation']
 
-        return torch.tensor(adj_list, dtype=torch.long)
+        return torch.tensor(adj_list, dtype=torch.long), api_pair_map
 
     def _get_node_labels(self, trace):
         """
@@ -333,40 +300,44 @@ class TraceDataset(Dataset):
         """
 
         # 为每个 node 添加一条自己指向自己的边
-        #node_num = data.edge_index.max()
-        #sl = torch.tensor([[n, n] for n in range(node_num)]).t()
-        #data.edge_index = torch.cat((data.edge_index, sl), dim=1)
+        # node_num = data.edge_index.max()
+        # sl = torch.tensor([[n, n] for n in range(node_num)]).t()
+        # data.edge_index = torch.cat((data.edge_index, sl), dim=1)
 
         if self.aug == 'permute_edges_for_subgraph':  # 随机删一条边，选较大子图
             data_aug_1 = permute_edges_for_subgraph(deepcopy(data))
             data_aug_2 = permute_edges_for_subgraph(deepcopy(data))
-        elif self.aug == 'mask_nodes':    # 结点属性屏蔽
+        elif self.aug == 'mask_nodes':  # 结点属性屏蔽
             data_aug_1 = mask_nodes(deepcopy(data))
             data_aug_2 = mask_nodes(deepcopy(data))
-        elif self.aug == 'mask_edges':    # 边属性屏蔽
+        elif self.aug == 'mask_edges':  # 边属性屏蔽
             data_aug_1 = mask_edges(deepcopy(data))
             data_aug_2 = mask_edges(deepcopy(data))
-        elif self.aug == 'mask_nodes_and_edges':    # 结点与边属性屏蔽
+        elif self.aug == 'mask_nodes_and_edges':  # 结点与边属性屏蔽
             data_aug_1 = mask_nodes(deepcopy(data))
             data_aug_1 = mask_edges(data_aug_1)
             data_aug_2 = mask_nodes(deepcopy(data))
             data_aug_2 = mask_edges(data_aug_2)
         elif self.aug == "request_and_response_duration_time_error_injection":  # request_and_response_duration时间异常对比
-            data_aug_1 = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration', edge_features=self.edge_features)
-            data_aug_2 = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration', edge_features=self.edge_features)
-        elif self.aug == 'work_duration_time_error_injection':   # subSpan_duration时间异常
-            data_aug_1 = time_error_injection(deepcopy(data), root_cause='workDuration', edge_features=self.edge_features)
-            data_aug_2 = time_error_injection(deepcopy(data), root_cause='workDuration', edge_features=self.edge_features)
+            data_aug_1 = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration',
+                                              edge_features=self.edge_features)
+            data_aug_2 = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration',
+                                              edge_features=self.edge_features)
+        elif self.aug == 'work_duration_time_error_injection':  # subSpan_duration时间异常
+            data_aug_1 = time_error_injection(deepcopy(data), root_cause='workDuration',
+                                              edge_features=self.edge_features)
+            data_aug_2 = time_error_injection(deepcopy(data), root_cause='workDuration',
+                                              edge_features=self.edge_features)
         elif self.aug == 'response_code_error_injection':
             data_aug_1 = response_code_injection(deepcopy(data), self.edge_features)
             data_aug_2 = response_code_injection(deepcopy(data), self.edge_features)
-        elif self.aug == 'span_order_error_injection':      # span顺序错误，随机交换几个结点位置
+        elif self.aug == 'span_order_error_injection':  # span顺序错误，随机交换几个结点位置
             data_aug_1 = span_order_error_injection(deepcopy(data))
             data_aug_2 = span_order_error_injection(deepcopy(data))
-        elif self.aug == 'drop_several_nodes':      # 缺少span，去掉几个节点
+        elif self.aug == 'drop_several_nodes':  # 缺少span，去掉几个节点
             data_aug_1 = drop_several_nodes(deepcopy(data))
             data_aug_2 = drop_several_nodes(deepcopy(data))
-        elif self.aug == 'add_nodes':       # 增加span
+        elif self.aug == 'add_nodes':  # 增加span
             data_aug_1 = add_nodes(deepcopy(data))
             data_aug_2 = add_nodes(deepcopy(data))
         elif self.aug == 'none':
@@ -379,7 +350,7 @@ class TraceDataset(Dataset):
             # data_aug_1 = pickle.loads(pickle.dumps(data))
             # data_aug_1 = data
             # data_aug_2 = pickle.loads(pickle.dumps(data))
-            #data_aug.x = torch.ones((data.edge_index.max()+1, 1))
+            # data_aug.x = torch.ones((data.edge_index.max()+1, 1))
             # data_aug_2 = data
             return data
         elif self.aug == 'random':
@@ -390,9 +361,8 @@ class TraceDataset(Dataset):
                 data_aug_2 = self._get_view_aug(data)
             elif n >= 3:
                 # anomaly aug
-                data_aug = self._get_anomaly_aug(data)
-                data_aug_1 = self._get_view_aug(data_aug)
-                data_aug_2 = self._get_view_aug(data_aug)
+                data_aug_1 = self._get_anomaly_aug(data)
+                data_aug_2 = self._get_anomaly_aug(data)
                 # data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
         elif self.aug == 'anomaly_random':
             data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
@@ -410,15 +380,10 @@ class TraceDataset(Dataset):
         return len(self.processed_file_names)
 
     def _get_view_aug(self, data):
-        n = np.random.randint(4)
+        n = np.random.randint(2)
         if n == 0:
             data_aug = mask_nodes(deepcopy(data))
         elif n == 1:
-            data_aug = mask_edges(deepcopy(data))
-        elif n == 2:
-            data_aug = mask_nodes(deepcopy(data))
-            data_aug = mask_edges(data_aug)
-        elif n == 3:
             data_aug = permute_edges_for_subgraph(deepcopy(data))
         # elif n == 4:
         #     data_aug = subgraph(deepcopy(data))
@@ -455,7 +420,8 @@ class TraceDataset(Dataset):
     def _get_anomaly_aug(self, data):
         n = np.random.randint(6)
         if n == 0:
-            data_aug = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration', edge_features=self.edge_features)
+            data_aug = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration',
+                                            edge_features=self.edge_features)
         elif n == 1:
             data_aug = time_error_injection(deepcopy(data), root_cause='workDuration', edge_features=self.edge_features)
         elif n == 2:
@@ -472,25 +438,18 @@ class TraceDataset(Dataset):
         return data_aug
 
 
-
 if __name__ == '__main__':
     print("start...")
-    dataset = TraceDataset(root=r"E:\Data\TraceCluster\0301-data\final_train_normal_big_data")
-    # dataset.aug = "add_nodes"
-    # data, data_aug_1, data_aug_2 = dataset.get(5000)
+    dataset = TraceDataset(root="E:\Data\TraceCluster\\0218_node_data\\train_data")
     # dataset1 = deepcopy(dataset)
     # dataset1.aug = "response_code_error_injection"
     # data_aug_1 = dataset1.get(0)
-    # print(data, '\n', data.edge_attr, data.edge_index)
-    # print(data_aug_1, '\n', data_aug_1.edge_attr)
-    # print(data_aug_2, '\n', data_aug_2.edge_attr)
     # start_time = time.time()
     # node_count = []
     # for i in tqdm(range(len(dataset))):
     #     data, _, _ = dataset.get(i)
     #     node_count.append(data.num_nodes)
-        # if i % 10 == 0:
-        #     print(i)
+    # if i % 10 == 0:
+    #     print(i)
     # print(Counter(node_count))
     # print(time.time()-start_time)
-

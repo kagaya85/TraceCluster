@@ -31,11 +31,11 @@ class TraceDataset(Dataset):
 
     @property
     def kpi_features(self):
-        return ['requestAndResponseDuration', 'workDuration', 'rawDuration', 'clientRequestAndResponseDuration']  # workDuration   subspanDuration
+        return ['requestAndResponseDuration', 'workDuration', 'rawDuration']  # workDuration   subspanDuration
 
     @property
     def span_features(self):
-        return ['timeScale', 'isParallel', 'callType', 'isError', 'start2startTimeScale', 'end2endTimeScale']  #  'childrenSpanNum', 'subspanNum',
+        return ['timeScale', 'isParallel', 'callType', 'isError']  #  'childrenSpanNum', 'subspanNum',
 
     @property
     def edge_features(self):
@@ -78,6 +78,13 @@ class TraceDataset(Dataset):
         return abnormal_idx
 
     @property
+    def aug_idx(self):
+        with open(self.processed_dir + '/data_info.json', "r") as f:  # file name not list
+            data_info = json.load(f)
+            abnormal_idx = data_info['aug']
+        return abnormal_idx
+
+    @property
     def trace_classes(self):
         with open(self.processed_dir + '/data_info.json', "r") as f:  # file name not list
             data_info = json.load(f)
@@ -106,6 +113,7 @@ class TraceDataset(Dataset):
         idx = 0
         normal_idx = []
         abnormal_idx = []
+        aug_idx = []
         class_list = []  # url status node_num
         url_status_class_list = []  # url status
         url_class_list = []
@@ -113,11 +121,17 @@ class TraceDataset(Dataset):
         num_features_stat = self._get_num_features_stat()
         operation_embedding = self._operation_embedding()
 
+        rcs = ['ts-contacts-service', 'ts-execute-service', 'ts-config-service', 'ts-seat-service', 'ts-travel-service']
+
         print('load preprocessed data file:', self.raw_file_names[0])
         with open(self.raw_file_names[0], "r") as f:    # file name not list
             raw_data = json.load(f)
 
         for trace_id, trace in tqdm(raw_data.items()):
+
+            if trace['rc'] in rcs:
+                continue
+
             node_feats = self._get_node_features(trace, operation_embedding)
             edge_feats, edge_feats_stat = self._get_edge_features(trace, num_features_stat)
             edge_index = self._get_adjacency_info(trace)
@@ -179,6 +193,30 @@ class TraceDataset(Dataset):
             torch.save(data, filename)
             idx += 1
 
+            if trace['abnormal'] == 1:
+                continue
+
+            n = np.random.randint(6)
+            if n == 0:
+                data_aug = time_error_injection(deepcopy(data), root_cause='requestAndResponseDuration',
+                                                edge_features=self.edge_features)
+            elif n == 1:
+                data_aug = time_error_injection(deepcopy(data), root_cause='workDuration',
+                                                edge_features=self.edge_features)
+            elif n == 2:
+                data_aug = response_code_injection(deepcopy(data), self.edge_features)
+            elif n == 3:
+                data_aug = span_order_error_injection(deepcopy(data))
+            elif n == 4:
+                data_aug = drop_several_nodes(deepcopy(data))
+            elif n == 5:
+                data_aug = add_nodes(deepcopy(data))
+
+            aug_idx.append(idx)
+            filename = osp.join(self.processed_dir, 'data_{}.pt'.format(idx))
+            torch.save(data_aug, filename)
+            idx += 1
+
             # data_list.append(data)
 
         # if self.pre_filter is not None:
@@ -192,6 +230,7 @@ class TraceDataset(Dataset):
 
         datainfo = {'normal': normal_idx,
                     'abnormal': abnormal_idx,
+                    'aug': aug_idx,
                     'trace_classes': class_list,
                     'url_status_classes': url_status_class_list,
                     'url_classes': url_class_list}
@@ -259,21 +298,21 @@ class TraceDataset(Dataset):
             for to in to_list:
                 feat = []
                 feat_stat = []
-                if from_id == '0':
-                    api_pair = 'root--->' + trace["vertexs"][str(to["vertexId"])][1].replace(trace["vertexs"][str(to["vertexId"])][0]+'/','')
-                else:
-                    api_pair = trace["vertexs"][from_id][1].replace(
-                        trace["vertexs"][from_id][0] + '/', '') + '--->' + trace["vertexs"][str(to["vertexId"])][1].replace(
-                        trace["vertexs"][str(to["vertexId"])][0] + '/', '')
+                # if from_id == 0:
+                #     api_pair = 'root--->' + trace["vertexs"][to["vertexId"]][1].strip(trace["vertexs"][to["vertexId"]][0]+'/')
+                # else:
+                #     api_pair = trace["vertexs"][from_id][1].strip(
+                #         trace["vertexs"][from_id][0] + '/') + '--->' + trace["vertexs"][to["vertexId"]][1].strip(
+                #         trace["vertexs"][to["vertexId"]][0] + '/')
 
                 for feature in self.kpi_features:
-                    # feature_num = self._z_score(to[feature], num_features_stat[to['operation']][feature])
-                    feature_num = self._z_score(to[feature], num_features_stat[api_pair][feature])
+                    feature_num = self._z_score(to[feature], num_features_stat[to['operation']][feature])
+                    # feature_num = self._z_score(to[feature], num_features_stat[api_pair][feature])
                     feat.append(feature_num)
-                    feat_stat.append(num_features_stat[api_pair][feature][0])
-                    feat_stat.append(num_features_stat[api_pair][feature][1])
-                    # feat_stat.append(num_features_stat[to['operation']][feature][0])
-                    # feat_stat.append(num_features_stat[to['operation']][feature][1])
+                    # feat_stat.append(num_features_stat[api_pair][feature][0])
+                    # feat_stat.append(num_features_stat[api_pair][feature][1])
+                    feat_stat.append(num_features_stat[to['operation']][feature][0])
+                    feat_stat.append(num_features_stat[to['operation']][feature][1])
                     # feat.append(to[feature])
 
                 for feature in self.span_features:
@@ -390,9 +429,8 @@ class TraceDataset(Dataset):
                 data_aug_2 = self._get_view_aug(data)
             elif n >= 3:
                 # anomaly aug
-                data_aug = self._get_anomaly_aug(data)
-                data_aug_1 = self._get_view_aug(data_aug)
-                data_aug_2 = self._get_view_aug(data_aug)
+                data_aug_1 = self._get_anomaly_aug(data)
+                data_aug_2 = self._get_anomaly_aug(data)
                 # data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
         elif self.aug == 'anomaly_random':
             data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
@@ -475,7 +513,7 @@ class TraceDataset(Dataset):
 
 if __name__ == '__main__':
     print("start...")
-    dataset = TraceDataset(root=r"E:\Data\TraceCluster\0301-data\final_train_normal_big_data")
+    dataset = TraceDataset(root=r"E:\Data\TraceCluster\02-09-data-aug")
     # dataset.aug = "add_nodes"
     # data, data_aug_1, data_aug_2 = dataset.get(5000)
     # dataset1 = deepcopy(dataset)

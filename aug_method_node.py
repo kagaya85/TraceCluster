@@ -173,11 +173,11 @@ def mask_edges(data):
 
 
 def response_code_injection(data, edge_features):
-    edge_num, feat_dim = data.edge_attr.size()
+    edge_num, feat_dim = data.x.size()
     inject_num = random.randint(1, edge_num)
     idx_mask = np.random.choice(edge_num, inject_num, replace=False)
     for i in idx_mask:
-        data.edge_attr[i][edge_features.index('isError')] = 1
+        data.x[i][edge_features.index('isError') + 20] = 1
     return data
 
 
@@ -190,14 +190,14 @@ class adjacency_edge:
 def time_error_injection(data, root_cause, edge_features):
     trace = {}
     node_num = data.x.size(0)
-    if node_num == 1:
-        print('Can\'t inject time error because there is only one node!')
-        return None
+    # if node_num == 1:
+    #     print('Can\'t inject time error because there is only one node!')
+    #     return None
     for i in range(node_num):
         trace[i] = []
     for i in range(data.edge_index.size(1)):
         trace[int(data.edge_index[0][i])].append(adjacency_edge(int(data.edge_index[1][i]), i))
-    inject_node = np.random.randint(1, node_num)
+    inject_node = np.random.randint(1, node_num+1)
     flag = False
     end = False
     diff_sum = 0
@@ -206,25 +206,25 @@ def time_error_injection(data, root_cause, edge_features):
         nonlocal flag, end, diff_sum
         if current_node == inject_node:
             flag = True
-            if data.edge_attr[current_edge_attr][edge_features.index('callType')] == 0:
+            if data.x[current_node][edge_features.index('callType') + 20] == 0:
                 # mean
-                u = data.edge_attr_stat[current_edge_attr][edge_features.index(root_cause)*2]
+                u = data.node_attr_stat[current_node][edge_features.index(root_cause)*2]
                 # standard deviation
-                v = data.edge_attr_stat[current_edge_attr][edge_features.index(root_cause)*2+1]
+                v = data.node_attr_stat[current_node][edge_features.index(root_cause)*2+1]
                 if v == 0:
                     v = 1
                 value = np.random.randint(3, 20)
-                data.edge_attr[current_edge_attr][edge_features.index(root_cause)] += value
+                data.x[current_node][edge_features.index(root_cause) + 20] += value
                 #   计算delta t
                 delta_t = value * v
                 diff_sum += delta_t
                 #   计算raw_duration的z_score
-                u_raw = data.edge_attr_stat[current_edge_attr][edge_features.index('rawDuration')*2]
-                v_raw = data.edge_attr_stat[current_edge_attr][edge_features.index('rawDuration')*2+1]
+                u_raw = data.node_attr_stat[current_node][edge_features.index('rawDuration')*2]
+                v_raw = data.node_attr_stat[current_node][edge_features.index('rawDuration')*2+1]
                 if v_raw == 0:
                     v_raw = 1
                 if current_node != 1:
-                    data.edge_attr[current_edge_attr][edge_features.index('rawDuration')] += delta_t / v_raw
+                    data.x[current_node][edge_features.index('rawDuration') + 20] += delta_t / v_raw
             else:
                 end = True
             return
@@ -233,45 +233,45 @@ def time_error_injection(data, root_cause, edge_features):
             if end is True:
                 return
             if flag is True and current_node != 0:
-                if data.edge_attr[current_edge_attr][edge_features.index('callType')] == 0:
+                if data.x[current_node][edge_features.index('callType') + 20] == 0:
                     # mean
-                    u = data.edge_attr_stat[current_edge_attr][edge_features.index(root_cause) * 2]
+                    u = data.node_attr_stat[current_node][edge_features.index(root_cause) * 2]
                     # standard deviation
-                    v = data.edge_attr_stat[current_edge_attr][edge_features.index(root_cause) * 2 + 1]
+                    v = data.node_attr_stat[current_node][edge_features.index(root_cause) * 2 + 1]
                     if v == 0:
                         v = 1
                     value = np.random.randint(3, 20)
-                    data.edge_attr[current_edge_attr][edge_features.index(root_cause)] += value
+                    data.x[current_node][edge_features.index(root_cause) + 20] += value
                     #   计算delta t
                     delta_t = value * v
                     diff_sum += delta_t
                     #   计算raw_duration的z_score
-                    u_raw = data.edge_attr_stat[current_edge_attr][edge_features.index('rawDuration') * 2]
-                    v_raw = data.edge_attr_stat[current_edge_attr][edge_features.index('rawDuration') * 2 + 1]
+                    u_raw = data.node_attr_stat[current_node][edge_features.index('rawDuration') * 2]
+                    v_raw = data.node_attr_stat[current_node][edge_features.index('rawDuration') * 2 + 1]
                     if v_raw == 0:
                         v_raw = 1
                     if current_node != 1:
-                        data.edge_attr[current_edge_attr][edge_features.index('rawDuration')] += delta_t / v_raw
+                        data.x[current_node][edge_features.index('rawDuration') + 20] += delta_t / v_raw
                 else:
                     end = True
                 return
         return
     dfs_for_time_error_injection(0, None)
     # 计算0结点的z_score
-    u0 = data.edge_attr_stat[0][edge_features.index('rawDuration')*2]
-    v0 = data.edge_attr_stat[0][edge_features.index('rawDuration')*2+1]
+    u0 = data.node_attr_stat[0][edge_features.index('rawDuration')*2]
+    v0 = data.node_attr_stat[0][edge_features.index('rawDuration')*2+1]
     if v0 == 0:
         v0 = 1
-    data.edge_attr[0][edge_features.index('rawDuration')] += diff_sum / v0
+    data.x[0][edge_features.index('rawDuration') + 20] += diff_sum / v0
     # 计算time rate
-    for i in range(1, data.edge_attr.size(0)):
-        u = data.edge_attr_stat[i][edge_features.index('rawDuration')*2]
-        v = data.edge_attr_stat[i][edge_features.index('rawDuration')*2+1]
+    for i in range(1, data.x.size(0)):
+        u = data.node_attr_stat[i][edge_features.index('rawDuration')*2]
+        v = data.node_attr_stat[i][edge_features.index('rawDuration')*2+1]
         if v == 0:
             v = 1
-        data.edge_attr[i][edge_features.index('timeScale')] = \
-            (data.edge_attr[i][edge_features.index('rawDuration')]*v+u) / \
-            (data.edge_attr[0][edge_features.index('rawDuration')]*v0+u0)
+        data.x[i][edge_features.index('timeScale') + 20] = \
+            (data.x[i][edge_features.index('rawDuration')]*v+u) / \
+            (data.x[0][edge_features.index('rawDuration')]*v0+u0)
     return data
 
 
@@ -279,10 +279,6 @@ def permute_edges_for_subgraph(data):
     trace = {}
     node_num = data.x.size(0)
     if node_num == 1:
-        print('Can\'t inject time error because there is only one node!')
-        assert False
-    elif node_num == 2:
-        # print('This graph only have 2 nodes. There is no need to permute 1 edge for subgraph.')
         return data
     for i in range(node_num):
         trace[i] = []
@@ -327,14 +323,14 @@ def permute_edges_for_subgraph(data):
             idx += 1
     edge_index = adj.nonzero(as_tuple=False).t()
     data.edge_index = edge_index
-    edge_attr = []
-    for idx_edge in range(data.edge_index.size(1)):
-        idx_column = edge_dict[(int(edge_index[0][idx_edge]),
-                                int(edge_index[1][idx_edge]))]
-        edge_attr.append(data.edge_attr[idx_column].numpy())
-
-    edge_attr = np.asarray(edge_attr)
-    data.edge_attr = torch.tensor(edge_attr, dtype=torch.float)
+    # edge_attr = []
+    # for idx_edge in range(data.edge_index.size(1)):
+    #     idx_column = edge_dict[(int(edge_index[0][idx_edge]),
+    #                             int(edge_index[1][idx_edge]))]
+    #     edge_attr.append(data.edge_attr[idx_column].numpy())
+    #
+    # edge_attr = np.asarray(edge_attr)
+    # data.edge_attr = torch.tensor(edge_attr, dtype=torch.float)
     for i in range(edge_index.size(1)):
         edge_index[0][i] = node_dic[int(edge_index[0][i])]
         edge_index[1][i] = node_dic[int(edge_index[1][i])]
@@ -344,8 +340,8 @@ def permute_edges_for_subgraph(data):
 
 def span_order_error_injection(data):
     node_num = data.x.size(0)
-    if node_num <= 2:
-        # print('Can\'t inject span order error because the number of nodes is less than 2!')
+    if node_num <= 1:
+        # print('Can\'t inject span order error because the number of nodes is less than 1!')
         return data
     order = [i for i in range(node_num)]
     swap_num = random.randint(1, node_num//2)
@@ -365,9 +361,9 @@ def span_order_error_injection(data):
 
 def drop_several_nodes(data):
     node_num = data.x.size(0)
-    if node_num <= 2:
-        return data
     drop_num = math.ceil(node_num / 5)
+    if node_num == 1:
+        return data
     drop_nodes_ids = np.random.choice(node_num - 1, drop_num, replace=False)
     drop_nodes_ids += 1      # 不舍弃0结点
     drop_edge_ids = []
@@ -403,7 +399,7 @@ def drop_several_nodes(data):
     for i in range(data.edge_index.size(1)):
         data.edge_index[0][i] = node_dic[int(data.edge_index[0][i])]
         data.edge_index[1][i] = node_dic[int(data.edge_index[1][i])]
-    data.edge_attr = data.edge_attr[edge_ids]
+    # data.edge_attr = data.edge_attr[edge_ids]
     node_ids = [i for i in range(node_num) if i not in drop_nodes_ids]
     data.x = data.x[node_ids]
     return data
@@ -419,7 +415,7 @@ def add_nodes(data):
     for pos in add_pos:
         data.x = torch.cat((data.x, torch.tensor(np.asarray([data.x[pos].numpy()]))), 0)
         data.edge_index = torch.cat((data.edge_index, torch.tensor(np.asarray([[pos], [idx]]))), 1)
-        data.edge_attr = torch.cat(
-            (data.edge_attr, torch.tensor(np.asarray([data.edge_attr[random.randint(0, edge_num-1)].numpy()]))), 0)
+        # data.edge_attr = torch.cat(
+        #     (data.edge_attr, torch.tensor(np.asarray([data.edge_attr[random.randint(0, edge_num-1)].numpy()]))), 0)
         idx += 1
     return data

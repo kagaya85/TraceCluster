@@ -7,59 +7,86 @@ import numpy as np
 from torch.nn import ModuleList, Embedding
 from torch.nn import Sequential, ReLU, Linear, LeakyReLU, Tanh
 from torch_geometric.loader import DataLoader
-from torch_geometric.nn import PNAConv, BatchNorm, global_add_pool, global_mean_pool, CGConv, GatedGraphConv, GlobalAttention, Set2Set, GATConv
+from torch_geometric.nn import PNAConv, BatchNorm, global_add_pool, global_mean_pool, CGConv, GatedGraphConv, GlobalAttention, Set2Set, GATConv, GINConv
 from sklearn.metrics import f1_score, recall_score, precision_score
 from torch.utils.data import Subset
 from utils import get_target_label_idx
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 
-from aug_dataset_mem import TraceDataset
+from aug_dataset_node_mem import TraceDataset
 
 
 class CGNNet(nn.Module):
     def __init__(self, num_layers=2):
         super(CGNNet, self).__init__()
 
-        self.convs = ModuleList()
-        self.batch_norms = ModuleList()
-        for _ in range(num_layers):
-            conv = CGConv(channels=20, dim=10)
-            self.convs.append(conv)
-            self.batch_norms.append(BatchNorm(20))
+        self.batch_norms1 = BatchNorm(40)
+        self.batch_norms2 = BatchNorm(16)
 
-        self.batch_norms1 = BatchNorm(60)
+        self.num_gc_layers = num_layers
+
+        # self.nns = []
+        self.convs = torch.nn.ModuleList()
+        self.bns = torch.nn.ModuleList()
+
+        for i in range(num_layers):
+
+            if i:
+                gin_mlp = Sequential(Linear(20, 20), Tanh(), Linear(20, 20))
+            else:
+                gin_mlp = Sequential(Linear(27, 20), Tanh(), Linear(20, 20))
+            conv = GINConv(gin_mlp)
+            bn = BatchNorm(20)
+
+            self.convs.append(conv)
+            self.bns.append(bn)
 
         self.ggnn= GatedGraphConv(out_channels=20, num_layers=2).to(device)
-        self.gat1 = GATConv(in_channels=20, out_channels=60)
-        self.gat2 = GATConv(in_channels=60, out_channels=16)
-        self.mlp = nn.Sequential(Linear(20, 32), Tanh(), Linear(32, 8), Tanh(), Linear(8, 1))
+        self.gat1 = GATConv(in_channels=27, out_channels=40)
+        self.gat2 = GATConv(in_channels=40, out_channels=16)
+        self.gat3 = GATConv(in_channels=40, out_channels=16)
+        self.mlp = nn.Sequential(Linear(40, 32), Tanh(), Linear(32, 8), Tanh(), Linear(8, 1))
         # self.mlp = nn.Sequential(Linear(768, 1))
         self.readout = GlobalAttention(gate_nn=nn.Sequential(
             nn.Linear(20, 20), nn.Tanh(),
             nn.Linear(20, 1)))
         self.readout_2 = Set2Set(in_channels=20, processing_steps=2)
 
-    def forward(self, x, edge_index, edge_attr, batch):
+    def forward(self, x, edge_index, batch):
 
         # x1 = self.ggnn(x, edge_index)
 
         # x = self.gat1(x, edge_index)
         # x = self.batch_norms1(x)
         # x = self.gat2(x, edge_index)
+        # x = self.batch_norms2(x)
+        # x = self.gat3(x, edge_index)
 
-        xs = []
-        for conv, batch_norm in zip(self.convs, self.batch_norms):
-            x = batch_norm(conv(x, edge_index, edge_attr))
-            xs.append(x)
-
-        xpool = [global_add_pool(x, batch) for x in xs]
+        # xs = []
+        # for conv, batch_norm in zip(self.convs, self.batch_norms):
+        #     x = batch_norm(conv(x, edge_index, edge_attr))
+        #     xs.append(x)
+        #
+        # xpool = [global_add_pool(x, batch) for x in xs]
 
         # x = torch.cat(xpool, 1)
-        x = xpool[-1]
+        # x = xpool[-1]
         # x = global_add_pool(x,batch)
         # x = self.readout_2(x,batch)
         # x = self.readout(x,batch)
+
+        xs = []
+        for i in range(self.num_gc_layers):
+            x = torch.tanh(self.convs[i](x, edge_index))
+            x = self.bns[i](x)
+            xs.append(x)
+            # if i == 2:
+            # feature_map = x2
+
+        xpool = [global_add_pool(x, batch) for x in xs]
+        x = torch.cat(xpool, 1)
+
 
         return self.mlp(x)
 
@@ -67,12 +94,11 @@ class CGNNet(nn.Module):
 if __name__ == '__main__':
     learning_rate = 0.001
     epochs = 20
-    dataset = TraceDataset(root='E:\Data\TraceCluster\\0301-data\\all_mem', aug='none')
+    dataset = TraceDataset(root='E:\Data\TraceCluster\\0218_node_data\\all_data_mem', aug='none')
     normal_classes = [0]
     abnormal_classes = [1]
 
-    print(dataset.url_classes)
-    # target_class = dataset.url_classes.index('POST:/api/v1/travel2service/trips/left')
+    # target_class = dataset.url_classes.index('GET:/api/v1/cancelservice/cancel/{orderId}/{loginId}')
     # target_idx = get_target_label_idx(dataset.data.url_class.clone().data.cpu().numpy(), target_class)
     #
     # normal_idx = get_target_label_idx(dataset.data.y.clone().data.cpu().numpy(), normal_classes)
@@ -87,8 +113,8 @@ if __name__ == '__main__':
     random.shuffle(abnormal_idx)
     random.shuffle(normal_idx)
 
-    train_normal = normal_idx[:int(len(normal_idx) * 0.4)]
-    test_normal = normal_idx[int(len(normal_idx) * 0.4):]
+    train_normal = normal_idx[:int(len(normal_idx) * 0.5)]
+    test_normal = normal_idx[int(len(normal_idx) * 0.5):]
     train_abnormal = abnormal_idx[:int(len(abnormal_idx) * 0.5)]
     test_abnormal = abnormal_idx[int(len(abnormal_idx) * 0.5):]
 
@@ -100,8 +126,8 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     criterion = torch.nn.BCEWithLogitsLoss()
 
-    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=128)
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=4)
+    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=True)
 
     model.train()
 
@@ -116,7 +142,7 @@ if __name__ == '__main__':
             data = data.to(device)
             optimizer.zero_grad()
 
-            out = model(data.x, data.edge_index, data.edge_attr, data.batch)
+            out = model(data.x, data.edge_index, data.batch)
             loss = criterion(torch.squeeze(out), data.y.float())
 
             loss.backward()
@@ -130,20 +156,14 @@ if __name__ == '__main__':
 
 
     model.eval()
-    ys, preds, trace_ids = [], [], []
+    ys, preds = [], []
     for data in test_loader:
         data = data.to(device)
         ys.append(data.y.cpu())
-        out = model(data.x, data.edge_index, data.edge_attr, data.batch)
-        out = torch.squeeze(out)
+        out = model(data.x, data.edge_index, data.batch)
         preds.append((out > 0).float().cpu())
-        trace_ids.extend(data.trace_id)
 
     y, pred = torch.cat(ys, dim=0).numpy(), torch.cat(preds, dim=0).numpy()
-    trace_ids = np.asarray(trace_ids)
-    result = np.stack((trace_ids, y, pred), axis=0)
-    error_result = np.asarray([colum for colum in result.T if float(colum[1]) != float(colum[2])]).T
-
     print('F1score')
     print(f1_score(y, pred) if pred.sum() > 0 else 0)
     print('Recall')

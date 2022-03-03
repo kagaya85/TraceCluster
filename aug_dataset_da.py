@@ -31,11 +31,11 @@ class TraceDataset(Dataset):
 
     @property
     def kpi_features(self):
-        return ['requestAndResponseDuration', 'workDuration', 'rawDuration', 'clientRequestAndResponseDuration']  # workDuration   subspanDuration
+        return ['requestAndResponseDuration', 'workDuration', 'rawDuration']  # workDuration   subspanDuration
 
     @property
     def span_features(self):
-        return ['timeScale', 'isParallel', 'callType', 'isError', 'start2startTimeScale', 'end2endTimeScale']  #  'childrenSpanNum', 'subspanNum',
+        return ['timeScale', 'isParallel', 'callType', 'isError']  #  'childrenSpanNum', 'subspanNum',
 
     @property
     def edge_features(self):
@@ -259,21 +259,12 @@ class TraceDataset(Dataset):
             for to in to_list:
                 feat = []
                 feat_stat = []
-                if from_id == '0':
-                    api_pair = 'root--->' + trace["vertexs"][str(to["vertexId"])][1].replace(trace["vertexs"][str(to["vertexId"])][0]+'/','')
-                else:
-                    api_pair = trace["vertexs"][from_id][1].replace(
-                        trace["vertexs"][from_id][0] + '/', '') + '--->' + trace["vertexs"][str(to["vertexId"])][1].replace(
-                        trace["vertexs"][str(to["vertexId"])][0] + '/', '')
 
                 for feature in self.kpi_features:
-                    # feature_num = self._z_score(to[feature], num_features_stat[to['operation']][feature])
-                    feature_num = self._z_score(to[feature], num_features_stat[api_pair][feature])
+                    feature_num = self._z_score(to[feature], num_features_stat[to['operation']][feature])
                     feat.append(feature_num)
-                    feat_stat.append(num_features_stat[api_pair][feature][0])
-                    feat_stat.append(num_features_stat[api_pair][feature][1])
-                    # feat_stat.append(num_features_stat[to['operation']][feature][0])
-                    # feat_stat.append(num_features_stat[to['operation']][feature][1])
+                    feat_stat.append(num_features_stat[to['operation']][feature][0])
+                    feat_stat.append(num_features_stat[to['operation']][feature][1])
                     # feat.append(to[feature])
 
                 for feature in self.span_features:
@@ -386,13 +377,12 @@ class TraceDataset(Dataset):
             n = np.random.randint(6)
             if n < 3:
                 # view aug
-                data_aug_1 = self._get_view_aug(data)
+                data_aug_1 = data
                 data_aug_2 = self._get_view_aug(data)
             elif n >= 3:
                 # anomaly aug
-                data_aug = self._get_anomaly_aug(data)
-                data_aug_1 = self._get_view_aug(data_aug)
-                data_aug_2 = self._get_view_aug(data_aug)
+                data_aug_1 = self._get_anomaly_aug(data)
+                data_aug_2 = self._get_view_aug(data_aug_1)
                 # data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
         elif self.aug == 'anomaly_random':
             data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
@@ -475,15 +465,15 @@ class TraceDataset(Dataset):
 
 if __name__ == '__main__':
     print("start...")
-    dataset = TraceDataset(root=r"E:\Data\TraceCluster\0301-data\final_train_normal_big_data")
-    # dataset.aug = "add_nodes"
-    # data, data_aug_1, data_aug_2 = dataset.get(5000)
+    dataset = TraceDataset(root=r"/data/cyr/traceCluster")
+    dataset.aug = "add_nodes"
+    data, data_aug_1, data_aug_2 = dataset.get(5000)
     # dataset1 = deepcopy(dataset)
     # dataset1.aug = "response_code_error_injection"
     # data_aug_1 = dataset1.get(0)
-    # print(data, '\n', data.edge_attr, data.edge_index)
-    # print(data_aug_1, '\n', data_aug_1.edge_attr)
-    # print(data_aug_2, '\n', data_aug_2.edge_attr)
+    print(data, '\n', data.edge_attr, data.edge_index)
+    print(data_aug_1, '\n', data_aug_1.edge_attr)
+    print(data_aug_2, '\n', data_aug_2.edge_attr)
     # start_time = time.time()
     # node_count = []
     # for i in tqdm(range(len(dataset))):

@@ -17,10 +17,10 @@ from torch_geometric.nn import PNAConv, BatchNorm, global_add_pool, global_mean_
     GlobalAttention, Set2Set, GATConv
 from sklearn.metrics import f1_score, recall_score, precision_score
 from torch.utils.data import Subset
-from simclr import SIMCLR
+from simclr_node import SIMCLR
 from utils import get_target_label_idx
 
-from aug_dataset import TraceDataset
+from aug_dataset_node import TraceDataset
 
 
 def main():
@@ -30,34 +30,32 @@ def main():
     normal_classes = [0]
     abnormal_classes = [1]
     batch_size = 64
-    num_workers = 8
+    num_workers = 10
     num_layers = 2
-    gnn_type = 'CGConv'  # GATConv  TransformerConv  CGConv
+    gnn_type = 'GATConv'  # GATConv  GIN
     pooling_type = 'add'  # mean  add
 
-    aug = 'random'
+    aug = 'view_random'
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    dataset = TraceDataset(root='E:\Data\TraceCluster\\0301-data\\final_train_normal_big_data', aug=aug)
+    dataset = TraceDataset(root='E:\Data\TraceCluster\\0218_node_data\\train_data', aug=aug)
 
     # output dim relay on gnn_type
-    output_dim = dataset.num_node_features if gnn_type == 'CGConv' else 16
+    output_dim = dataset.num_node_features if gnn_type == 'GATConv' else dataset.num_node_features*2
 
     normal_idx = dataset.normal_idx
     abnormal_idx = dataset.abnormal_idx
-    # aug_idx = dataset.aug_idx
 
     random.shuffle(abnormal_idx)
     random.shuffle(normal_idx)
 
-    train_normal = normal_idx[:int(len(normal_idx) * 1)]
-    test_normal = normal_idx[int(len(normal_idx) * 1):]
-    # aug_idx = aug_idx[:int(len(normal_idx) * 0.1)]
+    train_normal = normal_idx[:int(len(normal_idx) * 0.7)]
+    test_normal = normal_idx[int(len(normal_idx) * 0.7):]
     train_abnormal = abnormal_idx[:int(len(abnormal_idx) * 0)]
     test_abnormal = abnormal_idx[int(len(abnormal_idx) * 0):]
-    #
+
     train_dataset = Subset(dataset, train_normal + train_abnormal)
-    # test_dataset = Subset(dataset, test_abnormal + test_normal)
+    test_dataset = Subset(dataset, test_abnormal + test_normal)
 
     model = SIMCLR(num_layers=num_layers, input_dim=dataset.num_node_features, output_dim=output_dim,
                    num_edge_attr=dataset.num_edge_features, gnn_type=gnn_type,
@@ -67,8 +65,8 @@ def main():
     # abnormal_idx = get_target_label_idx(dataset.data.y.clone().data.cpu().numpy(), abnormal_classes)
 
     # Set up logging
-    output_path = f"E:\Data\TraceCluster\log\\" + time.strftime("%Y-%m-%d_%Hh-%Mm-%Ss", time.localtime()) \
-                  + '{}epoch_{}_{}'.format(epochs, gnn_type, pooling_type) + '_0301data_select_normal_randomview'
+    output_path = f"E:\Data\TraceCluster\log_node\\" + time.strftime("%Y-%m-%d_%Hh-%Mm-%Ss", time.localtime()) \
+                  + '{}epoch_{}_{}'.format(epochs, gnn_type, pooling_type) + '_0.5_double_anomaly_view'
     if not os.path.exists(output_path):
         os.makedirs(output_path)
     logging.basicConfig(level=logging.INFO)
@@ -135,8 +133,8 @@ def main():
 
             optimizer.zero_grad()
 
-            out_aug_1 = model(data_aug_1.x, data_aug_1.edge_index, data_aug_1.edge_attr, data_aug_1.batch)
-            out_aug_2 = model(data_aug_2.x, data_aug_2.edge_index, data_aug_2.edge_attr, data_aug_2.batch)
+            out_aug_1 = model(data_aug_1.x, data_aug_1.edge_index, data_aug_1.batch)
+            out_aug_2 = model(data_aug_2.x, data_aug_2.edge_index, data_aug_2.batch)
 
             loss = model.loss_cal(out_aug_1, out_aug_2)
 

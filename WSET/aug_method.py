@@ -345,7 +345,7 @@ def permute_edges_for_subgraph(data):
 def span_order_error_injection(data):
     node_num = data.x.size(0)
     if node_num <= 2:
-        # print('Can\'t inject span order error because the number of nodes is less than 2!')
+        print('Can\'t inject span order error because the number of nodes is less than 2!')
         return data
     order = [i for i in range(node_num)]
     swap_num = random.randint(1, node_num//2)
@@ -365,8 +365,6 @@ def span_order_error_injection(data):
 
 def drop_several_nodes(data):
     node_num = data.x.size(0)
-    if node_num <= 2:
-        return data
     drop_num = math.ceil(node_num / 5)
     drop_nodes_ids = np.random.choice(node_num - 1, drop_num, replace=False)
     drop_nodes_ids += 1      # 不舍弃0结点

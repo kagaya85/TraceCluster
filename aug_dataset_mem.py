@@ -30,11 +30,11 @@ class TraceDataset(InMemoryDataset):
 
     @property
     def kpi_features(self):
-        return ['requestAndResponseDuration', 'workDuration', 'rawDuration']  # workDuration   subspanDuration
+        return ['requestAndResponseDuration', 'workDuration', 'rawDuration', 'clientRequestAndResponseDuration']  # workDuration   subspanDuration
 
     @property
     def span_features(self):
-        return ['timeScale', 'isParallel', 'callType', 'isError']  #  'childrenSpanNum', 'subspanNum',
+        return ['timeScale', 'isParallel', 'callType', 'isError', 'start2startTimeScale', 'end2endTimeScale']  #  'childrenSpanNum', 'subspanNum',
 
     @property
     def edge_features(self):
@@ -100,11 +100,17 @@ class TraceDataset(InMemoryDataset):
         num_features_stat = self._get_num_features_stat()
         operation_embedding = self._operation_embedding()
 
+        # rcs = ['ts-contacts-service', 'ts-execute-service', 'ts-config-service', 'ts-seat-service', 'ts-travel-service']
+
         print('load preprocessed data file:', self.raw_file_names[0])
         with open(self.raw_file_names[0], "r") as f:  # file name not list
             raw_data = json.load(f)
 
         for trace_id, trace in tqdm(raw_data.items()):
+
+            # if trace['rc'] in rcs:
+            #     continue
+
             node_feats = self._get_node_features(trace, operation_embedding)
             edge_feats, edge_feats_stat = self._get_edge_features(trace, num_features_stat)
             edge_index = self._get_adjacency_info(trace)
@@ -245,12 +251,21 @@ class TraceDataset(InMemoryDataset):
             for to in to_list:
                 feat = []
                 feat_stat = []
+                if from_id == '0':
+                    api_pair = 'root--->' + trace["vertexs"][str(to["vertexId"])][1].replace(trace["vertexs"][str(to["vertexId"])][0]+'/','')
+                else:
+                    api_pair = trace["vertexs"][from_id][1].replace(
+                        trace["vertexs"][from_id][0] + '/', '') + '--->' + trace["vertexs"][str(to["vertexId"])][1].replace(
+                        trace["vertexs"][str(to["vertexId"])][0] + '/', '')
 
                 for feature in self.kpi_features:
-                    feature_num = self._z_score(to[feature], num_features_stat[to['operation']][feature])
+                    # feature_num = self._z_score(to[feature], num_features_stat[to['operation']][feature])
+                    feature_num = self._z_score(to[feature], num_features_stat[api_pair][feature])
                     feat.append(feature_num)
-                    feat_stat.append(num_features_stat[to['operation']][feature][0])
-                    feat_stat.append(num_features_stat[to['operation']][feature][1])
+                    feat_stat.append(num_features_stat[api_pair][feature][0])
+                    feat_stat.append(num_features_stat[api_pair][feature][1])
+                    # feat_stat.append(num_features_stat[to['operation']][feature][0])
+                    # feat_stat.append(num_features_stat[to['operation']][feature][1])
                     # feat.append(to[feature])
 
                 for feature in self.span_features:
@@ -450,7 +465,12 @@ class TraceDataset(InMemoryDataset):
 
 if __name__ == '__main__':
     print("start...")
-    dataset = TraceDataset(root="../Data/TraceCluster/2_06_new_data")
+    dataset = TraceDataset(root="E:\Data\TraceCluster\\0301-data\PERCH\perch_mem")
+
+    # with open('E:\Data\TraceCluster\\0222-data\PERCH\\test_data.json', 'r') as f:
+    #     dic = json.load(f)
+    #
+    # traceids = dic['']
     # dataset.aug = None
     # data = dataset.get(0)
     # dataset1 = deepcopy(dataset)

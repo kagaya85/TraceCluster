@@ -15,6 +15,7 @@ from sklearn import preprocessing
 from sklearn.metrics import accuracy_score, recall_score, precision_score
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
+from sklearn.neighbors import KernelDensity
 
 import warnings
 
@@ -238,11 +239,11 @@ def linearsvc_classify(x, y, search):
 
     return np.mean(accuracies_val), np.mean(accuracies)
 
-def oc_svm_classify(emb_train, emb_test, y_train, y_test, nu):
+def oc_svm_classify(emb_train, emb_test, y_train, y_test, nu, kernel):
     emb_train, y_train = np.array(emb_train), np.array(y_train)
     emb_test, y_test = np.array(emb_test), np.array(y_test)
 
-    clf = OneClassSVM(nu=nu)
+    clf = OneClassSVM(nu=nu, kernel=kernel)
     clf.fit(emb_train)
     y_pred_train = clf.predict(emb_train)
     y_pred_test = clf.predict(emb_test)
@@ -349,6 +350,26 @@ def isforest_classify(emb_train, emb_test, y_train, y_test):
     print('IsolationForest Train precision is %.5f' % precision_train)
 
     return
+
+def kde(emb_train, emb_test, y_train, y_test):
+    kde = KernelDensity(kernel='gaussian').fit(emb_train)
+    log_density = kde.score_samples(emb_test)
+    scores = np.exp(log_density)
+    y_pred_test=[]
+    for score in scores:
+        if score<0.01:
+            y_pred_test.append(1)
+        else:
+            y_pred_test.append(0)
+    yyy_pred_test = [score<0.01]
+
+    acc_test = accuracy_score(y_test, y_pred_test)
+
+    recall_test = recall_score(y_test, y_pred_test)
+    precision_test = precision_score(y_test, y_pred_test)
+    print('KDE Test Acc is %.5f' % acc_test)
+    print('KDE Test Recall is %.5f' % recall_test)
+    print('KDE Test precision is %.5f' % precision_test)
 
 
 def evaluate_embedding(embeddings, labels, search=True):
