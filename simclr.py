@@ -61,7 +61,7 @@ class Encoder(nn.Module):
         if self.pooling_type == 'mean':
             x = global_mean_pool(x, batch)
         elif self.pooling_type == 'add':
-            x = global_mean_pool(x, batch)
+            x = global_add_pool(x, batch)
         else:
             print('pooling type error')
             assert False
