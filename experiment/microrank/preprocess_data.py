@@ -6,13 +6,14 @@ from copy import deepcopy
 import numpy as np
 import time
 sys.path.append("../..")
-from preprocess import Span, load_mm_span
+from preprocess import Span, load_mm_span, load_sw_span
+from params import mm_data_path_list, mm_trace_root_list, data_path_list
 
 root_index = '-1'
 
 span_list = []
 mm_root_map = {}
-is_wechat = True
+is_wechat = False
 
 
 def fix_root(span_list: List[Span], mm_root_map: dict):
@@ -41,21 +42,28 @@ def fix_root(span_list: List[Span], mm_root_map: dict):
 
 
 def get_span() -> List[Span]:
-    clickstream_list = [
-        'trace_mmfindersynclogicsvr/click_stream_2022-01-17_23629.csv',
-        'trace_mmfindersynclogicsvr/click_stream_2022-01-18_23629.csv',
-        ]
-    callgraph_list = [
-        'trace_mmfindersynclogicsvr/tmp17.csv',
-        'trace_mmfindersynclogicsvr/tmp18.csv',
-        ]
+    data_path_list = ['rootchaos/2022-02-28_05-00-00_1h_traces.csv']
 
     global mm_root_map, span_list
     if len(span_list) == 0:
-        mm_root_map, span_data = load_mm_span(clickstream_list, callgraph_list)
+        if is_wechat:
+            mm_root_map, span_data = load_mm_span(mm_trace_root_list, mm_data_path_list)
+        else:
+            span_data = load_sw_span(data_path_list)
+
         span_data = pd.concat(span_data, axis=0, ignore_index=True)
         span_data = span_data.groupby('TraceId').apply(lambda x:x.sort_values('StartTime', ascending=True)).reset_index(drop=True)
         span_list = [Span(raw_span) for _, raw_span in span_data.iterrows()]
+
+        operationMap = {}
+        for span in span_list:
+            if span.spanType == "Entry":
+                operationMap[span.parentSpanId] = span.operation
+        for span in span_list:
+            # 替换Exit span的URL
+            if span.spanType == "Exit" and span.spanId in operationMap.keys():
+                span.operation = operationMap[span.spanId]
+
         if is_wechat:
             span_list = fix_root(span_list, mm_root_map)
 

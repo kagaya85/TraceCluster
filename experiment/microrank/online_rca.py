@@ -2,7 +2,7 @@ import numpy as np
 import math
 from anormaly_detector import trace_list_partition
 from anormaly_detector import system_anormaly_detect
-from preprocess_data import get_normal_span, get_operation_duration_data
+from preprocess_data import get_operation_duration_data
 from preprocess_data import get_span
 from preprocess_data import get_operation_slo
 from preprocess_data import get_service_operation_list
@@ -187,7 +187,6 @@ def main():
     # print(span_list)
     operation_list = get_service_operation_list(span_list)
     print('operation list:', operation_list)
-    # normal_span_list = get_normal_span()
     slo = get_operation_slo(
         service_operation_list=operation_list, span_list=span_list)
     print('slo:', slo)

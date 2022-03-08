@@ -50,6 +50,7 @@ def system_anormaly_detect(slo, operation_list):
 
     anormaly_trace = 0
     total_trace = 0
+    anormaly_id_list = []
     for trace_id in operation_count:
         total_trace += 1
         real_duration = float(operation_count[trace_id]['duration']) / 1000.0
@@ -62,10 +63,12 @@ def system_anormaly_detect(slo, operation_list):
 
         if real_duration > expect_duration:
             anormaly_trace += 1
+            anormaly_id_list.append(trace_id)
 
     print("anormaly_trace", anormaly_trace)
+    # print("anormaly_id_list:", anormaly_id_list)
     print("total_trace", total_trace)
-    if anormaly_trace > 8:
+    if anormaly_trace > 0:
         anormaly_rate = float(anormaly_trace) / total_trace
         print("anormaly_rate", anormaly_rate)
         print()

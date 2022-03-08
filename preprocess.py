@@ -141,7 +141,7 @@ def load_mm_span(clickstream_list: List[str], callgraph_list: List[str]) -> Tupl
                 'cmdid': str(root['CallerCmdID']),
                 'nodeid': str(root['CallerNodeID']),
                 'code': root['RetCode'],
-                'start_time': root['TimeStamp'],
+                'start_time': int(time.mktime(time.strptime(root['TimeStamp'], '%Y-%m-%d %H:%M:%S'))),
                 'cost_time': root['CostTime'],
             }
 
@@ -190,14 +190,14 @@ def load_mm_span(clickstream_list: List[str], callgraph_list: List[str]) -> Tupl
         }
 
         # convert to dataframe
-        for _, s in tqdm(mmspans):
+        for s in tqdm(mmspans):
             spans[ITEM.SPAN_ID].append(
                 str(s['CalleeNodeID']) + str(s['CalleeOssID']) + str(s['CalleeCmdID']))
             spans[ITEM.PARENT_SPAN_ID].append(
                 str(s['CallerNodeID']) + str(s['CallerOssID']) + str(s['CallerCmdID']))
             spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
             spans[ITEM.SPAN_TYPE].append('Entry')
-            spans[ITEM.START_TIME].append(s['TimeStamp'])
+            spans[ITEM.START_TIME].append(int(time.mktime(time.strptime(s['TimeStamp'], '%Y-%m-%d %H:%M:%S'))))
             spans[ITEM.DURATION].append(int(s['CostTime']))
 
             # 尝试替换id为name
@@ -226,7 +226,7 @@ def load_mm_span(clickstream_list: List[str], callgraph_list: List[str]) -> Tupl
             spans[ITEM.CODE].append(str(error_code))
 
         df = DataFrame(spans)
-        raw_spans.extend(data_partition(df))
+        raw_spans.extend(data_partition(df, 10000))
 
         return root_map, raw_spans
 
@@ -247,7 +247,7 @@ def load_sw_span(data_path_list: List[str]) -> List[DataFrame]:
 
         spans[ITEM.SERVICE] = spans[ITEM.SERVICE].map(
             lambda x: remove_tail_id(x))
-        raw_spans.extend(data_partition(spans, 10240))
+        raw_spans.extend(data_partition(spans, 10000))
     
     return raw_spans
 
@@ -295,13 +295,9 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float], ope
     """
 
     trace.sort(key=lambda s: s.startTime)
-
-    if is_wechat:
-        graph, str_set = build_mm_graph(trace, time_normolize)
-    else:
-        graph, str_set = build_sw_graph(trace, time_normolize, operation_map)
-
+    graph, str_set = build_sw_graph(trace, time_normolize, operation_map)
     str_set.add('start')
+
     return graph, str_set
 
 
@@ -449,11 +445,20 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
     spanChildrenMap = {}
 
     # generate span dict
+    has_root = False
     for span in trace:
         spanMap[span.spanId] = span
         if span.parentSpanId not in spanChildrenMap.keys():
             spanChildrenMap[span.parentSpanId] = []
         spanChildrenMap[span.parentSpanId].append(span)
+        if span.parentSpanId == '-1':
+            trace_duration["start"] = span.startTime
+            trace_duration["end"] = span.startTime + \
+                span.duration + 1 if span.duration <= 0 else 0
+            has_root = True
+    
+    if not has_root:
+        return None, str_set
 
     # remove local span
     for span in trace:
@@ -484,16 +489,13 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
         if span.spanType in ['Exit', 'Producer', 'Local']:
             continue
 
-        if check_abnormal_span(span):
+        if not is_wechat and check_abnormal_span(span):
             is_abnormal = 1
             chaos_root = chaos_dict.get(time.localtime(span.startTime).tm_hour)
 
         # get the parent server span id
         if span.parentSpanId == '-1':
             rootSpan = span
-            trace_duration["start"] = span.startTime
-            trace_duration["end"] = span.startTime + \
-                span.duration + 1 if span.duration <= 0 else 0
             parentSpanId = '-1'
         else:
             if spanMap.get(span.parentSpanId) is None:
@@ -552,7 +554,7 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
     return graph, str_set
 
 
-def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
+def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float], operation_map: dict):
     str_set = set()
     spanId2Idx = {}
     tailIdx = 0
@@ -814,7 +816,7 @@ def add_root(span_list: List[Span], mm_root_map: dict) -> List[Span]:
     for span in span_list:
         if span.traceId != cur_tid:
             cur_tid = span.traceId
-
+    
             root = mm_root_map[cur_tid]
             root_span = Span()
             root_span.spanId = root['spanid']
@@ -932,6 +934,8 @@ def main():
 
     if len(result_map) > 0:
         save_data(result_map, str(file_idx))
+    else:
+        print(f'warning: result map len is {len(result_map)}')
 
     print('start generate embedding file')
     name_dict = {}

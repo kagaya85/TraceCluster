@@ -135,4 +135,5 @@ def generate_save_filepath(name: str, dirname: str = "", is_wechat: bool = False
         filepath = os.path.join(os.getcwd(), 'data',
                                 'preprocessed', 'trainticket', dirname, name)
 
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
     return filepath
