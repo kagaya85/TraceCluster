@@ -87,7 +87,7 @@ def data_process_for_trace_anomaly(trace_data, seq_set, filename):
     length = len(seq_set)
     print('seq_set\'s length:', length)
     print('processing data and writing it to file...')
-    with open(r'./data/' + filename, 'w') as file:
+    with open(r'/data/cyr/data/' + filename, 'w') as file:
         for trace_id, trace in tqdm(trace_data.items()):
             output_seq = ['0' for i in range(length)]
             for i in range(1, len(trace['service_seq'])):
@@ -105,13 +105,18 @@ def preprocess_for_npy(filename, output_filename):
 
 
 if __name__ == '__main__':
-    root = r'/data/cyr/traceCluster_01/preprocessed/'
+    root = r'../0301-data/preprocessed/'
+    # process npy files
+    preprocess_for_npy(root + 'emb_train_normal.npy', root + 'train_normal')
+    preprocess_for_npy(root + 'emb_test_normal.npy', root + 'test_normal')
+    preprocess_for_npy(root + 'emb_test_abnormal.npy', root + 'abnormal')
+    sys.exit(0)
     # get api seq and time seq
-    train_trace_data = get_api_seq_and_time_seq(root + 'normal.json')
+    train_trace_data = get_api_seq_and_time_seq(root + 'train_normal_0.6.json')
     _, train_trace_data = statistic_unique_trace_length(train_trace_data)
-    test_normal_trace_data = get_api_seq_and_time_seq(root + 'chaos_normal.json')
+    test_normal_trace_data = get_api_seq_and_time_seq(root + 'test_normal_0.4.json')
     _, test_normal_trace_data = statistic_unique_trace_length(test_normal_trace_data)
-    test_abnormal_trace_data = get_api_seq_and_time_seq(root + 'chaos_abnormal.json')
+    test_abnormal_trace_data = get_api_seq_and_time_seq(root + 'abnormal.json')
     _, test_abnormal_trace_data = statistic_unique_trace_length(test_abnormal_trace_data)
     print(len(train_trace_data), len(test_normal_trace_data), len(test_abnormal_trace_data))
     # merge 3 dict
