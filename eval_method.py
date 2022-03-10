@@ -269,6 +269,7 @@ def oc_svm_classify(emb_train, emb_test, y_train, y_test, nu, kernel):
     precision_test = precision_score(y_test, y_pred_test)
     precision_train = precision_score(y_train, y_pred_train)
 
+    F1_score_test = (2 * precision_test * recall_test)/(precision_test + recall_test)
     print('OCSVM Test Acc is %.5f' % acc_test)
     print('OCSVM Train Acc is %.5f' % acc_train)
 
@@ -277,6 +278,8 @@ def oc_svm_classify(emb_train, emb_test, y_train, y_test, nu, kernel):
 
     print('OCSVM Test precision is %.5f' % precision_test)
     print('OCSVM Train precision is %.5f' % precision_train)
+
+    print('OCSVM Test F1-score is %.5f' % F1_score_test)
 
     return
 
@@ -303,9 +306,12 @@ def lof_detection(emb_train, emb_test, y_train, y_test, trace_ids):
 
     precision_test = precision_score(y_test, y_pred_test)
 
+    F1_score_test = (2 * precision_test * recall_test)/(precision_test + recall_test)
+
     print('LOF Test Acc is %.5f' % acc_test)
     print('LOF Test Recall is %.5f' % recall_test)
     print('LOF Test precision is %.5f' % precision_test)
+    print('LOF Test F1-score is %.5f' % F1_score_test)
 
     return
 
@@ -340,6 +346,8 @@ def isforest_classify(emb_train, emb_test, y_train, y_test):
     precision_test = precision_score(y_test, y_pred_test)
     precision_train = precision_score(y_train, y_pred_train)
 
+    F1_score_test = (2 * precision_test * recall_test)/(precision_test + recall_test)
+
     print('IsolationForest Test Acc is %.5f' % acc_test)
     print('IsolationForest Train Acc is %.5f' % acc_train)
 
@@ -348,6 +356,8 @@ def isforest_classify(emb_train, emb_test, y_train, y_test):
 
     print('IsolationForest Test precision is %.5f' % precision_test)
     print('IsolationForest Train precision is %.5f' % precision_train)
+
+    print('IsolationForest F1-score is %.5f' % F1_score_test)
 
     return
 
