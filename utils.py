@@ -1,7 +1,7 @@
 import re
 import os
 from typing import List
-
+import numpy as np
 
 def boolStr2Int(str: str) -> int:
     if str in ['FALSE', 'False', 'false', '0', 0]:
@@ -137,3 +137,12 @@ def generate_save_filepath(name: str, dirname: str = "", is_wechat: bool = False
 
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     return filepath
+
+def get_target_label_idx(labels, targets):
+    """
+        Get the indices of labels that are included in targets.
+        :param labels: array of labels
+        :param targets: list/tuple of target labels
+        :return: list with indices of target labels
+        """
+    return np.argwhere(np.isin(labels, targets)).flatten().tolist()

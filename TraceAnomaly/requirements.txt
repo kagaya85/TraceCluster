@@ -1,0 +1,26 @@
+
+tensorflow==1.5
+
+six >= 1.11.0
+
+PyYAML
+
+numpy
+
+pandas
+
+ipython
+
+imageio
+
+fs
+
+scikit-learn
+
+matplotlib
+
+click
+
+requests
+
+lazy-object-proxy

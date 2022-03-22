@@ -290,6 +290,7 @@ class TraceClusterDataset(Dataset):
         return data, data_aug
 
     def len(self) -> int:
+
         return len(self.processed_file_names)
 
 

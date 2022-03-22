@@ -2,6 +2,7 @@ from ge import Node2Vec, DeepWalk
 import networkx as nx
 import json
 import sys
+import re
 sys.path.append(r'./deepwalk')
 from deepwalk import __main__
 
@@ -144,20 +145,20 @@ def deepwalk_embedding(edgelist_filename, output_filename):
 
 
 if __name__ == '__main__':
-    file_name = "/tmp/pycharm_project_683/data/preprocessed/trainticket/bert_2022-01-12_10-36-30/0.json"
+    file_name = "E:\Data\TraceCluster\\0301-data\\normal.json"
     weighted = False
     if weighted:
-        str = ""
+        name = ""
     else:
-        str = "_weighted"
+        name = "_weighted"
     # edgelist_file = './experiment/edges_1.txt'
 
     graph = build_graph(file_name)
     edgelist_file = make(graph, weighted=weighted)
     node2Vec_embedding(edgelist_filename=edgelist_file,
-                       output_filename='./experiment/node_embedding/embedding' + str +'_node2Vec.json', weighted=weighted)
+                       output_filename='./experiment/node_embedding/embedding' + name +'_node2Vec.json', weighted=weighted)
     deepwalk_embedding(edgelist_filename=edgelist_file,
-                       output_filename='./experiment/node_embedding/embedding' + str +'_deepwalk.json')
+                       output_filename='./experiment/node_embedding/embedding' + name +'_deepwalk.json')
     # # 调用第三方库deepwalk生成结点embedding
     # __main__.process(input="./experiment/edges_1.txt", output="./experiment/embeddingss", format='edgelist',
     #                  representation_size=20, number_walks=80, walk_length=20, window_size=5, undirected=False)
