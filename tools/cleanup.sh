@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-ProcessedPath='data/processed/*'
+ProcessedPath='data/processed/'
 WeightsPath='weights/*'
 
 read -r -p "Remove processed pt file? ($ProcessedPath) [Y/n] " input
@@ -8,6 +8,7 @@ read -r -p "Remove processed pt file? ($ProcessedPath) [Y/n] " input
 case $input in
 	[yY][eE][sS]|[yY])
 		rm -rf $ProcessedPath
+		mkdir $ProcessedPath 
 		echo "Removed"
 		;;
 	*)

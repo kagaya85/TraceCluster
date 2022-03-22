@@ -28,6 +28,10 @@ use_request = False
 cache_file = '/home/kagaya/work/TraceCluster/secrets/cache.json'
 embedding_name = ''
 
+# get features of the edge directed to current span
+operation_select_keys = ['childrenSpanNum', 'requestDuration', 'responseDuration',
+                                 'requestAndResponseDuration', 'workDuration', 'subspanNum',
+                                 'duration', 'rawDuration', 'timeScale']
 
 def normalize(x: float) -> float: return x
 
@@ -182,7 +186,7 @@ def load_mm_span(clickstream_list: List[str], callgraph_list: List[str]) -> Tupl
                 str(s['CallerNodeID']) + str(s['CallerOssID']) + str(s['CallerCmdID']))
             spans[ITEM.TRACE_ID].append(s['GraphIdBase64'])
             spans[ITEM.SPAN_TYPE].append('Entry')
-            spans[ITEM.START_TIME].append(s['TimeStamp'])
+            spans[ITEM.START_TIME].append(int(time.mktime(time.strptime(s['TimeStamp'], "%Y-%m-%d %H:%M:%S"))))
             spans[ITEM.DURATION].append(int(s['CostTime']))
 
             # 尝试替换id为name
@@ -211,7 +215,7 @@ def load_mm_span(clickstream_list: List[str], callgraph_list: List[str]) -> Tupl
             spans[ITEM.CODE].append(str(error_code))
 
         df = DataFrame(spans)
-        raw_spans.extend(data_partition(df))
+        raw_spans.extend(data_partition(df, 10000))
 
         return root_map, raw_spans
 
@@ -232,7 +236,7 @@ def load_sw_span(data_path_list: List[str]) -> List[DataFrame]:
 
         spans[ITEM.SERVICE] = spans[ITEM.SERVICE].map(
             lambda x: remove_tail_id(x))
-        raw_spans.extend(data_partition(spans, 10240))
+        raw_spans.extend(data_partition(spans, 10000))
     
     return raw_spans
 
@@ -282,7 +286,7 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float], ope
     trace.sort(key=lambda s: s.startTime)
 
     if is_wechat:
-        graph, str_set = build_mm_graph(trace, time_normolize)
+        graph, str_set = build_mm_graph(trace, time_normolize, operation_map)
     else:
         graph, str_set = build_sw_graph(trace, time_normolize, operation_map)
 
@@ -505,11 +509,6 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
         if pvid not in edges.keys():
             edges[pvid] = []
 
-        # get features of the edge directed to current span
-        operation_select_keys = ['childrenSpanNum', 'requestDuration', 'responseDuration',
-                                 'requestAndResponseDuration', 'workDuration', 'subspanNum',
-                                 'duration', 'rawDuration', 'timeScale']
-
         feats = calculate_edge_features(
             span, trace_duration, spanChildrenMap)
         feats['vertexId'] = vid
@@ -537,7 +536,7 @@ def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], 
     return graph, str_set
 
 
-def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
+def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float], operation_map: dict):
     traceId = trace[0].traceId
 
     str_set = set()
@@ -547,6 +546,11 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
     graph = []
     vertexs = {}
     edges = {}
+
+    spanMap = {}
+    trace_duration = {}
+    spanChildrenMap = {}
+    root = Span()
 
     for span in trace:
         if span.parentSpanId not in spanId2Idx.keys():
@@ -567,10 +571,10 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
 
     # add root node
     if traceId in mm_root_map.keys():
-        root_span_id = mm_root_map[traceId]['spanid']
+        root_span_id = "-1"
         root_ossid = mm_root_map[traceId]['ossid']
         root_code = mm_root_map[traceId]['code']
-        root_start_time = mm_root_map[traceId]['start_time']
+        root_start_time = int(time.mktime(time.strptime(mm_root_map[traceId]['start_time'], "%Y-%m-%d %H:%M:%S")))
         root_service_name = get_service_name(root_ossid)
         if root_service_name == "":
             root_service_name = str(root_ossid)
@@ -591,8 +595,7 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
                 root_duration = 0
                 for span in graph[spanId2Idx[spanId]]:
                     root_duration = root_duration + span.duration
-
-                graph[tailIdx].append(Span({
+                root = Span({
                     ITEM.TRACE_ID: traceId,
                     ITEM.SPAN_ID: spanId,
                     ITEM.PARENT_SPAN_ID: root_span_id,
@@ -602,14 +605,23 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
                     ITEM.OPERATION: "start",
                     ITEM.SPAN_TYPE: 'EntrySpan',
                     ITEM.PEER: "{}/{}".format(root_service_name, "start"),
-                    ITEM.CODE: 0,
+                    ITEM.CODE: root_code,
                     ITEM.IS_ERROR: False,
-                }))
+                })
+                graph[tailIdx].append(root)
+                trace.insert(0, root)
         else:
             rspanId = root_spans[0]
 
     vertexs[spanId2Idx[rspanId]] = [root_service_name, "start"]
     str_set.add(root_service_name)
+
+    # generate span dict
+    for span in trace:
+        spanMap[span.spanId] = span
+        if span.parentSpanId not in spanChildrenMap.keys():
+            spanChildrenMap[span.parentSpanId] = []
+        spanChildrenMap[span.parentSpanId].append(span)
 
     for idx, spans in enumerate(graph):
         if len(spans) == 0:
@@ -620,17 +632,28 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float]):
             vertexs[spanId2Idx[span.spanId]] = [span.service, span.peer]
             str_set.add(span.service)
             str_set.add(span.peer)
-            edges[idx].append({
-                'vertexId': spanId2Idx[span.spanId],
-                'parentSpanId': span.parentSpanId,
-                'spanId': span.spanId,
-                'startTime': span.startTime,
-                'duration': time_normolize(span.duration),
-                'service': span.service,
-                'operation': span.operation,
-                'peer': span.peer,
-                'isError': utils.any2bool(root_code),
-            })
+
+            # get the parent server span id
+            trace_duration["start"] = root.startTime
+            trace_duration["end"] = root.startTime + \
+                root.duration + 1 if root.duration <= 0 else 0
+
+            if spanMap.get(span.parentSpanId) is None:
+                spanMap[span.parentSpanId] = root
+
+
+            feats = calculate_edge_features(span, trace_duration, spanChildrenMap)
+            feats['vertexId'] = spanId2Idx[span.spanId]
+            feats['duration'] = time_normolize(span.duration) 
+
+            if span.operation not in operation_map.keys():
+                operation_map[span.operation] = {}
+                for key in operation_select_keys:
+                    operation_map[span.operation][key] = []
+            for key in operation_select_keys:
+                operation_map[span.operation][key].append(feats[key])
+
+            edges[idx].append(feats)
 
     graph = {
         'vertexs': vertexs,
@@ -949,7 +972,7 @@ def main():
         name_dict[name] = embedding(name)
 
     embd_filepath = utils.generate_save_filepath(
-        embedding_name+'_embedding.json', time_now_str, is_wechat)
+        'embedding.json', time_now_str, is_wechat)
     with open(embd_filepath, 'w', encoding='utf-8') as fd:
         json.dump(name_dict, fd, ensure_ascii=False)
     print(f'embedding data saved in {embd_filepath}')
