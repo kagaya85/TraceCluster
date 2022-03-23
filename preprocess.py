@@ -658,6 +658,8 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float], 
             edges[idx].append(feats)
 
     graph = {
+        'abnormal': 0,
+        'rc': 'fkwx',
         'vertexs': vertexs,
         'edges': edges,
     }

@@ -22,7 +22,7 @@ from utils import get_target_label_idx
 
 from aug_dataset import TraceDataset
 
-rootpath = '/home/kagaya/work/TraceCluster/data/2022-03-22_21-07-07'
+rootpath = '/home/kagaya/work/TraceCluster/data/2022-03-23_11-38-00'
 
 def main():
     # param
