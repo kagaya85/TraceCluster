@@ -22,6 +22,7 @@ from utils import get_target_label_idx
 
 from aug_dataset import TraceDataset
 
+rootpath = '/home/kagaya/work/TraceCluster/data/2022-03-22_21-07-07'
 
 def main():
     # param
@@ -38,7 +39,7 @@ def main():
     aug = 'random'
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    dataset = TraceDataset(root='E:\Data\TraceCluster\\0301-data\\final_train_normal_big_data', aug=aug)
+    dataset = TraceDataset(root=rootpath, aug=aug)
 
     # output dim relay on gnn_type
     output_dim = dataset.num_node_features if gnn_type == 'CGConv' else 16
@@ -67,7 +68,7 @@ def main():
     # abnormal_idx = get_target_label_idx(dataset.data.y.clone().data.cpu().numpy(), abnormal_classes)
 
     # Set up logging
-    output_path = f"E:\Data\TraceCluster\log\\" + time.strftime("%Y-%m-%d_%Hh-%Mm-%Ss", time.localtime()) \
+    output_path = rootpath + '/' + time.strftime("%Y-%m-%d_%Hh-%Mm-%Ss", time.localtime()) \
                   + '{}epoch_{}_{}'.format(epochs, gnn_type, pooling_type) + '_0301data_select_normal_randomview'
     if not os.path.exists(output_path):
         os.makedirs(output_path)

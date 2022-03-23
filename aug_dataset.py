@@ -31,11 +31,11 @@ class TraceDataset(Dataset):
 
     @property
     def kpi_features(self):
-        return ['requestAndResponseDuration', 'workDuration', 'rawDuration', 'clientRequestAndResponseDuration']  # workDuration   subspanDuration
+        return ['requestAndResponseDuration', 'workDuration', 'rawDuration']  # workDuration   subspanDuration
 
     @property
     def span_features(self):
-        return ['timeScale', 'isParallel', 'callType', 'isError', 'start2startTimeScale', 'end2endTimeScale']  #  'childrenSpanNum', 'subspanNum',
+        return ['timeScale', 'isParallel', 'callType', 'isError']  #  'childrenSpanNum', 'subspanNum',
 
     @property
     def edge_features(self):
@@ -240,7 +240,7 @@ class TraceDataset(Dataset):
         node_feats = []
         for span_id, attr in trace["vertexs"].items():
             if span_id == '0':
-                node_feats.append(operation_embedding[attr])
+                node_feats.append(operation_embedding[attr[1]])
             else:
                 node_feats.append(operation_embedding[attr[1]])
 
@@ -259,12 +259,7 @@ class TraceDataset(Dataset):
             for to in to_list:
                 feat = []
                 feat_stat = []
-                if from_id == '0':
-                    api_pair = 'root--->' + trace["vertexs"][str(to["vertexId"])][1].replace(trace["vertexs"][str(to["vertexId"])][0]+'/','')
-                else:
-                    api_pair = trace["vertexs"][from_id][1].replace(
-                        trace["vertexs"][from_id][0] + '/', '') + '--->' + trace["vertexs"][str(to["vertexId"])][1].replace(
-                        trace["vertexs"][str(to["vertexId"])][0] + '/', '')
+                api_pair = trace["vertexs"][str(to["vertexId"])][1].split('/', 1)[1]
 
                 for feature in self.kpi_features:
                     # feature_num = self._z_score(to[feature], num_features_stat[to['operation']][feature])
