@@ -22,10 +22,11 @@ from utils import get_target_label_idx
 
 from aug_dataset import TraceDataset
 
-rootpath = '/home/kagaya/work/TraceCluster/data/2022-03-23_11-38-00'
+rootpath = '/data/TraceCluster/preprocessed/wechat/2022-03-24_15-25-40'
 
 def main():
     # param
+    torch.multiprocessing.set_sharing_strategy('file_system')
     learning_rate = 0.001
     epochs = 20
     normal_classes = [0]

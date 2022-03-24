@@ -1,10 +1,13 @@
 import copy
 import random
+from this import d
 
 import torch
 import numpy as np
 import math
 import queue
+
+max_depth = 900
 
 def drop_nodes(data):
     node_num, _ = data.x.size()  # x: num_node * num_node_features
@@ -201,9 +204,9 @@ def time_error_injection(data, root_cause, edge_features):
     flag = False
     end = False
     diff_sum = 0
-
+    count = 0
     def dfs_for_time_error_injection(current_node, current_edge_attr):
-        nonlocal flag, end, diff_sum
+        nonlocal flag, end, diff_sum, count
         if current_node == inject_node:
             flag = True
             if data.edge_attr[current_edge_attr][edge_features.index('callType')] == 0:
@@ -229,7 +232,9 @@ def time_error_injection(data, root_cause, edge_features):
                 end = True
             return
         for edge in trace[current_node]:
-            dfs_for_time_error_injection(edge.to, edge.edge_attr_id)
+            count += 1
+            if count < max_depth:
+                dfs_for_time_error_injection(edge.to, edge.edge_attr_id)
             if end is True:
                 return
             if flag is True and current_node != 0:
