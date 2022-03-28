@@ -553,17 +553,10 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float], 
     spanChildrenMap = {}
     root = Span()
 
-    # generate span dict
-    for span in trace:
-        spanMap[span.spanId] = span
-        if span.parentSpanId not in spanChildrenMap.keys():
-            spanChildrenMap[span.parentSpanId] = []
-        spanChildrenMap[span.parentSpanId].append(span)
-
-    # add root node
     if traceId not in mm_root_map.keys():
         return None, str_set
 
+    # add root node
     root_pspan_id = "-1"
     root_ossid = mm_root_map[traceId]['ossid']
     root_nodeid = mm_root_map[traceId]['nodeid']
@@ -577,7 +570,6 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float], 
         root_service_name = root_ossid
 
     # add root info
-    spanId2Idx[root_span_id] = tailIdx
     root = Span({
         ITEM.TRACE_ID: traceId,
         ITEM.SPAN_ID: root_span_id,
@@ -591,15 +583,27 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float], 
         ITEM.CODE: root_code,
         ITEM.IS_ERROR: False,
     })
+    trace.insert(0, root)
+    spanChildrenMap[root.spanId] = []
 
-    sgraph.append([])
-    sgraph[tailIdx].append(root)
-    vertexs[spanId2Idx[root_span_id]] = [root_service_name, "root"]
-    str_set.add(root_service_name)
-
+    # generate span dict
     for span in trace:
-        if span.parentSpanId not in spanMap.keys() and span.parentSpanId != '-1':
+        spanMap[span.spanId] = span
+        if span.parentSpanId not in spanChildrenMap.keys():
+            spanChildrenMap[span.parentSpanId] = []
+        spanChildrenMap[span.parentSpanId].append(span)
+    
+    for span in trace:
+        # get the parent server span id
+        if span.parentSpanId == '-1':
+            rootSpan = span
+            trace_duration["start"] = span.startTime
+            trace_duration["end"] = span.startTime + \
+                span.duration + 1 if span.duration <= 0 else 0
+        elif spanMap.get(span.parentSpanId) is None:
+            spanChildrenMap.pop(span.parentSpanId)
             span.parentSpanId = root.spanId
+            spanChildrenMap[root.spanId].append(span)
 
         if span.parentSpanId not in spanId2Idx.keys():
             spanId2Idx[span.parentSpanId] = tailIdx
@@ -614,10 +618,8 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float], 
             tailIdx = tailIdx + 1
             parentNum[span.spanId] = 0
 
-    # get the parent server span id
-    trace_duration["start"] = root.startTime
-    trace_duration["end"] = root.startTime + \
-        root.duration + 1 if root.duration <= 0 else 0
+    if rootSpan == None:
+        return None, str_set
 
     for idx, spans in enumerate(sgraph):
         if len(spans) == 0:
@@ -644,6 +646,10 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float], 
                 operation_map[span.operation][key].append(feats[key])
 
             edges[idx].append(feats)
+
+
+    if len(edges) > 1000 or len(edges) < 1:
+        return None, str_set
 
     graph = {
         'abnormal': 0,
