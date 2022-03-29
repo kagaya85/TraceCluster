@@ -291,7 +291,8 @@ def build_graph(trace: List[Span], time_normolize: Callable[[float], float], ope
     else:
         graph, str_set = build_sw_graph(trace, time_normolize, operation_map)
 
-    str_set.add('root')
+    str_set.add('start')
+    str_set.add('start/start')
     return graph, str_set
 
 
@@ -300,7 +301,7 @@ def subspan_info(span: Span, child_spans: List[Span]):
     returns subspan duration, subspan number, is_parallel (0-not parallel, 1-is parallel)
     """
     if len(child_spans) == 0:
-        return 0, 0
+        return 0, 0, 0
     total_duration = 0
     is_parallel = 0
     time_spans = []
@@ -397,8 +398,7 @@ def calculate_edge_features(current_span: Span, trace_duration: dict, spanChildr
                 trace_duration["end"] = grandChild.startTime + \
                     grandChild.duration
 
-    subspan_duration, subspan_num, is_parallel = subspan_info(
-        current_span, children_span)
+    subspan_duration, subspan_num, is_parallel = subspan_info(current_span, children_span)
 
     # udpate features
     features["isParallel"] = is_parallel
@@ -427,7 +427,7 @@ def check_abnormal_span(span: Span) -> bool:
 
 
 def build_sw_graph(trace: List[Span], time_normolize: Callable[[float], float], operation_map: dict):
-    vertexs = {0: 'start'}
+    vertexs = {0: ['start', 'start']}
     edges = {}
     str_set = set()
     trace_duration = {}
@@ -541,17 +541,13 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float], 
     traceId = trace[0].traceId
 
     str_set = set()
-    spanId2Idx = {}
-    tailIdx = 0
-    parentNum = {}
-    sgraph = []
-    vertexs = {}
+    spanIdMap = {'-1': 0}
+    spanIdCounter = 1
+    vertexs = {0: ['start', 'start']}
     edges = {}
-
     spanMap = {}
     trace_duration = {}
     spanChildrenMap = {}
-    root = Span()
 
     if traceId not in mm_root_map.keys():
         return None, str_set
@@ -593,62 +589,67 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float], 
             spanChildrenMap[span.parentSpanId] = []
         spanChildrenMap[span.parentSpanId].append(span)
     
+    # process other span
     for span in trace:
+        """
+        (raph object contains Vertexs and Edges
+        Edge: [(from, to, duration), ...]
+        Vertex: [(id, nodestr), ...]
+        """
+
         # get the parent server span id
         if span.parentSpanId == '-1':
             rootSpan = span
             trace_duration["start"] = span.startTime
             trace_duration["end"] = span.startTime + \
                 span.duration + 1 if span.duration <= 0 else 0
-        elif spanMap.get(span.parentSpanId) is None:
-            spanChildrenMap.pop(span.parentSpanId)
-            span.parentSpanId = root.spanId
-            spanChildrenMap[root.spanId].append(span)
+            parentSpanId = '-1'
+        else:
+            if spanMap.get(span.parentSpanId) is None:
+                if span.parentSpanId in spanChildrenMap.keys():
+                    del spanChildrenMap[span.parentSpanId]
+                span.parentSpanId = root.spanId
+                spanChildrenMap[root.spanId].append(span)
+            parentSpanId = spanMap[span.parentSpanId].parentSpanId
 
-        if span.parentSpanId not in spanId2Idx.keys():
-            spanId2Idx[span.parentSpanId] = tailIdx
-            sgraph.append([])
-            tailIdx = tailIdx + 1
+        if parentSpanId not in spanIdMap.keys():
+            spanIdMap[parentSpanId] = spanIdCounter
+            spanIdCounter += 1
 
-        sgraph[spanId2Idx[span.parentSpanId]].append(span)
+        if span.spanId not in spanIdMap.keys():
+            spanIdMap[span.spanId] = spanIdCounter
+            spanIdCounter += 1
 
-        if span.spanId not in spanId2Idx.keys():
-            spanId2Idx[span.spanId] = tailIdx
-            sgraph.append([])
-            tailIdx = tailIdx + 1
-            parentNum[span.spanId] = 0
+        vid, pvid = spanIdMap[span.spanId], spanIdMap[parentSpanId]
+
+        # span id should be unique
+        if vid not in vertexs.keys():
+            opname = '/'.join([span.service, span.operation])
+            vertexs[vid] = [span.service, opname]
+            str_set.add(span.service)
+            str_set.add(opname)
+
+        if pvid not in edges.keys():
+            edges[pvid] = []
+
+        feats = calculate_edge_features(
+            span, trace_duration, spanChildrenMap)
+        feats['vertexId'] = vid
+        feats['duration'] = time_normolize(span.duration)
+
+        if span.operation not in operation_map.keys():
+            operation_map[span.operation] = {}
+            for key in operation_select_keys:
+                operation_map[span.operation][key] = []
+        for key in operation_select_keys:
+            operation_map[span.operation][key].append(feats[key])
+
+        edges[pvid].append(feats)
 
     if rootSpan == None:
         return None, str_set
 
-    for idx, spans in enumerate(sgraph):
-        if len(spans) == 0:
-            continue
-
-        edges[idx] = []
-        for span in spans:
-            vertexs[spanId2Idx[span.spanId]] = [span.service, span.peer]
-            str_set.add(span.service)
-            str_set.add(span.peer)
-
-            if spanMap.get(span.parentSpanId) is None:
-                spanMap[span.parentSpanId] = root
-
-            feats = calculate_edge_features(span, trace_duration, spanChildrenMap)
-            feats['vertexId'] = spanId2Idx[span.spanId]
-            feats['duration'] = time_normolize(span.duration) 
-
-            if span.operation not in operation_map.keys():
-                operation_map[span.operation] = {}
-                for key in operation_select_keys:
-                    operation_map[span.operation][key] = []
-            for key in operation_select_keys:
-                operation_map[span.operation][key].append(feats[key])
-
-            edges[idx].append(feats)
-
-
-    if len(edges) > 1000 or len(edges) < 1:
+    if len(edges) > 1000 or len(vertexs) < 2:
         return None, str_set
 
     graph = {

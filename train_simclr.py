@@ -22,7 +22,8 @@ from utils import get_target_label_idx
 
 from aug_dataset import TraceDataset
 
-rootpath = '/data/TraceCluster/preprocessed/wechat/2022-03-23_11-38-00'
+# rootpath = '/data/TraceCluster/preprocessed/wechat/2022-03-23_11-38-00'
+rootpath = '/data/TraceCluster/preprocessed/wechat/2022-03-29_18-48-24'
 
 def main():
     # param
