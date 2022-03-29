@@ -18,7 +18,7 @@ from itertools import repeat, product
 from torch_geometric.data.separate import separate
 from typing import List, Tuple, Union
 from copy import deepcopy
-from aug_method import *
+from aug_method_new import *
 
 
 class TraceDataset(InMemoryDataset):
@@ -465,7 +465,7 @@ class TraceDataset(InMemoryDataset):
 
 if __name__ == '__main__':
     print("start...")
-    dataset = TraceDataset(root="E:\Data\TraceCluster\\0301-data\PERCH\perch_mem")
+    dataset = TraceDataset(root="E:\Data\TraceCluster\\0301-data\\abnormal_mem")
 
     # with open('E:\Data\TraceCluster\\0222-data\PERCH\\test_data.json', 'r') as f:
     #     dic = json.load(f)

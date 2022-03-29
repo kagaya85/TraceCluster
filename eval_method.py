@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 import pandas as pd
 import os
+import time
 
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import GridSearchCV, KFold, StratifiedKFold
@@ -12,7 +13,7 @@ from sklearn.ensemble import RandomForestClassifier, IsolationForest
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn import preprocessing
-from sklearn.metrics import accuracy_score, recall_score, precision_score
+from sklearn.metrics import accuracy_score, recall_score, precision_score, roc_auc_score
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 from sklearn.neighbors import KernelDensity
@@ -243,10 +244,20 @@ def oc_svm_classify(emb_train, emb_test, y_train, y_test, nu, kernel):
     emb_train, y_train = np.array(emb_train), np.array(y_train)
     emb_test, y_test = np.array(emb_test), np.array(y_test)
 
+    start_o_time = time.time()
     clf = OneClassSVM(nu=nu, kernel=kernel)
     clf.fit(emb_train)
-    y_pred_train = clf.predict(emb_train)
+    # a = clf.decision_function(emb_test)
+
+    # test_auc = roc_auc_score(y_test, -a)
+    # print('Test set AUC: {:.2f}%'.format(100. * test_auc))
+    start_time = time.time()
+    print(start_time-start_o_time)
+
     y_pred_test = clf.predict(emb_test)
+    end_time = time.time()
+    print(end_time-start_time)
+    y_pred_train = clf.predict(emb_train)
 
     for i in range(len(y_pred_test)):
         if y_pred_test[i] == -1:
@@ -278,7 +289,7 @@ def oc_svm_classify(emb_train, emb_test, y_train, y_test, nu, kernel):
     print('OCSVM Test precision is %.5f' % precision_test)
     print('OCSVM Train precision is %.5f' % precision_train)
 
-    return
+    return y_test, y_pred_test
 
 
 def lof_detection(emb_train, emb_test, y_train, y_test, trace_ids):
