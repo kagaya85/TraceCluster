@@ -603,24 +603,22 @@ def build_mm_graph(trace: List[Span], time_normolize: Callable[[float], float], 
             trace_duration["start"] = span.startTime
             trace_duration["end"] = span.startTime + \
                 span.duration + 1 if span.duration <= 0 else 0
-            parentSpanId = '-1'
         else:
             if spanMap.get(span.parentSpanId) is None:
                 if span.parentSpanId in spanChildrenMap.keys():
                     del spanChildrenMap[span.parentSpanId]
                 span.parentSpanId = root.spanId
                 spanChildrenMap[root.spanId].append(span)
-            parentSpanId = spanMap[span.parentSpanId].parentSpanId
 
-        if parentSpanId not in spanIdMap.keys():
-            spanIdMap[parentSpanId] = spanIdCounter
+        if span.parentSpanId not in spanIdMap.keys():
+            spanIdMap[span.parentSpanId] = spanIdCounter
             spanIdCounter += 1
 
         if span.spanId not in spanIdMap.keys():
             spanIdMap[span.spanId] = spanIdCounter
             spanIdCounter += 1
 
-        vid, pvid = spanIdMap[span.spanId], spanIdMap[parentSpanId]
+        vid, pvid = spanIdMap[span.spanId], spanIdMap[span.parentSpanId]
 
         # span id should be unique
         if vid not in vertexs.keys():
