@@ -390,7 +390,9 @@ class TraceDataset(Dataset):
                 data_aug_2 = self._get_view_aug(data_aug)
                 # data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
         elif self.aug == 'anomaly_random':
-            data_aug_1, data_aug_2 = self._get_anomaly_aug(data)
+            data_aug = self._get_anomaly_aug(data)
+            data_aug_1 = self._get_view_aug(data_aug)
+            data_aug_2 = self._get_view_aug(data_aug)
         elif self.aug == 'view_random':
             data_aug_1 = self._get_view_aug(data)
             data_aug_2 = self._get_view_aug(data)

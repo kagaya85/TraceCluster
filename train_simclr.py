@@ -26,17 +26,17 @@ from aug_dataset import TraceDataset
 rootpath = '/data/TraceCluster/preprocessed/wechat/2022-03-30_14-56-09'
 
 def main():
-    # param
     torch.multiprocessing.set_sharing_strategy('file_system')
+    # param
     learning_rate = 0.001
     epochs = 20
     normal_classes = [0]
     abnormal_classes = [1]
     batch_size = 64
-    num_workers = 8
+    num_workers = 12
     num_layers = 2
     gnn_type = 'CGConv'  # GATConv  TransformerConv  CGConv
-    pooling_type = 'add'  # mean  add
+    pooling_type = 'mean'  # mean  add
 
     aug = 'random'
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

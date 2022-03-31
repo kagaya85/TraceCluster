@@ -24,45 +24,242 @@ from tqdm import tqdm
 #     train_idx = model_info['train_idx']
 #     test_idx = model_info['test_idx']
 
-with open('E:\Data\TraceCluster\\0301-data\\normal.json', 'r') as f:
-    dic1 = json.load(f)
+with open('G:\Data\TraceCluster\\0301-data\Sampling_22000_everytype\\test_traces.json', 'r') as f:
+    raw_data = json.load(f)
 
-# print(dic1.keys())
-nor_list = []
-ab_list = []
+# status_codes = []
+# for trace_id, trace in tqdm(raw_data.items()):
+#     if len(trace['vertexs'].keys()) == 5:
+#         print(trace)
+#         print(trace_id)
+#         exit()
+#     for from_id, to_list in trace["edges"].items():
+#         for to in to_list:
+#             status_codes.append(to['statusCode'])
+# print(Counter(status_codes))
+# exit()
 
-root_url_dic = {}
+# print(max(workDuration))
+# print(min(workDuration))
 
-all_traceids = list(dic1.keys())
-print(len(all_traceids))
+
+# kpi_features = ['rawDuration', 'clientRequestAndResponseDuration']  # workDuration   subspanDuration  'requestAndResponseDuration', 'workDuration',
+
+# span_features = ['timeScale', 'isParallel', 'callType', 'isError', 'start2startTimeScale', 'end2startTimeScale', 'workDuration', 'subspanNum']  #  'childrenSpanNum', 'subspanNum',
+
+# rawDuration = processingTime
+# clientRequestAndResponseDuration = networklatency
+# callType = isAsynchronous
+# timeScale = proportionProcessingTime
+# start2startTimeScale = quantileStartTime
+# end2startTimeScale = quantileEndTime
+# workDuration = proportionLocalExecution
+# subspanNum = sectionsLocalExecution
+new_dic = {}
+
+all_traceids = list(raw_data.keys())
 
 random.shuffle(all_traceids)
 
-for key in all_traceids:
-    root_url = dic1[key]["edges"]["0"][0]["operation"]
-    if dic1[key]['abnormal'] == 0:
-        if root_url in root_url_dic.keys():
-            root_url_dic[root_url] += 1
-        else:
-            root_url_dic[root_url] = 1
+for trace_id in all_traceids:
+    new_trace = copy.deepcopy(raw_data[trace_id])
+    for from_id, to_list in raw_data[trace_id]["edges"].items():
+        for i in range(len(to_list)):
+            to = to_list[i]
 
-count_dic = {}
-train_normal_dic = {}
-test_normal_dic = {}
-train_normal_list = []
-test_normal_list = []
+            caller_id = str(to['vertexId'])
+            a = raw_data[trace_id]["edges"]
+            if caller_id in a.keys():
+                subspanNum = len(raw_data[trace_id]["edges"][caller_id]) + 1
+            else:
+                subspanNum = 1
 
-for key in all_traceids:
-    root_url = dic1[key]["edges"]["0"][0]["operation"]
-    if root_url not in count_dic.keys():
-        count_dic[root_url] = 0
-    if count_dic[root_url] < 0.6*root_url_dic[root_url]:
-        train_normal_dic[key] = dic1[key]
-        count_dic[root_url] += 1
-        train_normal_list.append(root_url)
-    else:
-        test_normal_dic[key] = dic1[key]
-        test_normal_list.append(root_url)
+            new_trace['edges'][from_id][i]['sectionsLocalExecution'] = float(subspanNum)
+
+            if float(to['rawDuration']) == 0.0:
+                new_trace['edges'][from_id][i]['proportionLocalExecution'] = 1.0
+            else:
+                new_trace['edges'][from_id][i]['proportionLocalExecution'] = float(to['workDuration']) / float(to['rawDuration'])
+
+            new_trace['edges'][from_id][i]['quantileEndTime'] = to['end2startTimeScale']
+            new_trace['edges'][from_id][i]['quantileStartTime'] = to['start2startTimeScale']
+            new_trace['edges'][from_id][i]['proportionProcessingTime'] = to['timeScale']
+            new_trace['edges'][from_id][i]['isAsynchronous'] = to['callType']
+            new_trace['edges'][from_id][i]['rawNetworklatency'] = to['clientRequestAndResponseDuration']
+            new_trace['edges'][from_id][i]['rawProcessingTime'] = to['rawDuration']
+            if to['isError'] == False:
+                code = 2
+            elif to['isError'] == True:
+                code = 5
+            new_trace['edges'][from_id][i]['statusCode'] = code
+
+            del new_trace['edges'][from_id][i]['requestDuration']
+            del new_trace['edges'][from_id][i]['responseDuration']
+            del new_trace['edges'][from_id][i]['clientRequestDuration']
+            del new_trace['edges'][from_id][i]['clientResponseDuration']
+    new_dic[trace_id] = new_trace
+
+print(len(new_dic.keys()))
+
+with open('G:\Data\TraceCluster\\0301-data\github_data\\tail-based_sampling.json', 'w', encoding='utf-8') as json_file:
+    json.dump(new_dic, json_file)
+    print('write data info success')
+
+# for trace_id, trace in tqdm(raw_data.items()):
+#     edge_feats = []
+#     edge_feats_stat = []
+#     for from_id, to_list in trace["edges"].items():
+#         for to in to_list:
+#             feat = []
+#             feat_stat = []
+#             if from_id == '0':
+#                 api_pair = 'root--->' + trace["vertexs"][str(to["vertexId"])][1].replace(
+#                     trace["vertexs"][str(to["vertexId"])][0] + '/', '')
+#             else:
+#                 api_pair = trace["vertexs"][from_id][1].replace(
+#                     trace["vertexs"][from_id][0] + '/', '') + '--->' + trace["vertexs"][str(to["vertexId"])][1].replace(
+#                     trace["vertexs"][str(to["vertexId"])][0] + '/', '')
+#
+#             for feature in self.kpi_features:
+#                 # feature_num = self._z_score(to[feature], num_features_stat[to['operation']][feature])
+#                 feature_num = self._z_score(to[feature], num_features_stat[api_pair][feature])
+#                 feat.append(feature_num)
+#                 feat_stat.append(num_features_stat[api_pair][feature][0])
+#                 feat_stat.append(num_features_stat[api_pair][feature][1])
+#                 # feat_stat.append(num_features_stat[to['operation']][feature][0])
+#                 # feat_stat.append(num_features_stat[to['operation']][feature][1])
+#                 # feat.append(to[feature])
+#
+#             for feature in self.span_features:
+#                 if feature == 'isError':
+#                     feat.append(0.0 if to[feature] is False else 1.0)
+#                 elif feature == 'subspanNum':
+#                     caller_id = str(to['vertexId'])
+#                     a = trace["edges"]
+#                     if caller_id in a.keys():
+#                         subspanNum = len(trace["edges"][caller_id]) + 1
+#                     else:
+#                         subspanNum = 1
+#                     feat.append(float(subspanNum))
+#                 elif feature == 'workDuration':
+#                     if float(to['rawDuration']) == 0.0:
+#                         feat.append(1.0)
+#                     else:
+#                         feat.append(float(to['workDuration']) / float(to['rawDuration']))
+#                 else:
+#                     feat.append(float(to[feature]))
+#
+#             edge_feats.append(feat)
+#             edge_feats_stat.append(feat_stat)
+#
+#     edge_feats_stat = np.asarray(edge_feats_stat)
+#     edge_feats = np.asarray(edge_feats)
+
+
+
+
+
+# with open(r'G:\Data\TraceCluster\0301-data\PERCH_random2000data\test_traces.json', 'r') as file_1:
+#     raw_data = json.load(file_1)
+
+# with open('E:\Data\TraceCluster\\0301-data\\normal.json', 'r') as f:
+#     dic1 = json.load(f)
+#
+# with open('E:\Data\TraceCluster\\0301-data\\test_normal_0.4.json', 'r') as f:
+#     dic2 = json.load(f)
+
+# print(dic1.keys())
+# dic.update(dic1)
+
+
+# print(len(dic1.keys()))
+# print(len(dic2.keys()))
+
+#
+# trace = {}
+# trace_type_dic = {}
+# ab_type_list = []
+# nor_type_list = []
+#
+# # rc = ['ts-seat-service']
+# rc = ['station_code_chaos', 'user_code_chaos']
+#
+# nor_trace_dic = {}
+# ab_trace_dic = {}
+#
+#
+#
+# for key in all_traceids:
+# if dic[key]['abnormal'] == 0:
+#     t = dic[key]["edges"]["0"][0]["operation"] + '0' + str(len(dic[key]['vertexs'].keys()))
+#     nor_type_list.append(t)
+#     trace_type_dic[key] = t
+# else:
+#     t = dic[key]['rc'] + dic[key]["edges"]["0"][0]["operation"] + '1' + str(len(dic[key]['vertexs'].keys()))
+#     ab_type_list.append(t)
+#     trace_type_dic[key] = t
+#
+# # t = raw_data[key]['rc'] + raw_data[key]["edges"]["0"][0]["operation"] + str(dic[key]['abnormal'])
+# # trace_type_dic[key] = t
+#
+# print(len(nor_type_list))
+# print(len(ab_type_list))
+#
+# print(Counter(nor_type_list))
+# print(Counter(ab_type_list))
+# print(list(set(nor_type_list)))
+# print(list(set(ab_type_list)))
+# print(len(list(set(nor_type_list))))
+# print(len(list(set(ab_type_list))))
+
+# exit()
+    # if dic[key]["edges"]["0"][0]["operation"] == 'POST:/api/v1/orderOtherService/orderOther/refresh':
+    #
+    # if dic[key]['rc'] in rc:
+    # trace[key] = dic[key]["edges"]["0"][0]["operation"]
+# dic.update(dic1)
+# dic.update(dic2)
+
+# print(len(dic.keys()))
+#
+
+
+
+
+
+
+# print((Counter(ab_list)))
+
+# for key in all_traceids:
+#     root_url = dic1[key]["edges"]["0"][0]["operation"]
+#     if dic1[key]['abnormal'] == 0:
+#         if root_url in root_url_dic.keys():
+#             root_url_dic[root_url] += 1
+#         else:
+#             root_url_dic[root_url] = 1
+
+# count_dic = {}
+# train_normal_dic = {}
+# test_normal_dic = {}
+# train_normal_list = []
+# test_normal_list = []
+#
+# for key in dic.keys():
+#     if key in all_traceids:
+#         continue
+#     else:
+#         test_normal_dic[key]=dic[key]
+# for key in all_traceids:
+#     root_url = dic1[key]["edges"]["0"][0]["operation"]
+#     if root_url not in count_dic.keys():
+#         count_dic[root_url] = 0
+#     if count_dic[root_url] < 0.6*root_url_dic[root_url]:
+#         train_normal_dic[key] = dic1[key]
+#         count_dic[root_url] += 1
+#         train_normal_list.append(root_url)
+#     else:
+#         test_normal_dic[key] = dic1[key]
+#         test_normal_list.append(root_url)
 
 # for key in dic1.keys():
 #     trace_class = dic1[key]["edges"]["0"][0]["operation"] + str(dic1[key]['abnormal']) + str(
@@ -72,20 +269,20 @@ for key in all_traceids:
 #     elif dic1[key]['abnormal'] == 0:
 #         nor_list.append(trace_class)
 
-print(root_url_dic)
-print(len(train_normal_dic.keys()))
-print(len(test_normal_dic.keys()))
-print(Counter(train_normal_list))
-print(Counter(test_normal_list))
+# print(root_url_dic)
+# print(len(train_normal_dic.keys()))
+# print(len(test_normal_dic.keys()))
+# print(Counter(train_normal_list))
+# print(Counter(test_normal_list))
 
 
-with open('E:\Data\TraceCluster\\0301-data\\train_normal_0.6.json', 'w', encoding='utf-8') as json_file:
-    json.dump(train_normal_dic, json_file)
-    print('write data info success')
-
-with open('E:\Data\TraceCluster\\0301-data\\test_normal_0.4.json', 'w', encoding='utf-8') as json_file:
-    json.dump(train_normal_dic, json_file)
-    print('write data info success')
+# with open('E:\Data\TraceCluster\\0301-data\\train_normal_0.6.json', 'w', encoding='utf-8') as json_file:
+#     json.dump(train_normal_dic, json_file)
+#     print('write data info success')
+#
+# with open('E:\Data\TraceCluster\\0301-data\\test_normal_0.4.json', 'w', encoding='utf-8') as json_file:
+#     json.dump(test_normal_dic, json_file)
+#     print('write data info success')
 
 # train_normal = {}
 # test_normal = {}

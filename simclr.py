@@ -40,6 +40,9 @@ class Encoder(nn.Module):
             conv_1 = CGConv(channels=input_dim, dim=num_edge_attr)
             bn_0 = BatchNorm(input_dim)
             bn_1 = BatchNorm(input_dim)
+            if num_layers == 3:
+                conv_2 = CGConv(channels=input_dim, dim=num_edge_attr)
+                bn_2 = BatchNorm(input_dim)
         else:
             print('gnn type error')
             assert False
@@ -50,6 +53,9 @@ class Encoder(nn.Module):
 
         self.batch_norms.append(bn_0)
         self.batch_norms.append(bn_1)
+        if num_layers == 3:
+            self.convs.append(conv_2)
+            self.batch_norms.append(bn_2)
 
     def forward(self, x, edge_index, edge_attr, batch):
 
@@ -82,6 +88,8 @@ class Encoder(nn.Module):
                 data.to(device)
                 x = self.forward(data.x, data.edge_index, data.edge_attr, data.batch)
 
+                # a = data.trace_id
+                trace_ids.extend(data.trace_id)
                 ret.append(x.cpu().numpy())
                 y.append(data.y.cpu().numpy())
                 trace_class.append(data.trace_class.cpu().numpy())
@@ -92,7 +100,7 @@ class Encoder(nn.Module):
         trace_class = np.concatenate(trace_class, 0)
         url_status_class = np.concatenate(url_status_class, 0)
         url_class_list = np.concatenate(url_class_list, 0)
-        return ret, y, trace_class, url_status_class, url_class_list
+        return ret, y, trace_class, url_status_class, url_class_list, trace_ids
 
 
 class SIMCLR(nn.Module):
