@@ -87,7 +87,11 @@ func QueryTraceIDs(ctx context.Context, startTime time.Time, endTime time.Time, 
 
 		traceBrief, err := QueryBasicTraces(ctx, condition)
 		if err != nil {
-			itv -= 1 * time.Minute
+			if itv > time.Minute {
+				itv -= 1 * time.Minute
+			} else {
+				itv -= 10 * time.Second
+			}
 			if itv <= 0 {
 				log.Fatalf("query trace id faild: %s", err)
 			}
