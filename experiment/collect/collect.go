@@ -98,7 +98,7 @@ func main() {
 }
 
 func SaveCSV(traceC <-chan api.Trace, filename string) error {
-	header := []string{"StartTime", "EndTime", "URL", "SpanType", "Service", "SpanId", "TraceId", "Peer", "ParentSpan", "Component", "IsError"}
+	header := []string{"StartTime", "EndTime", "URL", "SpanType", "Service", "SpanId", "TraceId", "Peer", "ParentSpan", "Component", "IsError", "Code"}
 	bufsize := 1000
 	records := make([][]string, 0, bufsize)
 
@@ -144,7 +144,14 @@ func SaveCSV(traceC <-chan api.Trace, filename string) error {
 				parentSpanID = fmt.Sprintf("%s.%d", span.SegmentID, span.ParentSpanID)
 			}
 
-			// "StartTime", "EndTime", "URL", "SpanType", "Service", "SpanId", "TraceId", "Peer", "ParentSpan", "Component", "IsError
+			code := "0"
+			for _, tag := range span.Tags {
+				if tag.Key == "http.status_code" {
+					code = *tag.Value
+				}
+			}
+
+			// "StartTime", "EndTime", "URL", "SpanType", "Service", "SpanId", "TraceId", "Peer", "ParentSpan", "Component", "IsError", "Code"
 			records = append(records, []string{
 				strconv.Itoa(int(span.StartTime)),
 				strconv.Itoa(int(span.EndTime)),
@@ -157,6 +164,7 @@ func SaveCSV(traceC <-chan api.Trace, filename string) error {
 				parentSpanID,
 				*span.Component,
 				strconv.FormatBool(*span.IsError),
+				code,
 			})
 
 			if len(records) > bufsize {
