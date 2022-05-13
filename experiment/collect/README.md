@@ -2,7 +2,7 @@
 
 build:
 ```shell
-go build -o bin/collect
+GOOS=linux GOARCH=amd64 go build -o bin/collect
 ```
 
 use:
